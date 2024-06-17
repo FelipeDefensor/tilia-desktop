@@ -4,85 +4,93 @@
     <meta charset="UTF-8">
     <!DOCTYPE html>
     <link rel="stylesheet" href="youtube.css">
-<html>
-  <body>
-    <iframe id="yt-player-iframe"
-        width="640" height="360"
-        src="https://www.youtube.com/embed?enablejsapi=1"
-    ></iframe>
+    <html>
+    <body>
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/QiZoiTd2KzM?enablejsapi=1&origin=https://tilia-app.com"
+            title="YouTube video player" frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen  >
+    </iframe>
     <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
     <script type="text/javascript">
-      var backend;
-      new QWebChannel(qt.webChannelTransport, function (channel) {
-            backend = channel.objects.backend;
-      });
-
-      var tag = document.createElement('script');
-      tag.id = 'iframe-temp';
-      tag.src = 'https://www.youtube.com/iframe_api';
-      var firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-      var player;
-      function onYouTubeIframeAPIReady() {
-        player = new YT.Player('yt-player-iframe', {
-            events: {
-              'onStateChange': onPlayerStateChange
-            }
+        var backend;
+        new QWebChannel(qt.webChannelTransport, function (channel) {
+              backend = channel.objects.backend;
         });
-      }
 
-      var playerUpdateLoop = 0
-      function onPlayerStateChange(event) {
-        const playerStatus = event.data
-        backend.on_player_state_change(playerStatus)
+        var tag = document.createElement('script');
+        tag.id = 'iframe-temp';
+        tag.src = 'https://www.youtube.com/iframe_api';
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-        if (playerStatus == YT.PlayerState.PLAYING) {
-            playerUpdateLoop = setInterval(updateTime, 100)
-        } else {
-            clearInterval(playerUpdateLoop)
+        var player;
+        function onYouTubeIframeAPIReady() {
+          console.log("API READY!")
+          player = new YT.Player('yt-player-iframe', {
+              events: {
+                'onStateChange': onPlayerStateChange,
+                'onError': onPlayerError
+              }
+          });
         }
-      }
 
-      function updateTime() {
-        backend.on_new_time(player.getCurrentTime())
-      }
+        var playerUpdateLoop = 0
+        function onPlayerStateChange(event) {
+          const playerStatus = event.data
+          backend.on_player_state_change(playerStatus)
 
-      function loadVideo(id) {
-        player.loadVideoById(id)
-        return true
-      }
+          if (playerStatus == YT.PlayerState.PLAYING) {
+              playerUpdateLoop = setInterval(updateTime, 100)
+          } else {
+              clearInterval(playerUpdateLoop)
+          }
+        }
 
-      function seekTo(time) {
-        player.seekTo(time, allowSeekAhead=true)
-      }
+        function onPlayerError(event) {
+          console.log("ERROR: " + event.data)
+          backend.on_player_error(event.data)
+        }
 
-      function getDuration() {
-        return player.getDuration()
-      }
+        function updateTime() {
+          backend.on_new_time(player.getCurrentTime())
+        }
 
-      function getCurrentTime() {
-        return player.getCurrentTime()
-      }
+        function loadVideo(id) {
+          \\ player.loadVideoById(id)
+          return true
+        }
 
-      function play() {
-        return player.playVideo() 
-      }
+        function seekTo(time) {
+          player.seekTo(time, allowSeekAhead=true)
+        }
 
-      function pause() {
-        return player.pauseVideo()
-      }
+        function getDuration() {
+          return player.getDuration()
+        }
 
-      function stop() {
-        return player.stopVideo()
-      }
+        function getCurrentTime() {
+          return player.getCurrentTime()
+        }
 
-</script>
+        function play() {
+          return player.playVideo()
+        }
+
+        function pause() {
+          return player.pauseVideo()
+        }
+
+        function stop() {
+          return player.stopVideo()
+        }
+
+    </script>
 
 
-  </body>
-</html>
-</title>
+    </body>
+    </html>
+    </title>
 </head>
 <body>
 

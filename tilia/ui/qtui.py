@@ -99,7 +99,7 @@ class TiliaMainWindow(QMainWindow):
 class QtUI:
     def __init__(self):
         self.app = None
-        self.q_application = QApplication(sys.argv)
+        self.q_application = QApplication(['Tilia', '--webEngineArgs', '--remote-debugging-port=4444', '--remote-allow-origins=*'])
         self._setup_main_window()
         self._setup_fonts()
         self._setup_player()

@@ -26,6 +26,10 @@ class PlayerTracker(QObject):
         self.page = page
         self.set_is_playing = set_is_playing
 
+    @pyqtSlot("int")
+    def on_player_error(self, error):
+        print(error)
+
     @pyqtSlot("float")
     def on_new_time(self, time):
         self.set_current_time(time)
@@ -56,10 +60,11 @@ class PlayerTracker(QObject):
 
 class UrlRequestInterceptor(QWebEngineUrlRequestInterceptor):
     def interceptRequest(self, info):
-        name = QByteArray('Referer'.encode())
-        value = QByteArray('https://tilia-ad99d.web.app/'.encode())
-        info.setHttpHeader(name, value)
-
+        # print(info)
+        # name = QByteArray('origin'.encode())
+        # value = QByteArray('https://youtube.com'.encode())
+        # info.setHttpHeader(name, value)
+        pass
 
 class YouTubePlayer(Player):
     MEDIA_TYPE = "youtube"
@@ -78,7 +83,8 @@ class YouTubePlayer(Player):
         self.request_interceptor = UrlRequestInterceptor()
         self.is_web_page_loaded = False
         self.view.loadFinished.connect(self._on_web_page_load_finished)
-        self.view.load(QUrl.fromLocalFile(self.PATH_TO_HTML.resolve().__str__()))
+        # self.view.load(QUrl.fromLocalFile(self.PATH_TO_HTML.resolve().__str__()))
+        self.view.load(QUrl('https://tilia-app.com'))
 
         self.view.setWindowTitle("TiLiA Player")
         self.view.resize(800, 600)

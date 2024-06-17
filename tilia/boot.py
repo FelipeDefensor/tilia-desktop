@@ -38,6 +38,7 @@ def handle_expection(type, value, tb):
 
 
 def boot():
+    print(sys.argv)
     sys.excepthook = handle_expection
     dotenv.load_dotenv()
     args = setup_parser()
