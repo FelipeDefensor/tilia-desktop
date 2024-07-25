@@ -75,6 +75,7 @@ class SettingsManager(QObject):
             "default_height": 30,
         },
         "harmony_timeline": {"default_harmony_display_mode": "chord"},
+        "icon_timeline": {"default_height": 50},
         "dev": {"log_events": "false", "log_requests": "false", "dev_mode": "false"},
     }
 

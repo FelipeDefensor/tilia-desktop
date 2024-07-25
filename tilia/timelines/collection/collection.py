@@ -7,6 +7,7 @@ from bisect import bisect
 from tilia.exceptions import TimelineValidationError
 from tilia.requests import Post, post, serve, Get, get, listen
 from tilia.timelines.harmony.timeline import HarmonyTimeline, HarmonyTLComponentManager
+from tilia.timelines.icon.timeline import IconTimeline, IconTLComponentManager
 from tilia.utils import get_tilia_class_string
 from tilia.timelines.beat.timeline import BeatTimeline, BeatTLComponentManager
 from tilia.timelines.marker.timeline import MarkerTimeline, MarkerTLComponentManager
@@ -40,12 +41,14 @@ def _create_hierarchy_timeline(**kwargs) -> HierarchyTimeline:
 def _create_slider_timeline(*_, **__) -> SliderTimeline:
     return SliderTimeline()
 
+
 def _create_audiowave_timeline(*args, **kwargs) -> AudioWaveTimeline:
     component_manager = AudioWaveTLComponentManager()
     timeline = AudioWaveTimeline(component_manager, *args, **kwargs)
     component_manager.associate_to_timeline(timeline)
 
     return timeline
+
 
 def _create_marker_timeline(*args, **kwargs) -> MarkerTimeline:
     component_manager = MarkerTLComponentManager()
@@ -79,6 +82,14 @@ def _create_pdf_timeline(*args, **kwargs) -> PdfTimeline:
     return timeline
 
 
+def _create_icon_timeline(*args, **kwargs) -> IconTimeline:
+    component_manager = IconTLComponentManager()
+    timeline = IconTimeline(component_manager, *args, **kwargs)
+    component_manager.associate_to_timeline(timeline)
+
+    return timeline
+
+
 class Timelines:
     def __init__(self, app: App):
         self._app = app
@@ -101,9 +112,9 @@ class Timelines:
 
     def __bool__(self):
         return True  # so it doesn't evaluate to False when there are no timelines
-    
-    def _setup_requests(self):        
-        LISTENS = {    
+
+    def _setup_requests(self):
+        LISTENS = {
             (Post.FILE_MEDIA_DURATION_CHANGED, self.on_media_duration_changed)
         }
 
@@ -136,11 +147,11 @@ class Timelines:
         # a blank Timelines is empty or has a single slider timeline
         # which is its state when creating a new (blank) file
         return (
-            self.is_empty or 
-            len(
-                set([x.KIND for x in self])
-                .difference((TimelineKind.SLIDER_TIMELINE, TimelineKind.AUDIOWAVE_TIMELINE))
-            ) == 0
+                self.is_empty or
+                len(
+                    set([x.KIND for x in self])
+                    .difference((TimelineKind.SLIDER_TIMELINE, TimelineKind.AUDIOWAVE_TIMELINE))
+                ) == 0
         )
 
     @staticmethod
@@ -161,13 +172,13 @@ class Timelines:
 
     def has_timeline_of_kind(self, kind: TlKind):
         return kind in self.timeline_kinds
-    
+
     def create_timeline(
-        self,
-        kind: TlKind | str,
-        components: dict[int, dict[str, Any]] | None = None,
-        *args,
-        **kwargs,
+            self,
+            kind: TlKind | str,
+            components: dict[int, dict[str, Any]] | None = None,
+            *args,
+            **kwargs,
     ) -> Timeline | None:
 
         if isinstance(kind, str):
@@ -184,6 +195,7 @@ class Timelines:
             TlKind.BEAT_TIMELINE: _create_beat_timeline,
             TlKind.HARMONY_TIMELINE: _create_harmony_timeline,
             TlKind.PDF_TIMELINE: _create_pdf_timeline,
+            TlKind.ICON_TIMELINE: _create_icon_timeline,
         }[kind](*args, **kwargs)
         self._add_to_timelines(tl)
 

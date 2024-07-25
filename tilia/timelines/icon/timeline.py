@@ -8,27 +8,27 @@ from tilia.timelines.base.component import TimelineComponent
 from tilia.timelines.base.timeline import Timeline, TimelineComponentManager
 
 
-class MarkerTimeline(Timeline):
-    KIND = TimelineKind.MARKER_TIMELINE
+class IconTimeline(Timeline):
+    KIND = TimelineKind.ICON_TIMELINE
 
     @property
     def default_height(self):
-        return settings.get("marker_timeline", "default_height")
+        return settings.get("icon_timeline", "default_height")
     
     def _validate_delete_components(self, component: TimelineComponent) -> None:
         pass
 
     def scale(self, factor: float) -> None:
-        self.component_manager: MarkerTLComponentManager
+        self.component_manager: IconTLComponentManager
         self.component_manager.scale(factor)
 
     def crop(self, length: float) -> None:
-        self.component_manager: MarkerTLComponentManager
+        self.component_manager: IconTLComponentManager
         self.component_manager.crop(length)
 
 
-class MarkerTLComponentManager(TimelineComponentManager):
-    COMPONENT_TYPES = [ComponentKind.MARKER]
+class IconTLComponentManager(TimelineComponentManager):
+    COMPONENT_TYPES = [ComponentKind.ICON]
 
     def __init__(self):
         super().__init__(self.COMPONENT_TYPES)
@@ -43,10 +43,10 @@ class MarkerTLComponentManager(TimelineComponentManager):
             return True, ""
 
     def scale(self, factor: float) -> None:
-        for marker in self:
-            marker.set_data("time", marker.get_data("time") * factor)
+        for icon in self:
+            icon.set_data("time", icon.get_data("time") * factor)
 
     def crop(self, length: float) -> None:
-        for marker in list(self).copy():
-            if marker.get_data("time") > length:
-                self.delete_component(marker)
+        for icon in list(self).copy():
+            if icon.get_data("time") > length:
+                self.delete_component(icon)

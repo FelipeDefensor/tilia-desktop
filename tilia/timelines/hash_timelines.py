@@ -57,6 +57,8 @@ def hash_timeline_data_by_kind(kind: TimelineKind, tl_data: dict):
             )
         case TimelineKind.PDF_TIMELINE.name:
             return hash_timeline_data(['height', 'is_visible', 'name', 'path'], hash_pdf_marker_data, tl_data)
+        case TimelineKind.ICON_TIMELINE.name:
+            return hash_timeline_data(['height', 'is_visible', 'name'], hash_icon_data, tl_data)
         case _:
             raise NotImplementedError
 
@@ -174,3 +176,8 @@ def hash_pdf_marker_data(pdf_marker_data: dict) -> str:
 def hash_audiowave_data(audiowave_data: dict) -> str:
     hash_attributes = ["start", "end", "amplitude"]
     return hash_timeline_components(hash_attributes, lambda x: x["start"], audiowave_data)
+
+
+def hash_icon_data(icon_data: dict) -> str:
+    hash_attributes = ["time", "icon_name"]
+    return hash_timeline_components(hash_attributes, lambda x: x["time"], icon_data)

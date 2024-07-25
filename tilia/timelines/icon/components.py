@@ -16,6 +16,11 @@ from tilia.timelines.base.component import TimelineComponent
 
 
 class Icon(TimelineComponent):
+    ICON_NAMES = [
+        'dash',
+        'dot',
+        'cross'
+    ]
     SERIALIZABLE_BY_VALUE = ["time", "path"]
     SERIALIZABLE_BY_ID = []
     SERIALIZABLE_BY_ID_LIST = []
@@ -27,34 +32,25 @@ class Icon(TimelineComponent):
         "timeline": lambda _: False,
         "id": lambda _: False,
         "time": validate_time,
-        "path": validate_path,
     }
 
     def __init__(
         self,
         timeline: ContourTimeline,
         id: int,
-        start: float,
-        end: float,
-        level: int,
-        label="",
-        color=None,
-        comments="",
+        time: float,
+        icon_name: str,
         **_,
     ):
         super().__init__(timeline, id)
 
-        self.validators = self.validators | {"level", self._validate_level}
+        self.validators = self.validators | {"icon_name": self._validate_icon_name}
 
-        self.start = start
-        self.end = end
-        self.level = level
-        self.label = label
-        self.color = color
-        self.comments = comments
+        self.time = time
+        self.icon_name = icon_name
 
-    def _validate_level(self, value):
-        return 0 < value < self.timeline.level_count
+    def _validate_icon_name(self, value: str) -> bool:
+        return value in self.ICON_NAMES
 
     def __str__(self):
         return f"ContourUnit({self.start, self.end, self.level})"
