@@ -11,38 +11,36 @@ from tilia.ui.timelines.base.timeline import (
     TimelineUI,
 )
 from tilia.ui.timelines.collection.requests.enums import ElementSelector
-from tilia.ui.timelines.marker.element import MarkerUI
-from tilia.ui.timelines.marker.request_handlers import MarkerUIRequestHandler
-from tilia.ui.timelines.marker.toolbar import MarkerTimelineToolbar
+from tilia.ui.timelines.icon.element import IconUI
+from tilia.ui.timelines.icon.request_handlers import IconTimelineUIRequestHandler
+from tilia.ui.timelines.icon.toolbar import IconTimelineToolbar
 
 from tilia.ui.timelines.copy_paste import (
     paste_into_element,
 )
 
 
-class MarkerTimelineUI(TimelineUI):
-    TOOLBAR_CLASS = MarkerTimelineToolbar
-    ELEMENT_CLASS = MarkerUI
+class IconTimelineUI(TimelineUI):
+    TOOLBAR_CLASS = IconTimelineToolbar
+    ELEMENT_CLASS = IconUI
     ACCEPTS_HORIZONTAL_ARROWS = True
 
-    TIMELINE_KIND = TimelineKind.MARKER_TIMELINE
+    TIMELINE_KIND = TimelineKind.ICON_TIMELINE
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         listen(self, Post.SETTINGS_UPDATED, lambda updated_settings: self.on_settings_updated(updated_settings))
 
     def on_settings_updated(self, updated_settings):        
-        if "marker_timeline" in updated_settings:  
+        if "icon_timeline" in updated_settings:  
             get(Get.TIMELINE_COLLECTION).set_timeline_data(self.id, "height", self.timeline.default_height)
-            for marker_ui in self:
-                marker_ui.update_time()
-                marker_ui.update_color()
-
+            for icon_ui in self:
+                icon_ui.update_position()
 
     def on_timeline_element_request(
         self, request, selector: ElementSelector, *args, **kwargs
     ):
-        return MarkerUIRequestHandler(self).on_request(
+        return IconTimelineUIRequestHandler(self).on_request(
             request, selector, *args, **kwargs
         )
 
@@ -95,7 +93,7 @@ class MarkerTimelineUI(TimelineUI):
         paste_into_element(first_selected_element, paste_data[0])
         self.select_element(first_selected_element)
 
-        self.create_pasted_markers(
+        self.create_pasted_icons(
             paste_data[1:],
             paste_data[0]["support_by_component_value"]["time"],
             self.selected_elements[0].get_data("time"),
@@ -109,24 +107,24 @@ class MarkerTimelineUI(TimelineUI):
             md["support_by_component_value"]["time"] for md in paste_data
         )
 
-        self.create_pasted_markers(
+        self.create_pasted_icons(
             paste_data,
             reference_time,
             get(Get.SELECTED_TIME),
         )
 
-    def create_pasted_markers(
+    def create_pasted_icons(
         self, paste_data: list[dict], reference_time: float, target_time: float
     ) -> None:
-        for marker_data in copy.deepcopy(paste_data):
+        for icon_data in copy.deepcopy(paste_data):
             # deepcopying so popping won't affect original data
-            marker_time = marker_data["support_by_component_value"].pop("time")
+            icon_time = icon_data["support_by_component_value"].pop("time")
 
             self.timeline.create_timeline_component(
-                ComponentKind.MARKER,
-                target_time + (marker_time - reference_time),
-                **marker_data["by_element_value"],
-                **marker_data["by_component_value"],
-                **marker_data["support_by_element_value"],
-                **marker_data["support_by_component_value"],
+                ComponentKind.ICON,
+                target_time + (icon_time - reference_time),
+                **icon_data["by_element_value"],
+                **icon_data["by_component_value"],
+                **icon_data["support_by_element_value"],
+                **icon_data["support_by_component_value"],
             )

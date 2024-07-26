@@ -6,7 +6,7 @@ from tilia.timelines.component_kinds import ComponentKind
 from tilia.timelines.timeline_kinds import TimelineKind
 from tilia.ui.timelines.base.request_handlers import (
     ElementRequestHandler,
-    TimelineRequestHandler,
+    TimelineUIRequestHandler,
 )
 from tilia.ui.timelines.copy_paste import get_copy_data_from_element
 from tilia.ui.timelines.harmony import HarmonyUI, ModeUI
@@ -92,7 +92,7 @@ class HarmonyUIRequestHandler(ElementRequestHandler):
         return [self._get_copy_data_from_element(e) for e in elements]
 
 
-class HarmonyTimelineUIRequestHandler(TimelineRequestHandler):
+class HarmonyTimelineUIRequestHandler(TimelineUIRequestHandler):
     def __init__(self, timeline_ui):
         super().__init__(
             timeline_ui,

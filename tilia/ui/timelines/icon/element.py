@@ -4,16 +4,17 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtGui import QPixmap, QPen
 from PyQt6.QtWidgets import (
     QGraphicsScene,
     QGraphicsItem,
-    QGraphicsPixmapItem,
+    QGraphicsPixmapItem, QGraphicsRectItem,
 )
 
 from tilia.requests import Post, post, get, Get
 from tilia.settings import settings
 from tilia.timelines.icon.components import Icon
+from tilia.timelines.icon.enums import Alignment
 from tilia.ui.timelines.base.element import TimelineUIElement
 from .context_menu import IconContextMenu
 from tilia.ui.timelines.copy_paste import CopyAttributes
@@ -34,19 +35,20 @@ class IconUI(TimelineUIElement):
 
     INSPECTOR_FIELDS = [
         ("Time", InspectRowKind.LABEL, None),
-        ("Icon", InspectRowKind.COMBO_BOX, {"items": (name.capitalize(), name) for name in Icon.ICON_NAMES})
+        ("Icon", InspectRowKind.COMBO_BOX, lambda: {"items": [(name.capitalize(), name) for name in Icon.ICON_NAMES]}),
+        ("Horizontal alignment", InspectRowKind.COMBO_BOX, lambda: {"items": [(x.name, Alignment(x)) for x in Alignment]}),
     ]
 
-    FIELD_NAMES_TO_ATTRIBUTES = {"Time": "time", "Icon": "icon_name"}
+    FIELD_NAMES_TO_ATTRIBUTES = {"Time": "time", "Icon": "icon_name", "Horizontal alignment": "h_alignment"}
 
     DEFAULT_COPY_ATTRIBUTES = CopyAttributes(
         by_element_value=[],
-        by_component_value=["time", "icon_name"],
+        by_component_value=["icon_name", "h_alignment"],
         support_by_element_value=[],
         support_by_component_value=["time"],
     )
 
-    UPDATE_TRIGGERS = ["time", "icon_name"]
+    UPDATE_TRIGGERS = ["time", "icon_name", "h_alignment"]
 
     CONTEXT_MENU_CLASS = IconContextMenu
 
@@ -65,7 +67,7 @@ class IconUI(TimelineUIElement):
         self.drag_manager = None
 
     def _setup_body(self):
-        self.body = IconBody(self.x, self.icon_path)
+        self.body = IconBody(self.x, self.get_data("h_alignment"), self.icon_path)
         self.scene.addItem(self.body)
 
     @property
@@ -98,13 +100,19 @@ class IconUI(TimelineUIElement):
         )
 
     def icon_name_to_path(self, name):
-        return Path(__file__).parent / "img" / f"{name}.png"
+        return str((Path(__file__).parent / "img" / f"{name}.svg").resolve())
 
     def update_position(self):
-        self.update_time()
+        self.body.set_position(self.x, self.get_data("h_alignment"))
+
+    def update_h_alignment(self):
+        self.update_position()
 
     def update_time(self):
-        self.body.set_position(self.x)
+        self.update_position()
+
+    def update_icon_name(self):
+        self.body.set_icon(self.icon_path)
 
     def child_items(self):
         return [self.body]
@@ -158,20 +166,37 @@ class IconUI(TimelineUIElement):
         return {
             "Time": format_media_time(self.get_data("time")),
             "Icon": self.get_data("icon_name"),
+            "Horizontal alignment": self.get_data("h_alignment"),
         }
 
 
 class IconBody(CursorMixIn, QGraphicsPixmapItem):
-    def __init__(self, x: float, path: Path):
+    def __init__(self, x: float, alignment: Alignment, path: str):
         super().__init__(cursor_shape=Qt.CursorShape.PointingHandCursor)
-        self.setPixmap(QPixmap(path))
-        self.set_position(x)
+        self.selection_box = QGraphicsRectItem(self)
+        self.selection_box.setRect(self.boundingRect())
+        self.selection_box.hide()
+        self.set_icon(path)
+        self.set_position(x, alignment)
 
-    def set_position(self, x):
-        self.setPos(x, 0)
+    def _get_alignment_offset(self, alignment: Alignment):
+        if alignment == Alignment.LEFT:
+            return 0
+        elif alignment == Alignment.RIGHT:
+            return -self.pixmap.width()
+        else:
+            return -self.pixmap.width() / 2
+
+    def set_icon(self, path: str):
+        self.pixmap = QPixmap(path)
+        self.setPixmap(self.pixmap)
+        self.selection_box.setRect(self.boundingRect())
+
+    def set_position(self, x, alignment: Alignment):
+        self.setPos(x + self._get_alignment_offset(alignment), 0)
 
     def on_select(self):
-        raise NotImplementedError
+        self.selection_box.show()
 
     def on_deselect(self):
-        raise NotImplementedError
+        self.selection_box.hide()

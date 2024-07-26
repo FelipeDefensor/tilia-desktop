@@ -9,7 +9,7 @@ from tilia.ui.timelines.base.element import TimelineUIElement
 from tilia.ui.request_handler import RequestHandler
 
 
-class TimelineRequestHandler(RequestHandler):
+class TimelineUIRequestHandler(RequestHandler):
     def __init__(self, timeline_ui, request_to_callback: dict[Post, Callable]):
         base_request_to_callback = {
             Post.TIMELINE_DELETE_FROM_MANAGE_TIMELINES: self.on_timeline_delete,
@@ -53,6 +53,33 @@ class TimelineRequestHandler(RequestHandler):
     def on_timeline_clear(self, confirmed):
         if confirmed:
             get(Get.TIMELINE_COLLECTION).clear_timeline(self.timeline_ui.timeline)
+
+    def on_paste(self, *_, **__):
+        clipboard_contents = get(Get.CLIPBOARD_CONTENTS)
+        components = clipboard_contents["components"]
+        cardinality = (
+            PasteCardinality.MULTIPLE
+            if len(clipboard_contents["components"]) > 1
+            else PasteCardinality.SINGLE
+        )
+        if self.timeline_ui.has_selected_elements:
+            if cardinality == PasteCardinality.SINGLE and hasattr(
+                self.timeline_ui, "paste_single_into_selected_elements"
+            ):
+                self.timeline_ui.paste_single_into_selected_elements(components)
+            elif cardinality == PasteCardinality.MULTIPLE and hasattr(
+                self.timeline_ui, "paste_multiple_into_selected_elements"
+            ):
+                self.timeline_ui.paste_multiple_into_selected_elements(components)
+        else:
+            if cardinality == PasteCardinality.SINGLE and hasattr(
+                self.timeline_ui, "paste_single_into_timeline"
+            ):
+                self.timeline_ui.paste_single_into_timeline(components)
+            elif cardinality == PasteCardinality.MULTIPLE and hasattr(
+                self.timeline_ui, "paste_multiple_into_timeline"
+            ):
+                self.timeline_ui.paste_multiple_into_timeline(components)
 
 
 class ElementRequestHandler(RequestHandler):

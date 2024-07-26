@@ -45,14 +45,15 @@ from tilia.ui.timelines.collection.requests.timeline import (
 )
 from tilia.ui.timelines.collection.requests.element import TlElmRequestSelector
 from .view import TimelineUIsView
-from ..beat import BeatTimelineToolbar
-from ..harmony import HarmonyTimelineToolbar
-from ..hierarchy import HierarchyTimelineToolbar
-from ..marker import MarkerTimelineToolbar
-from ..pdf import PdfTimelineToolbar
-from ..selection_box import SelectionBoxQt
-from ..slider.timeline import SliderTimelineUI
-from ...actions import TiliaAction
+from tilia.ui.timelines.beat import BeatTimelineToolbar
+from tilia.ui.timelines.harmony import HarmonyTimelineToolbar
+from tilia.ui.timelines.hierarchy import HierarchyTimelineToolbar
+from tilia.ui.timelines.marker import MarkerTimelineToolbar
+from tilia.ui.timelines.pdf import PdfTimelineToolbar
+from tilia.ui.timelines.icon import IconTimelineToolbar
+from tilia.ui.timelines.selection_box import SelectionBoxQt
+from tilia.ui.timelines.slider.timeline import SliderTimelineUI
+from tilia.ui.actions import TiliaAction
 
 
 class TimelineUIs:
@@ -397,6 +398,7 @@ class TimelineUIs:
         from tilia.ui.timelines.harmony.timeline import HarmonyTimelineUI
         from tilia.ui.timelines.beat import BeatTimelineUI
         from tilia.ui.timelines.pdf import PdfTimelineUI
+        from tilia.ui.timelines.icon import IconTimelineUI
 
         kind_to_class = {
             TlKind.HIERARCHY_TIMELINE: HierarchyTimelineUI,
@@ -406,6 +408,7 @@ class TimelineUIs:
             TlKind.BEAT_TIMELINE: BeatTimelineUI,
             TlKind.HARMONY_TIMELINE: HarmonyTimelineUI,
             TlKind.PDF_TIMELINE: PdfTimelineUI,
+            TlKind.ICON_TIMELINE: IconTimelineUI,
         }
 
         return kind_to_class[kind]
@@ -446,6 +449,7 @@ class TimelineUIs:
             TlKind.HIERARCHY_TIMELINE: HierarchyTimelineToolbar,
             TlKind.HARMONY_TIMELINE: HarmonyTimelineToolbar,
             TlKind.PDF_TIMELINE: PdfTimelineToolbar,
+            TlKind.ICON_TIMELINE: IconTimelineToolbar,
         }[kind]
 
     def _get_timeline_ui_by_scene(self, scene):

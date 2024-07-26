@@ -51,6 +51,8 @@ class TiliaAction(Enum):
     HIERARCHY_GROUP = auto()
     HIERARCHY_INCREASE_LEVEL = auto()
     HIERARCHY_MERGE = auto()
+    ICON_ADD = auto()
+    ICON_DELETE = auto()
     TIMELINE_ELEMENT_PASTE_COMPLETE = auto()
     HIERARCHY_SPLIT = auto()
     MARKER_ADD = auto()
@@ -67,6 +69,7 @@ class TiliaAction(Enum):
     TIMELINES_ADD_MARKER_TIMELINE = auto()
     TIMELINES_ADD_PDF_TIMELINE = auto()
     TIMELINES_ADD_AUDIOWAVE_TIMELINE = auto()
+    TIMELINES_ADD_ICON_TIMELINE = auto()
     TIMELINE_ELEMENT_COLOR_SET = auto()
     TIMELINE_ELEMENT_COLOR_RESET = auto()
     TIMELINE_ELEMENT_COPY = auto()
@@ -323,6 +326,12 @@ taction_to_params = {
         "",
         "",
     ),
+    TiliaAction.TIMELINES_ADD_ICON_TIMELINE: ActionParams(
+        Post.TIMELINE_ADD_ICON_TIMELINE,
+        "Icon",
+        "",
+        ""
+    ),
     TiliaAction.HARMONY_IMPORT_FROM_CSV: ActionParams(
         Post.HARMONY_IMPORT_FROM_CSV, "Import from CSV file", "", ""
     ),
@@ -382,6 +391,12 @@ taction_to_params = {
     TiliaAction.PDF_IMPORT_FROM_CSV: ActionParams(
         Post.PDF_IMPORT_FROM_CSV, "Import from CSV file", "", ""
     ),
+    TiliaAction.ICON_ADD: ActionParams(
+        Post.ICON_ADD, "Add icon", "", "i",
+    ),
+    TiliaAction.ICON_DELETE: ActionParams(
+        Post.ICON_DELETE, "Remove icon", "remove", "",
+    )
 }
 
 _taction_to_qaction: dict[TiliaAction, QAction] = {}  # will be populated on startup
