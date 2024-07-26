@@ -4,19 +4,18 @@ from typing import TYPE_CHECKING
 
 from tilia.requests import Post, get, Get
 from tilia.timelines.component_kinds import ComponentKind
+from tilia.timelines.icon.enums import Alignment
 from tilia.timelines.timeline_kinds import TimelineKind
-from tilia.ui.color import get_tinted_color
-from tilia.ui.consts import TINT_FACTOR_ON_SELECTION
-from tilia.ui.timelines.base.request_handlers import ElementRequestHandler
+from tilia.ui.timelines.base.request_handlers import TimelineUIRequestHandler, ElementRequestHandler
 from tilia.ui.timelines.copy_paste import get_copy_data_from_element
-from tilia.ui.timelines.marker import MarkerUI
+from tilia.ui.timelines.icon import IconUI
 
 if TYPE_CHECKING:
-    from tilia.ui.timelines.marker import MarkerTimelineUI
+    from tilia.ui.timelines.icon import IconTimelineUI
 
 
-class MarkerUIRequestHandler(ElementRequestHandler):
-    def __init__(self, timeline_ui: MarkerTimelineUI):
+class IconTimelineUIRequestHandler(ElementRequestHandler):
+    def __init__(self, timeline_ui: IconTimelineUI):
 
         super().__init__(
             timeline_ui,
@@ -31,7 +30,7 @@ class MarkerUIRequestHandler(ElementRequestHandler):
 
     def on_add(self, *_, **__):
         self.timeline.create_timeline_component(
-            ComponentKind.ICON, get(Get.SELECTED_TIME)
+            ComponentKind.ICON, get(Get.SELECTED_TIME), 'DotMid', Alignment.CENTER
         )
 
     def on_delete(self, elements, *_, **__):
@@ -44,9 +43,9 @@ class MarkerUIRequestHandler(ElementRequestHandler):
             copy_data.append(
                 {
                     "components": get_copy_data_from_element(
-                        elm, MarkerUI.DEFAULT_COPY_ATTRIBUTES
+                        elm, IconUI.DEFAULT_COPY_ATTRIBUTES
                     ),
-                    "timeline_kind": TimelineKind.MARKER_TIMELINE,
+                    "timeline_kind": TimelineKind.ICON_TIMELINE,
                 }
             )
 

@@ -101,6 +101,13 @@ def _get_args_for_timeline_add_audiowave_timeline(_):
     return _get_timeline_name()
 
 
+def _get_args_for_timeline_add_icon_timeline(_):
+    if not _get_media_duration_valid_for_add_timeline():
+        tilia.errors.display(tilia.errors.CREATE_TIMELINE_WITHOUT_MEDIA)
+        return (False, ""), {}
+    return _get_timeline_name()
+
+
 def _get_args_for_timeline_height_set(timeline_uis):
     timeline_ui = timeline_uis[0]
     height, accept = dialogs.basic.ask_for_int(

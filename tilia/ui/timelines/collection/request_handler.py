@@ -17,6 +17,7 @@ class TimelineUIsRequestHandler(RequestHandler):
                 Post.TIMELINE_ADD_HARMONY_TIMELINE: self.on_timeline_add_harmony_timeline,
                 Post.TIMELINE_ADD_PDF_TIMELINE: self.on_timeline_add_pdf_timeline,
                 Post.TIMELINE_ADD_AUDIOWAVE_TIMELINE: self.on_timeline_add_audiowave_timeline,
+                Post.TIMELINE_ADD_ICON_TIMELINE: self.on_timeline_add_icon_timeline,
                 Post.TIMELINES_CLEAR: self.on_timelines_clear,
             }
         )
@@ -50,6 +51,12 @@ class TimelineUIsRequestHandler(RequestHandler):
         if confirmed:
             self.timelines.create_timeline(
                 TimelineKind.HARMONY_TIMELINE, None, name=name
+            )
+
+    def on_timeline_add_icon_timeline(self, confirmed: bool, name: str):
+        if confirmed:
+            self.timelines.create_timeline(
+                TimelineKind.ICON_TIMELINE, None, name=name
             )
 
     def on_timeline_add_pdf_timeline(self, confirmed: bool, name: str, pdf_path: str | Path):

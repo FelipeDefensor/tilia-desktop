@@ -25,7 +25,7 @@ from tilia.ui.timelines.copy_paste import (
     CopyAttributes,
     get_copy_data_from_elements,
 )
-from .request_handlers import TimelineRequestHandler
+from .request_handlers import TimelineUIRequestHandler
 from ..collection.requests.enums import ElementSelector
 from ..view import TimelineView
 from ...coords import get_x_by_time
@@ -201,7 +201,7 @@ class TimelineUI(ABC):
         self.request_to_callback = {}
 
     def on_timeline_request(self, request, *args, **kwargs):
-        return TimelineRequestHandler(self, {}).on_request(request, *args, **kwargs)
+        return TimelineUIRequestHandler(self, {}).on_request(request, *args, **kwargs)
 
     def on_timeline_component_created(self, kind: ComponentKind, id: int):
         return self.element_manager.create_element(kind, id, self, self.scene)

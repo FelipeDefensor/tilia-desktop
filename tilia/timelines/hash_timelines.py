@@ -179,5 +179,5 @@ def hash_audiowave_data(audiowave_data: dict) -> str:
 
 
 def hash_icon_data(icon_data: dict) -> str:
-    hash_attributes = ["time", "icon_name"]
+    hash_attributes = ["time", "icon_name", "h_alignment"]
     return hash_timeline_components(hash_attributes, lambda x: x["time"], icon_data)

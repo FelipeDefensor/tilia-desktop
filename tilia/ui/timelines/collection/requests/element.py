@@ -131,5 +131,11 @@ request_to_scope: dict[Post, TlElmRequestSelector] = {
     ),
     Post.PDF_MARKER_DELETE: TlElmRequestSelector(
         [TlKind.PDF_TIMELINE], TimelineSelector.SELECTED, ElementSelector.SELECTED
-    )
+    ),
+    Post.ICON_ADD: TlElmRequestSelector(
+        [TlKind.ICON_TIMELINE], TimelineSelector.FIRST, ElementSelector.NONE
+    ),
+    Post.ICON_DELETE: TlElmRequestSelector(
+        [TlKind.ICON_TIMELINE], TimelineSelector.SELECTED, ElementSelector.SELECTED
+    ),
 }
