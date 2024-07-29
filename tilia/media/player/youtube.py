@@ -74,10 +74,12 @@ class PlayerTracker(QObject):
 
 
 class UrlRequestInterceptor(QWebEngineUrlRequestInterceptor):
-    def interceptRequest(self, info):
-        name = QByteArray("Referer".encode())
-        value = QByteArray("https://tilia-ad99d.web.app/".encode())
-        info.setHttpHeader(name, value)
+        def interceptRequest(self, info):
+            name = QByteArray("Referer".encode())
+            info.setHttpHeader(b"Access-Control-Allow-Origin", b"*")
+            info.setHttpHeader(b"Access-Control-Allow-Methods", b"GET,HEAD,OPTIONS,POST,PUT")
+            info.setHttpHeader(b"Access-Control-Allow-Headers",
+                               b"Origin, X-Requested-With, Content-Type, Accept, Authorization")
 
 
 class YouTubePlayer(Player):
@@ -94,7 +96,8 @@ class YouTubePlayer(Player):
         self.request_interceptor = UrlRequestInterceptor()
         self.is_web_page_loaded = False
         self.view.loadFinished.connect(self._on_web_page_load_finished)
-        self.view.load(QUrl.fromLocalFile(self.PATH_TO_HTML.resolve().__str__()))
+        self.view.load(QUrl('http://localhost:5174'))
+        # self.view.load(QUrl.fromLocalFile(self.PATH_TO_HTML.resolve().__str__()))
 
     def _setup_web_channel(self):
         self.channel = QWebChannel()
