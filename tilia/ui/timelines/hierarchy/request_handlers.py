@@ -19,6 +19,7 @@ class HierarchyUIRequestHandler(ElementRequestHandler):
             {
                 Post.HIERARCHY_INCREASE_LEVEL: self.on_increase_level,
                 Post.HIERARCHY_DECREASE_LEVEL: self.on_decrease_level,
+                Post.HIERARCHY_FILL_LEVELS: self.on_fill_levels,
                 Post.HIERARCHY_GROUP: self.on_group,
                 Post.HIERARCHY_SPLIT: self.on_split,
                 Post.HIERARCHY_MERGE: self.on_merge,
@@ -51,6 +52,9 @@ class HierarchyUIRequestHandler(ElementRequestHandler):
 
     def on_decrease_level(self, elements, *_, **__):
         return self.timeline.alter_levels(self.elements_to_components(elements), -1)
+
+    def on_fill_levels(self, elements, *_, **__):
+        return self.timeline.fill_levels(self.elements_to_components(elements))
 
     def on_group(self, elements, *_, **__):
         return self.timeline.group(self.elements_to_components(elements))

@@ -45,4 +45,7 @@ request_to_scope: dict[Post, TlRequestSelector] = {
     Post.TIMELINE_ORDINAL_INCREASE_FROM_CONTEXT_MENU: TlRequestSelector(
         ALL, TimelineSelector.FROM_CONTEXT_MENU_TO_PERMUTE
     ),
+    Post.HIERARCHY_TIMELINE_FILL_ALL_LEVELS: TlRequestSelector(
+        [TlKind.HIERARCHY_TIMELINE], TimelineSelector.FIRST
+    ),
 }

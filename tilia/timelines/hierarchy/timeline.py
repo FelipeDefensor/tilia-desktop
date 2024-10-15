@@ -482,6 +482,76 @@ class HierarchyTimeline(Timeline):
 
         return any(result)
 
+    def fill_levels(self, components: list[Hierarchy]) -> bool:
+        results = []
+        for component in components:
+            results.append(self._fill_levels_single(component))
+        self.do_genealogy()
+        return any(results)
+
+    def fill_all_levels(self):
+        def is_top_level(h: Hierarchy) -> bool:
+            return not h.parent
+
+        return self.fill_levels(
+            self.component_manager.get_components_by_condition(is_top_level, kind=ComponentKind.HIERARCHY))
+
+    def _fill_levels_single(self, component: Hierarchy) -> bool:
+        max_level = max(self.component_manager.get_existing_values_for_attr('level', ComponentKind.HIERARCHY))
+        up_success = self._fill_levels_up(component, max_level)
+        down_success = self._fill_levels_down(component, 1)
+        return up_success or down_success
+
+    def _fill_levels_up(self, component: Hierarchy, max_level: int) -> bool:
+        final_success = False
+        next_level = component.level + 1
+
+        while next_level <= max_level:
+            if not (component.parent and component.parent.level >= next_level):
+                component, reason = self.create_component(
+                    ComponentKind.HIERARCHY,
+                    start=component.start, end=component.end, pre_start=component.pre_start,
+                    post_end=component.post_end, level=next_level, label=f'^^{component.label}^^')
+                if component:
+                    final_success = True
+            next_level += 1
+        return final_success
+
+    def _fill_levels_down(self, component: Hierarchy, min_level: int) -> bool:
+        final_success = False
+
+        next_level = component.level
+        curr_level_components = [component]
+        while next_level >= min_level:
+            for component in curr_level_components:
+                self._fill_lower_level(component)
+
+            next_level -= 1
+            next_level_components = []
+            for component in curr_level_components:
+                next_level_components.extend(component.children)
+            curr_level_components = next_level_components
+        return final_success
+
+    def _fill_lower_level(self, component: Hierarchy) -> bool:
+        success = False
+        get_gaps = self.component_manager.get_gaps(component.start, component.end, component.level - 1)
+        for i, (start, end) in enumerate(get_gaps):
+            child, reason = self.create_component(
+                ComponentKind.HIERARCHY,
+                start=start,
+                end=end,
+                pre_start=component.pre_start if start == component.start else start,
+                post_end=component.post_end if end == component.end else end,
+                level=component.level - 1,
+                label=f'__{component.label.replace("__", "")}__{i}',
+                parent=component
+            )
+            if child:
+                success = True
+                component.children.append(child)
+        return success
+
     def group(self, components: list[Hierarchy]) -> None:
         success, reason = self.component_manager.group(components)
         if not success:
@@ -507,3 +577,24 @@ class HierarchyTimeline(Timeline):
 
     def get_boundary_conflicts(self):
         return self.component_manager.get_boundary_conflicts()
+
+    def get_gaps(self, start: float, end: float, level: int) -> list[tuple[float, float]]:
+        def is_in_range(h: Hierarchy) -> bool:
+            return h.start >= start and h.end <= end and h.level == level
+
+        components_in_range = self.get_components_by_condition(is_in_range, kind=ComponentKind.HIERARCHY)
+        if not components_in_range:
+            return [(start, end)]
+        components_in_range = sorted(components_in_range, key=lambda h: h.start)
+        gaps = []
+
+        for comp1, comp2 in itertools.pairwise(components_in_range):
+            if comp1.end != comp2.start:
+                gaps.append((comp1.end, comp2.start))
+
+        if components_in_range[0].start != start:
+            gaps.append((start, components_in_range[0].start))
+        if components_in_range[-1].end != end:
+            gaps.append((components_in_range[-1].end, end))
+
+        return gaps

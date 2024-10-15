@@ -135,3 +135,16 @@ class HarmonyTimelineUIRequestHandler(TimelineRequestHandler):
             1,
         )
         return True
+
+
+class HierarchyTimelineUIRequestHandler(TimelineRequestHandler):
+    def __init__(self, timeline_ui):
+        super().__init__(
+            timeline_ui,
+            {
+                Post.HIERARCHY_TIMELINE_FILL_ALL_LEVELS: self.on_fill_all_levels,
+            },
+        )
+
+    def on_fill_all_levels(self):
+        return self.timeline.fill_all_levels()

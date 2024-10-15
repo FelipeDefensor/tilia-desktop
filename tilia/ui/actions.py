@@ -47,6 +47,9 @@ class TiliaAction(Enum):
     HIERARCHY_GROUP = auto()
     HIERARCHY_INCREASE_LEVEL = auto()
     HIERARCHY_MERGE = auto()
+    HIERARCHY_FILL_LEVELS = auto()
+    HIERARCHY_TIMELINE_FILL_ALL_LEVELS = auto()
+    HIERARCHY_TIMELINE_NORMALIZE_LABELS = auto()
     IMPORT_MUSICXML = auto()
     IMPORT_CSV_PDF_TIMELINE = auto()
     IMPORT_CSV_HARMONY_TIMELINE = auto()
@@ -385,6 +388,21 @@ taction_to_params = {
     TiliaAction.SCORE_ANNOTATION_FONT_INC: ActionParams(
         None, "Increase Annotation Font", "annotation_font_inc", "Shift+Up"
     ),
+    TiliaAction.REPORT_SECTIONS: ActionParams(
+        Post.REPORT_SECTIONS, "Sections", "", "Ctrl+Shift+R"
+    ),
+    TiliaAction.OPEN_MOST_RECENT_FILE: ActionParams(
+        Post.OPEN_MOST_RECENT_FILE, "Open most recent file", "", "Ctrl+Shift+O"
+    ),
+    TiliaAction.HIERARCHY_FILL_LEVELS: ActionParams(
+        Post.HIERARCHY_FILL_LEVELS, "Fill levels", "", "Ctrl+Shift+F"
+    ),
+    TiliaAction.HIERARCHY_TIMELINE_FILL_ALL_LEVELS: ActionParams(
+        Post.HIERARCHY_TIMELINE_FILL_ALL_LEVELS, "Fill all levels", "", "Ctrl+Shift+Alt+F"
+    ),
+    TiliaAction.HIERARCHY_TIMELINE_NORMALIZE_LABELS: ActionParams(
+        Post.HIERARCHY_TIMELINE_NORMALIZE_NAMES, "Normalize labels", "", "Ctrl+Shift+N"
+    )
 }
 
 _taction_to_qaction: dict[TiliaAction, QAction] = {}  # will be populated on startup

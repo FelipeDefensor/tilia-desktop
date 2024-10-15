@@ -117,4 +117,7 @@ request_to_scope: dict[Post, TlElmRequestSelector] = {
     Post.PDF_MARKER_ADD: TlElmRequestSelector(
         [TlKind.PDF_TIMELINE], TimelineSelector.FIRST, ElementSelector.NONE
     ),
+    Post.HIERARCHY_FILL_LEVELS: TlElmRequestSelector(
+        [TlKind.HIERARCHY_TIMELINE], TimelineSelector.SELECTED, ElementSelector.SELECTED
+    )
 }

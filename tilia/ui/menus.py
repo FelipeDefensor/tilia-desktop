@@ -240,3 +240,13 @@ class HelpMenu(TiliaMenu):
         (MenuItemKind.ACTION, TiliaAction.ABOUT_WINDOW_OPEN),
         (MenuItemKind.ACTION, TiliaAction.WEBSITE_HELP_OPEN),
     ]
+
+
+class DoutoradoMenu(TiliaMenu):
+    title = "Doutorado"
+    items = [
+        (MenuItemKind.ACTION, TiliaAction.OPEN_MOST_RECENT_FILE),
+        (MenuItemKind.ACTION, TiliaAction.REPORT_SECTIONS),
+        (MenuItemKind.ACTION, TiliaAction.HIERARCHY_FILL_LEVELS),
+        (MenuItemKind.ACTION, TiliaAction.HIERARCHY_TIMELINE_FILL_ALL_LEVELS)
+    ]

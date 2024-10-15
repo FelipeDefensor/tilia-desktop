@@ -5,6 +5,7 @@ from tilia.ui.timelines.base.timeline import (
     TimelineUI,
 )
 from tilia.ui.timelines.collection.requests.enums import ElementSelector
+from tilia.ui.timelines.harmony.request_handlers import HierarchyTimelineUIRequestHandler
 from tilia.ui.timelines.hierarchy import HierarchyTimelineToolbar, HierarchyUI
 from tilia.ui.timelines.copy_paste import get_copy_data_from_element
 import tilia.ui.timelines.copy_paste
@@ -41,7 +42,12 @@ class HierarchyTimelineUI(TimelineUI):
             )
             for hierarchy_ui in self:
                 hierarchy_ui.update_position()
-                hierarchy_ui.update_color()
+                hierarchy_ui.update_color()            
+
+    def on_timeline_request(self, request, *args, **kwargs):
+        return HierarchyTimelineUIRequestHandler(self).on_request(
+            request, *args, **kwargs
+        )
 
     def on_timeline_element_request(
         self, request, selector: ElementSelector, *args, **kwargs
