@@ -48,4 +48,7 @@ request_to_scope: dict[Post, TlRequestSelector] = {
     Post.HIERARCHY_TIMELINE_FILL_ALL_LEVELS: TlRequestSelector(
         [TlKind.HIERARCHY_TIMELINE], TimelineSelector.FIRST
     ),
+    Post.HIERARCHY_TIMELINE_NORMALIZE_NAMES: TlRequestSelector(
+        [TlKind.HIERARCHY_TIMELINE], TimelineSelector.FIRST
+    ),
 }

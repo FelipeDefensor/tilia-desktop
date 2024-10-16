@@ -143,8 +143,12 @@ class HierarchyTimelineUIRequestHandler(TimelineRequestHandler):
             timeline_ui,
             {
                 Post.HIERARCHY_TIMELINE_FILL_ALL_LEVELS: self.on_fill_all_levels,
+                Post.HIERARCHY_TIMELINE_NORMALIZE_NAMES: self.on_normalize_labels,
             },
         )
 
     def on_fill_all_levels(self):
         return self.timeline.fill_all_levels()
+
+    def on_normalize_labels(self):
+        return self.timeline.normalize_labels()

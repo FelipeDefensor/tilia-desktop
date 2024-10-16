@@ -248,5 +248,6 @@ class DoutoradoMenu(TiliaMenu):
         (MenuItemKind.ACTION, TiliaAction.OPEN_MOST_RECENT_FILE),
         (MenuItemKind.ACTION, TiliaAction.REPORT_SECTIONS),
         (MenuItemKind.ACTION, TiliaAction.HIERARCHY_FILL_LEVELS),
-        (MenuItemKind.ACTION, TiliaAction.HIERARCHY_TIMELINE_FILL_ALL_LEVELS)
+        (MenuItemKind.ACTION, TiliaAction.HIERARCHY_TIMELINE_FILL_ALL_LEVELS),
+        (MenuItemKind.ACTION, TiliaAction.HIERARCHY_TIMELINE_NORMALIZE_LABELS),
     ]

@@ -552,6 +552,32 @@ class HierarchyTimeline(Timeline):
                 component.children.append(child)
         return success
 
+    def normalize_labels(self) -> bool:
+        success = False
+        for level in self.component_manager.get_existing_values_for_attr('level', kind=ComponentKind.HIERARCHY):
+            components = sorted(self.component_manager.get_components_by_condition(lambda h: h.level == level,
+                                                                                   kind=ComponentKind.HIERARCHY))
+            level_success = self._normalize_level_labels(components)
+            success = success or level_success
+
+        return success
+
+    def _normalize_level_labels(self, components: list[Hierarchy]) -> bool:
+        def is_propagated(label: str) -> bool:
+            return label.startswith('^^') or label.startswith('__')
+
+        normalized_labels = list('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
+        label_to_normalized_label = {}
+        for component in components:
+            component_label = component.label
+            variation_symbol = "'"
+            variation_count = component.label.count(variation_symbol) if not is_propagated(component_label) else 0
+            component_label = component_label.replace(variation_symbol, '')
+            if component_label not in label_to_normalized_label:
+                label_to_normalized_label[component_label] = normalized_labels.pop(0)
+            self.set_component_data(component.id, 'label', f'{label_to_normalized_label[component_label]}{variation_symbol * variation_count}')
+        return True
+
     def group(self, components: list[Hierarchy]) -> None:
         success, reason = self.component_manager.group(components)
         if not success:
