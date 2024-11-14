@@ -522,14 +522,14 @@ class HierarchyTimeline(Timeline):
 
         next_level = component.level
         curr_level_components = [component]
-        while next_level >= min_level:
+        while next_level > min_level:
             for component in curr_level_components:
                 self._fill_lower_level(component)
 
             next_level -= 1
             next_level_components = []
             for component in curr_level_components:
-                next_level_components.extend(component.children)
+                next_level_components.extend([c for c in component.children if c.level == next_level])
             curr_level_components = next_level_components
         return final_success
 
