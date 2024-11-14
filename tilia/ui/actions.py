@@ -62,6 +62,8 @@ class TiliaAction(Enum):
     MEDIA_LOAD_LOCAL = auto()
     MEDIA_STOP = auto()
     METADATA_WINDOW_OPEN = auto()
+    OPEN_MOST_RECENT_FILE = auto()
+    REPORT_SECTIONS = auto()
     SCORE_ANNOTATION_ADD = auto()
     SCORE_ANNOTATION_DELETE = auto()
     SCORE_ANNOTATION_EDIT = auto()

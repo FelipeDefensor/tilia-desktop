@@ -48,7 +48,7 @@ class HierarchyUI(TimelineUIElement):
     INSPECTOR_FIELDS = [
         ("Label", InspectRowKind.SINGLE_LINE_EDIT, None),
         ("Start / end", InspectRowKind.LABEL, None),
-        ("Start / end (metric)", InspectRowKind.LABEL, None),
+        ("Start / end / duration (metric)", InspectRowKind.LABEL, None),
         ("Pre-start / post-end", InspectRowKind.LABEL, None),
         ("Length", InspectRowKind.LABEL, None),
         ("Formal type", InspectRowKind.SINGLE_LINE_EDIT, None),

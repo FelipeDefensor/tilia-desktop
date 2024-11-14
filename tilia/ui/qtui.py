@@ -45,6 +45,8 @@ from .menus import (
     HarmonyMenu,
     PdfMenu,
     ScoreMenu,
+    FileMenu,
+    RecentFilesMenu
 )
 from .options_toolbar import OptionsToolbar
 from .player import PlayerToolbar
@@ -193,6 +195,7 @@ class QtUI:
             ),
             (Post.DISPLAY_ERROR, display_error),
             (Post.UI_EXIT, self.exit),
+            (Post.OPEN_MOST_RECENT_FILE, self.on_open_most_recent_file),
         }
 
         SERVES = {
