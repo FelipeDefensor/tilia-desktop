@@ -35,6 +35,9 @@ class MetricPosition:
 
         return MetricInterval(measures=measures, beats=beats)
 
+    def frontend_str(self):
+        return f"{self.measure}.{self.beat}"
+
 
 @dataclass
 class MetricInterval:
@@ -46,3 +49,7 @@ class MetricInterval:
 
     def __eq__(self, other):
         return self.measures == other.measures and self.beats == other.beats
+
+    def frontend_str(self):
+        return f"{self.measures}.{self.beats}"
+

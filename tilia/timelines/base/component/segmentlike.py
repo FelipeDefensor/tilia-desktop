@@ -47,6 +47,10 @@ class SegmentLikeTimelineComponent(TimelineComponent):
         return get(Get.METRIC_POSITION, self.get_data("end"))
 
     @property
+    def metric_position_frontend_str(self):
+        return f"{self.start_metric_position.frontend_str()} / {self.end_metric_position.frontend_str()}"
+
+    @property
     def start_measure(self) -> int | None:
         return (
             self.start_metric_position.measure if self.start_metric_position else None

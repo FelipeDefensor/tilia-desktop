@@ -48,9 +48,10 @@ class HierarchyUI(TimelineUIElement):
     INSPECTOR_FIELDS = [
         ("Label", InspectRowKind.SINGLE_LINE_EDIT, None),
         ("Start / end", InspectRowKind.LABEL, None),
-        ("Start / end / duration (metric)", InspectRowKind.LABEL, None),
+        ("Start / end (metric)", InspectRowKind.LABEL, None),
         ("Pre-start / post-end", InspectRowKind.LABEL, None),
         ("Length", InspectRowKind.LABEL, None),
+        ("Length (metric)", InspectRowKind.LABEL, None),
         ("Formal type", InspectRowKind.SINGLE_LINE_EDIT, None),
         ("Formal function", InspectRowKind.SINGLE_LINE_EDIT, None),
         ("Comments", InspectRowKind.MULTI_LINE_EDIT, None),
@@ -590,14 +591,6 @@ class HierarchyUI(TimelineUIElement):
         else:
             return f"- / {self.post_end_formatted}"
 
-    @property
-    def metric_position_formatted(self):
-        start_metric_position = self.get_data("start_metric_position")
-        end_metric_position = self.get_data("end_metric_position")
-        if not start_metric_position:
-            return "-"
-        return f"{start_metric_position.measure}.{start_metric_position.beat} / {end_metric_position.measure}.{end_metric_position.beat}"
-
     def get_inspector_dict(self) -> dict:
         data = {
             "Label": self.get_data("label"),
@@ -610,7 +603,8 @@ class HierarchyUI(TimelineUIElement):
         }
 
         if self.get_data("start_metric_position"):
-            data["Start / end (metric)"] = self.metric_position_formatted
+            data["Start / end (metric)"] = self.get_data("metric_position_frontend_str")
+            data["Length (metric)"] = self.get_data("length_metric").frontend_str()
 
         return data
 
