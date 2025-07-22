@@ -87,7 +87,6 @@ class Post(Enum):
     METADATA_UPDATE_FIELDS = auto()
     MODE_ADD = auto()
     MODE_DISPLAY_AS_ROMAN_NUMERAL = auto()
-    OPEN_MOST_RECENT_FILE = auto()
     PLAYBACK_AREA_SET_WIDTH = auto()
     PLAYER_AVAILABLE = auto()
     PLAYER_CANCEL_LOOP = auto()

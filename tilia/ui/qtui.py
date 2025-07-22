@@ -195,7 +195,6 @@ class QtUI:
             ),
             (Post.DISPLAY_ERROR, display_error),
             (Post.UI_EXIT, self.exit),
-            (Post.OPEN_MOST_RECENT_FILE, self.on_open_most_recent_file),
         }
 
         SERVES = {

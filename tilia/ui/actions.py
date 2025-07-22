@@ -62,7 +62,6 @@ class TiliaAction(Enum):
     MEDIA_LOAD_LOCAL = auto()
     MEDIA_STOP = auto()
     METADATA_WINDOW_OPEN = auto()
-    OPEN_MOST_RECENT_FILE = auto()
     REPORT_SECTIONS = auto()
     SCORE_ANNOTATION_ADD = auto()
     SCORE_ANNOTATION_DELETE = auto()
@@ -392,9 +391,6 @@ taction_to_params = {
     ),
     TiliaAction.REPORT_SECTIONS: ActionParams(
         Post.REPORT_SECTIONS, "Sections", "", "Ctrl+Shift+R"
-    ),
-    TiliaAction.OPEN_MOST_RECENT_FILE: ActionParams(
-        Post.OPEN_MOST_RECENT_FILE, "Open most recent file", "", "Ctrl+Shift+O"
     ),
     TiliaAction.HIERARCHY_FILL_LEVELS: ActionParams(
         Post.HIERARCHY_FILL_LEVELS, "Fill levels", "", "Ctrl+Shift+F"
