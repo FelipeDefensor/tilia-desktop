@@ -1256,16 +1256,17 @@ class TimelineUIs:
 
         segments = []
         for el in tl_ui:
-            start_metric_position = el.start_metric_position
-            end_metric_position = el.end_metric_position
-            segments.append((el.get_data('label'), f'{end_metric_position[0] - start_metric_position[0]}.{end_metric_position[1] - start_metric_position[1]}'))
+            start_metric_position = el.get_data("start_metric_position")
+            end_metric_position = el.get_data("end_metric_position")
+            interval = end_metric_position - start_metric_position
+            segments.append((el.get_data('label'), f'{interval.measures}.{interval.beats}'))
 
         segments_deduplicated = []
         for segment in segments:
             if segment not in segments_deduplicated:
                 segments_deduplicated.append(segment)
 
-        title = get(Get.MEDIA_TITLE)
+        title = get(Get.MEDIA_METADATA).get("file code")
         print(f'## {title}')
         for segment in segments_deduplicated:
             if [x[0] for x in segments_deduplicated].count(segment[0]) > 1:
