@@ -1249,9 +1249,10 @@ class TimelineUIs:
         self.delete_timeline_ui(self.get_timeline_ui(id))
 
     def on_report_sections(self):
-        tl_ui = next((tlui for tlui in self if tlui.get_data('name') == 'Harmonic segments'), None)
+        timeline_name = 'Harm. segments'
+        tl_ui = next((tlui for tlui in self if tlui.get_data('name') == timeline_name), None)
         if not tl_ui:
-            print('No timeline with name "Harmonic segments"')
+            print(f'No timeline with name {timeline_name}.')
             return
 
         segments = []
