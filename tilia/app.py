@@ -244,6 +244,8 @@ class App:
             self.player, path, initial_duration=initial_duration
         )
 
+        get(Get.MAIN_WINDOW).activateWindow()
+
         self.player = player
 
         if success and record:
