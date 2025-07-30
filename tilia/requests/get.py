@@ -70,6 +70,9 @@ class Get(Enum):
     WINDOW_MANAGE_TIMELINES_TIMELINE_UIS_TO_PERMUTE = auto()
     WINDOW_STATE = auto()
 
+    # phd
+    TIMELINES_HEIGHT = auto()
+
 
 _requests_to_callbacks: weakref.WeakKeyDictionary[
     Get, Callable

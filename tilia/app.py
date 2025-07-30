@@ -135,6 +135,11 @@ class App:
         self.file_manager.file = file
         self.update_recent_files()
 
+        # phd stuff
+        timeline_height = get(Get.TIMELINES_HEIGHT)
+        main_window = get(Get.MAIN_WINDOW)
+        main_window.resize(main_window.width(), timeline_height + 100)
+
     def update_recent_files(self):
         try:
             geometry, window_state = get(Get.WINDOW_GEOMETRY), get(Get.WINDOW_STATE)
