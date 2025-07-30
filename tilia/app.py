@@ -168,6 +168,10 @@ class App:
         self.file_manager.file = file
         self.update_recent_files()
 
+        timeline_height = get(Get.TIMELINES_HEIGHT)
+        main_window = get(Get.MAIN_WINDOW)
+        main_window.resize(main_window.width(), timeline_height + 100)
+
         return True
 
     def update_recent_files(self):

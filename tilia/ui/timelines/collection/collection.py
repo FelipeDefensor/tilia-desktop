@@ -533,6 +533,8 @@ class TimelineUIs:
             ),
         }
 
+        serve(self, Get.TIMELINES_HEIGHT, self.get_scene_height)
+
         SERVES = {
             (Get.TIMELINE_UI, self.get_timeline_ui),
             (Get.TIMELINE_UI_BY_ATTR, self.get_timeline_ui_by_attr),

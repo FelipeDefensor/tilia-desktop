@@ -65,6 +65,9 @@ class Get(Enum):
     WINDOW_GEOMETRY = auto()
     WINDOW_STATE = auto()
 
+    # phd
+    TIMELINES_HEIGHT = auto()
+
 
 _requests_to_callbacks: weakref.WeakKeyDictionary[
     Get, Callable
