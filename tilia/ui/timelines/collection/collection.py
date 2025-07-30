@@ -542,6 +542,8 @@ class TimelineUIs:
             (Post.APP_FILE_LOADED, self._on_file_loaded),
         }
 
+        serve(self, Get.TIMELINES_HEIGHT, self.get_scene_height)
+
         SERVES = {
             (Get.TIMELINE_UI, self.get_timeline_ui),
             (Get.CURRENT_ZOOM, lambda: self._zoom_level),

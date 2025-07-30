@@ -67,6 +67,9 @@ class Get(Enum):
     CURRENT_ZOOM = auto()
     ZOOM_REFERENCE_WIDTH = auto()
 
+    # phd
+    TIMELINES_HEIGHT = auto()
+
 
 _requests_to_callbacks: weakref.WeakKeyDictionary[
     Get, Callable
