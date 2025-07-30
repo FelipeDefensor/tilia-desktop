@@ -47,9 +47,6 @@ class TiliaAction(Enum):
     HIERARCHY_GROUP = auto()
     HIERARCHY_INCREASE_LEVEL = auto()
     HIERARCHY_MERGE = auto()
-    HIERARCHY_FILL_LEVELS = auto()
-    HIERARCHY_TIMELINE_FILL_ALL_LEVELS = auto()
-    HIERARCHY_TIMELINE_NORMALIZE_LABELS = auto()
     IMPORT_MUSICXML = auto()
     IMPORT_CSV_PDF_TIMELINE = auto()
     IMPORT_CSV_HARMONY_TIMELINE = auto()
@@ -62,7 +59,6 @@ class TiliaAction(Enum):
     MEDIA_LOAD_LOCAL = auto()
     MEDIA_STOP = auto()
     METADATA_WINDOW_OPEN = auto()
-    REPORT_SECTIONS = auto()
     SCORE_ANNOTATION_ADD = auto()
     SCORE_ANNOTATION_DELETE = auto()
     SCORE_ANNOTATION_EDIT = auto()
@@ -90,6 +86,15 @@ class TiliaAction(Enum):
     WEBSITE_HELP_OPEN = auto()
     WINDOW_MANAGE_TIMELINES_OPEN = auto()
 
+    # PHD
+    REPORT_SECTIONS = auto()
+    HIERARCHY_FILL_LEVELS = auto()
+    HIERARCHY_TIMELINE_FILL_ALL_LEVELS = auto()
+    HIERARCHY_TIMELINE_NORMALIZE_LABELS = auto()
+    OPEN_PHD_TOOLS_WINDOW = auto()
+
+
+_taction_to_qaction: dict[TiliaAction, QAction] = {}
 
 @dataclass
 class ActionParams:
@@ -389,6 +394,8 @@ taction_to_params = {
     TiliaAction.SCORE_ANNOTATION_FONT_INC: ActionParams(
         None, "Increase Annotation Font", "annotation_font_inc", "Shift+Up"
     ),
+
+    # PHD
     TiliaAction.REPORT_SECTIONS: ActionParams(
         Post.REPORT_SECTIONS, "Sections", "", "Ctrl+Shift+R"
     ),
@@ -400,7 +407,10 @@ taction_to_params = {
     ),
     TiliaAction.HIERARCHY_TIMELINE_NORMALIZE_LABELS: ActionParams(
         Post.HIERARCHY_TIMELINE_NORMALIZE_NAMES, "Normalize labels", "", "Ctrl+Shift+N"
-    )
+    ),
+    TiliaAction.OPEN_PHD_TOOLS_WINDOW: ActionParams(
+        Post.WINDOW_OPEN_PHD_TOOLS, "PHD &Tools", "", "",
+    ),
 }
 
 _taction_to_qaction: dict[TiliaAction, QAction] = {}  # will be populated on startup

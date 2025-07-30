@@ -243,10 +243,11 @@ class HelpMenu(TiliaMenu):
 
 
 class DoutoradoMenu(TiliaMenu):
-    title = "Doutorado"
+    menu_title = "&Doutorado"
     items = [
         (MenuItemKind.ACTION, TiliaAction.REPORT_SECTIONS),
         (MenuItemKind.ACTION, TiliaAction.HIERARCHY_FILL_LEVELS),
         (MenuItemKind.ACTION, TiliaAction.HIERARCHY_TIMELINE_FILL_ALL_LEVELS),
         (MenuItemKind.ACTION, TiliaAction.HIERARCHY_TIMELINE_NORMALIZE_LABELS),
+        (MenuItemKind.ACTION, TiliaAction.OPEN_PHD_TOOLS_WINDOW),
     ]

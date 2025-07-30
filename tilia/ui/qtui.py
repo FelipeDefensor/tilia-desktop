@@ -45,8 +45,6 @@ from .menus import (
     HarmonyMenu,
     PdfMenu,
     ScoreMenu,
-    FileMenu,
-    RecentFilesMenu
 )
 from .options_toolbar import OptionsToolbar
 from .player import PlayerToolbar
@@ -55,6 +53,7 @@ from .windows.manage_timelines import ManageTimelines
 from .windows.metadata import MediaMetadataWindow
 from .windows.about import About
 from .windows.inspect import Inspect
+from .windows.phd_tools import PhdToolsWindow
 from .windows.settings import SettingsWindow
 from .windows.kinds import WindowKind
 from ..dirs import IMG_DIR
@@ -195,6 +194,9 @@ class QtUI:
             ),
             (Post.DISPLAY_ERROR, display_error),
             (Post.UI_EXIT, self.exit),
+
+            # PHD
+            (Post.WINDOW_OPEN_PHD_TOOLS, self.on_open_phd_tools),
         }
 
         SERVES = {
@@ -435,3 +437,9 @@ class QtUI:
             "audio": QtAudioPlayer,
             "youtube": YouTubePlayer,
         }[media_type]
+
+    # PHD
+    def on_open_phd_tools(self):
+        self.phd_tools_window = PhdToolsWindow()
+
+

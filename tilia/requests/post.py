@@ -55,7 +55,6 @@ class Post(Enum):
     HIERARCHY_CREATE_CHILD = auto()
     HIERARCHY_DECREASE_LEVEL = auto()
     HIERARCHY_DESELECTED = auto()
-    HIERARCHY_FILL_LEVELS = auto()
     HIERARCHY_GENEALOGY_CHANGED = auto()
     HIERARCHY_GROUP = auto()
     HIERARCHY_INCREASE_LEVEL = auto()
@@ -67,8 +66,6 @@ class Post(Enum):
     HIERARCHY_SPLIT = auto()
     IMPORT_CSV = auto()
     IMPORT_MUSICXML = auto()
-    HIERARCHY_TIMELINE_FILL_ALL_LEVELS = auto()
-    HIERARCHY_TIMELINE_NORMALIZE_NAMES = auto()
     INSPECTABLE_ELEMENT_DESELECTED = auto()
     INSPECTABLE_ELEMENT_SELECTED = auto()
     INSPECTOR_FIELD_EDITED = auto()
@@ -114,7 +111,6 @@ class Post(Enum):
     PLAYER_URL_CHANGED = auto()
     PLAYER_VOLUME_CHANGE = auto()
     PLAYER_VOLUME_MUTE = auto()
-    REPORT_SECTIONS = auto()
     REQUEST_CLEAR_ALL_TIMELINES = auto()
     REQUEST_CLEAR_TIMELINE = auto()
     REQUEST_CLEAR_UI = auto()
@@ -191,6 +187,13 @@ class Post(Enum):
     WINDOW_CLOSE_DONE = auto()
     WINDOW_UPDATE_REQUEST = auto()
     WINDOW_UPDATE_STATE = auto()
+
+    # PHD
+    HIERARCHY_TIMELINE_FILL_ALL_LEVELS = auto()
+    HIERARCHY_TIMELINE_NORMALIZE_NAMES = auto()
+    HIERARCHY_FILL_LEVELS = auto()
+    REPORT_SECTIONS = auto()
+    WINDOW_OPEN_PHD_TOOLS = auto()
 
 
 _posts_to_listeners: weakref.WeakKeyDictionary[Post, Any] = weakref.WeakKeyDictionary(

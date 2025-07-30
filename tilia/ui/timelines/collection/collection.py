@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Optional, Callable, cast
 
 from PyQt6.QtCore import Qt, QPoint
+from PyQt6.QtGui import QShortcut
 from PyQt6.QtWidgets import (
     QGraphicsView,
     QMainWindow,
@@ -84,6 +85,8 @@ class TimelineUIs:
         self.loop_elements = set()
         self.loop_delete_ignore = set()
         setup_smooth(self)
+
+        self.setup_phd_tools()
 
     def __str__(self) -> str:
         return self.__class__.__name__ + "-" + str(id(self))
@@ -187,7 +190,9 @@ class TimelineUIs:
                 Post.BEAT_TIMELINE_COMPONENTS_DESERIALIZED,
                 self.on_beat_timeline_components_deserialized,
             ),
-            (Post.REPORT_SECTIONS, self.on_report_sections),
+
+            # phd tools
+           (Post.REPORT_SECTIONS, self.on_report_sections),
         }
 
         serve(self, Get.TIMELINES_HEIGHT, self.get_scene_height)
@@ -1250,6 +1255,12 @@ class TimelineUIs:
     def on_timeline_deleted(self, id: int):
         self.delete_timeline_ui(self.get_timeline_ui(id))
 
+    # PhD tools
+
+    def setup_phd_tools(self):
+        self.seek_to_selection_action = QShortcut("p", self.main_window)
+        self.seek_to_selection_action.activated.connect(self.on_seek_to_selection)
+
     def on_report_sections(self):
         timeline_name = 'Harm. segments'
         tl_ui = next((tlui for tlui in self if tlui.get_data('name') == timeline_name), None)
@@ -1269,6 +1280,12 @@ class TimelineUIs:
             if segment not in segments_deduplicated:
                 segments_deduplicated.append(segment)
 
+        # last measure was not counted, as it is incomplete
+        # so we add it here
+        last_segment = segments_deduplicated.pop()
+        last_segment = last_segment[0], str(float(last_segment[1]) + 1)
+        segments_deduplicated.append(last_segment)
+
         title = get(Get.MEDIA_METADATA).get("file code")
         print(f'## {title}')
         for segment in segments_deduplicated:
@@ -1279,25 +1296,40 @@ class TimelineUIs:
 
         output_dir = Path('reports')
         output_dir.mkdir(parents=True, exist_ok=True)
-        with open(output_dir / 'segments' / f'{title}.csv', 'w', newline='') as f:
+        with open(output_dir / f'{title}-report.csv', 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerow(['label', 'duration'])
             for segment in segments_deduplicated:
                 writer.writerow(segment)
 
-        with open(output_dir / 'forma-harmonia-performance' / f'{title}.csv', 'w', newline='') as f:
+        with open(output_dir / f'{title}-unfolded.csv', 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(['corpus', 'musica', 'segment', 'order'])
+            writer.writerow(['corpus_id', 'composition_id', 'segment'])
             try:
                 corpus, musica = title.split('-')
-            except ValueError:
+            except (ValueError, AttributeError):
                 print("Title must be in format '<corpus>-<musica>'")
                 return
 
-            for i, segment in enumerate(segments):
-                writer.writerow([corpus, musica, segment[0], i])
+            for segment in segments:
+                writer.writerow([corpus, musica, segment[0]])
 
         print(" | ".join([(segment[0]) for segment in segments]))
         print()
 
+        return segments_deduplicated
 
+    def on_seek_to_selection(self):
+        if self.is_empty:
+            return
+
+        selected_elements = set()
+        for tlui in self.get_timeline_elements_selected():
+            selected_elements |= set(tlui.selected_elements)
+
+        if not selected_elements:
+            return
+
+        seek_time = min([el.seek_time for el in selected_elements])
+
+        post(Post.PLAYER_SEEK, seek_time)

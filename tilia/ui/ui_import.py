@@ -71,9 +71,12 @@ def on_import_from_csv(
     if not success:
         return "cancelled", ["User cancelled when choosing file to import."]
 
-    timeline.clear()
+    return _import_from_csv(timeline, beat_tl, time_or_measure, path)
 
-    func = get_import_function(tlkind, time_or_measure)
+
+def _import_from_csv(timeline, beat_tl, time_or_measure, path):
+    timeline.clear()
+    func = get_import_function(timeline.KIND, time_or_measure)
     if time_or_measure == "time":
         args = (timeline, path)
     elif time_or_measure == "measure":
