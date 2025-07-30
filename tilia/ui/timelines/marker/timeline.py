@@ -45,6 +45,7 @@ class MarkerTimelineUI(TimelineUI):
             for marker_ui in self:
                 marker_ui.update_time()
                 marker_ui.update_color()
+                marker_ui._setup_font()  # phd
 
     def on_timeline_element_request(
         self, request, selector: ElementSelector, *args, **kwargs

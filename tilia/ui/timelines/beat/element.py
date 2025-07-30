@@ -6,6 +6,7 @@ from PyQt6.QtGui import QPen, QColor, QFont
 from PyQt6.QtWidgets import QGraphicsScene, QGraphicsLineItem, QGraphicsTextItem
 
 from tilia.requests import Post, post, Get, get
+from tilia.settings import settings
 from .context_menu import BeatContextMenu
 from ..copy_paste import CopyAttributes
 from ..cursors import CursorMixIn
@@ -128,6 +129,7 @@ class BeatUI(TimelineUIElement):
         self.update_label()
 
     def update_label(self):
+        self.label.setup_font()
         self.label.set_text(self.text)
         self.label.set_position(self.x, self.label_y)
 
@@ -248,12 +250,12 @@ class BeatLabel(QGraphicsTextItem):
         text: str,
     ):
         super().__init__()
-        self._setup_font()
+        self.setup_font()
         self.set_text(text)
         self.set_position(x, y)
 
-    def _setup_font(self):
-        font = QFont("Arial", 10)
+    def setup_font(self):
+        font = QFont("Arial", settings.get("beat_timeline", "font_size"))
         self.setFont(font)
         self.setDefaultTextColor(QColor("black"))
 

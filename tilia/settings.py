@@ -48,7 +48,11 @@ class SettingsManager(QObject):
             "default_color": "#3399FF",
             "max_divisions": 2500,
         },
-        "beat_timeline": {"display_measure_periodicity": 4, "default_height": 35},
+        "beat_timeline": {
+            "display_measure_periodicity": 4,
+            "default_height": 35,
+            "font_size": 10,  # phd
+        },
         "hierarchy_timeline": {
             "default_height": 120,
             "default_colors": [
@@ -71,6 +75,7 @@ class SettingsManager(QObject):
         },
         "marker_timeline": {
             "default_height": 30,
+            "font_size": 10,  # phd
             "marker_width": 8,
             "marker_height": 10,
             "default_color": "#999999",
