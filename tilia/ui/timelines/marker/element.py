@@ -215,7 +215,7 @@ class MarkerLabel(QGraphicsTextItem):
         self.set_position(x, y)
 
     def _setup_font(self):
-        font = QFont("Arial", 10)
+        font = QFont("Arial", settings.get("marker_timeline", "font_size"))
         self.setFont(font)
         self.setDefaultTextColor(QColor("black"))
 

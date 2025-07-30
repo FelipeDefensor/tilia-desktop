@@ -7,6 +7,7 @@ from PySide6.QtGui import QColor, QFont, QPen
 from PySide6.QtWidgets import QGraphicsLineItem, QGraphicsScene, QGraphicsTextItem
 
 from tilia.requests import Get, Post, get, post
+from tilia.settings import settings
 from tilia.ui.timelines.base.element import TimelineUIElement
 
 from ...coords import time_x_converter
@@ -127,6 +128,7 @@ class BeatUI(TimelineUIElement):
         self.update_label()
 
     def update_label(self):
+        self.label.setup_font()
         self.label.set_text(self.text)
         self.label.set_position(self.x, self.label_y)
 
@@ -246,12 +248,12 @@ class BeatLabel(QGraphicsTextItem):
         text: str,
     ):
         super().__init__()
-        self._setup_font()
+        self.setup_font()
         self.set_text(text)
         self.set_position(x, y)
 
-    def _setup_font(self):
-        font = QFont("Arial", 10)
+    def setup_font(self):
+        font = QFont("Arial", settings.get("beat_timeline", "font_size"))
         self.setFont(font)
         self.setDefaultTextColor(QColor("black"))
 
