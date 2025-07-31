@@ -35,6 +35,8 @@ class PhdToolsWindow(QDialog):
         report_sections_button = QPushButton("Report sections")
         report_sections_button.clicked.connect(self.on_report_sections_button_clicked)
 
+        get_segments_duration_button = QPushButton("Get segments duration")
+        get_segments_duration_button.clicked.connect(self.on_get_segments_duration_button_clicked)
 
         layout = QVBoxLayout()
         layout.addWidget(file_code_label)
@@ -42,11 +44,13 @@ class PhdToolsWindow(QDialog):
         layout.addWidget(tools_label)
         layout.addWidget(import_button)
         layout.addWidget(report_sections_button)
+        layout.addWidget(get_segments_duration_button)
         self.setLayout(layout)
 
         self.show()
 
     def on_import_button_clicked(self):
+        post(Post.REPORT_SECTIONS)  # Updates files to be imported
         timelines = cast(Timelines, get(Get.TIMELINE_COLLECTION))
 
         beat_tl = timelines.get_timeline_by_attr("name", "Measures")
@@ -82,6 +86,23 @@ class PhdToolsWindow(QDialog):
 
             if errors:
                 print(f"Errors: {', '.join(errors)}")
+
+    def on_get_segments_duration_button_clicked(self):
+        mpb_to_tilia_module_path = MPB_TO_TILIA_PATH.resolve().__str__()
+        sys.path.append(mpb_to_tilia_module_path)
+
+        from mpb_para_tilia.tilia import get_segments_duration
+
+        corpus_id, composition_id = self.file_code.split("-")
+
+        try:
+            duration_df = get_segments_duration(corpus_id, int(composition_id))
+        except Exception as e:
+            print(f"ERROR: {e}")
+        else:
+            print(duration_df)
+
+        sys.path.remove(mpb_to_tilia_module_path)
 
     def on_report_sections_button_clicked(self):
         our_segments = post(Post.REPORT_SECTIONS)
