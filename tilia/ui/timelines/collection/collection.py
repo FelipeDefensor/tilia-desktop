@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QMainWindow,
     QGraphicsItem,
     QGraphicsScene,
+    QInputDialog,
 )
 
 import tilia
@@ -22,6 +23,7 @@ import tilia.ui.timelines.collection.request_handler
 import tilia.ui.timelines.collection.requests.timeline_uis
 import tilia.ui.timelines.collection.requests.args
 import tilia.ui.timelines.collection.requests.enums
+from tilia.timelines.beat.timeline import BeatTimeline
 from tilia.ui import actions
 from tilia.settings import settings
 from tilia.media.player.base import MediaTimeChangeReason
@@ -1260,6 +1262,43 @@ class TimelineUIs:
     def setup_phd_tools(self):
         self.seek_to_selection_action = QShortcut("p", self.main_window)
         self.seek_to_selection_action.activated.connect(self.on_seek_to_selection)
+
+        self.seek_to_measure_action = QShortcut("Ctrl+K", self.main_window)
+        self.seek_to_measure_action.activated.connect(self.on_seek_to_measure)
+
+    def on_seek_to_measure(self):
+        seek_str, success = QInputDialog.getText(None, "Seek", "Enter the seek value:")
+        if not success or not seek_str:
+            return
+
+        beat_tl = get(Get.TIMELINE_COLLECTION).get_timeline_by_attr("name", "Measures")
+        beat_tl = cast(BeatTimeline, beat_tl)
+
+        if seek_str.isnumeric():
+            seek_time = beat_tl.get_time_by_measure(int(seek_str))
+            if seek_time is None:
+                print(f"ERROR: Measure {seek_str} not found.")
+                return
+            else:
+                seek_time = seek_time[0]
+        elif seek_str.startswith("+"):
+            curr_time = get(Get.MEDIA_CURRENT_TIME)
+            curr_beat = beat_tl.get_closest_component_by_time(curr_time)
+            curr_beat_index = beat_tl.get_beat_index(curr_beat)
+            try:
+                motion = int(seek_str[1:])
+            except (ValueError, IndexError):
+                print("ERROR: Motion must be an integer.")
+                return
+
+            try:
+                target_beat = beat_tl.components[curr_beat_index + motion]
+            except IndexError:
+                print(f"ERROR: Motion {motion} out of range.")
+                return
+            seek_time = target_beat.time
+
+        post(Post.PLAYER_SEEK, seek_time)
 
     def on_report_sections(self):
         timeline_name = 'Harm. segments'

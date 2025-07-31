@@ -182,6 +182,9 @@ class Timeline(ABC, Generic[TC]):
     def get_previous_component_by_time(self, time: float) -> TC | None:
         return self.component_manager.get_previous_component_by_time(time)
 
+    def get_closest_component_by_time(self, time: float) -> TC | None:
+        return self.component_manager.get_closest_component_by_time(time)
+
     def set_component_data(self, id: int, attr: str, value: Any):
         return self.component_manager.set_component_data(id, attr, value)
 
@@ -365,6 +368,13 @@ class TimelineComponentManager(Generic[T, TC]):
             return None
         else:
             return self._components[component_idx - 1]
+
+    def get_closest_component_by_time(self, time: float) -> TC | None:
+        times = [cmp.get_data("time") for cmp in self]
+        diffs = [abs(cmp_time - time) for cmp_time in times]
+        min_diff = min(diffs)
+        component_idx = diffs.index(min_diff)
+        return self._components[component_idx]
 
     def get_previous_component_by_time(self, time: float) -> TC | None:
         times = [cmp.get_data("time") for cmp in self]
