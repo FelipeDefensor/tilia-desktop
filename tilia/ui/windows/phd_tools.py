@@ -93,6 +93,10 @@ class PhdToolsWindow(QDialog):
 
         from mpb_para_tilia.tilia import get_segments_duration
 
+        if not self.file_code:
+            print("ERROR: File code not found.")
+            return
+
         corpus_id, composition_id = self.file_code.split("-")
 
         try:
