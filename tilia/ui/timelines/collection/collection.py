@@ -1281,12 +1281,14 @@ class TimelineUIs:
                 return
             else:
                 seek_time = seek_time[0]
-        elif seek_str.startswith("+"):
+        elif seek_str.startswith("+") or seek_str.startswith("-"):
             curr_time = get(Get.MEDIA_CURRENT_TIME)
             curr_beat = beat_tl.get_closest_component_by_time(curr_time)
             curr_beat_index = beat_tl.get_beat_index(curr_beat)
             try:
                 motion = int(seek_str[1:])
+                if seek_str.startswith("-"):
+                    motion = -motion
             except (ValueError, IndexError):
                 print("ERROR: Motion must be an integer.")
                 return
@@ -1297,6 +1299,9 @@ class TimelineUIs:
                 print(f"ERROR: Motion {motion} out of range.")
                 return
             seek_time = target_beat.time
+        else:
+            print("ERROR: Invalid seek value.")
+            return
 
         post(Post.PLAYER_SEEK, seek_time)
 
