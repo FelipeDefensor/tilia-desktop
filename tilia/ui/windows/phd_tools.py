@@ -50,7 +50,7 @@ class PhdToolsWindow(QDialog):
         self.show()
 
     def on_import_button_clicked(self):
-        post(Post.REPORT_SECTIONS)  # Updates files to be imported
+        self.on_report_sections_button_clicked()  # update files to be imported
         timelines = cast(Timelines, get(Get.TIMELINE_COLLECTION))
 
         beat_tl = timelines.get_timeline_by_attr("name", "Measures")
