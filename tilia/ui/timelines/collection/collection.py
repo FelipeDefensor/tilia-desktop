@@ -24,6 +24,7 @@ import tilia.ui.timelines.collection.requests.timeline_uis
 import tilia.ui.timelines.collection.requests.args
 import tilia.ui.timelines.collection.requests.enums
 from tilia.timelines.beat.timeline import BeatTimeline
+from tilia.timelines.collection.collection import Timelines
 from tilia.ui import actions
 from tilia.settings import settings
 from tilia.media.player.base import MediaTimeChangeReason
@@ -1266,6 +1267,58 @@ class TimelineUIs:
         self.seek_to_measure_action = QShortcut("Ctrl+K", self.main_window)
         self.seek_to_measure_action.activated.connect(self.on_seek_to_measure)
 
+        self.import_harmonic_segments_action = QShortcut("Ctrl+Shift+I", self.main_window)
+        self.import_harmonic_segments_action.activated.connect(self.on_import_harmonic_segments)
+
+        self.import_harmonic_segments_action = QShortcut("Ctrl+Shift+G", self.main_window)
+        self.import_harmonic_segments_action.activated.connect(self.on_get_segments_duration)
+
+    def on_import_harmonic_segments(self):
+        from tilia.ui.ui_import import _import_from_csv
+        from tilia.ui.windows.phd_tools import CSV_PATH
+
+        self.on_report_sections()
+        timelines = cast(Timelines, get(Get.TIMELINE_COLLECTION))
+
+        beat_tl = timelines.get_timeline_by_attr("name", "Measures")
+        if not beat_tl:
+            print("ERROR: Beat timeline named 'Measures' not found.")
+            return
+
+        tl_data = [
+            ("Harmony", "chord_symbols"),
+            ("Keys", "keys"),
+            ("Harm. functions", "functions"),
+            ("Harm. segments (imp.)", "harmonic_segments"),
+        ]
+
+        file_code = get(Get.MEDIA_METADATA).get("file code")
+        if not file_code:
+            print("ERROR: File code not found.")
+            return
+
+        for tl_name, dir_name in tl_data:
+            tl = timelines.get_timeline_by_attr("name", tl_name)
+            if not tl:
+                print(f"ERROR: Timeline named '{tl_name}' not found.")
+                continue
+
+            csv_path = Path(CSV_PATH) / dir_name / f"{file_code}.csv"
+
+            if not csv_path.exists():
+                print(f"ERROR: CSV not found at {csv_path}.")
+                continue
+
+            success, errors = _import_from_csv(tl, beat_tl, "measure", csv_path)
+
+            if success:
+                print(f"Successfully imported {tl_name}.")
+            else:
+                print(f"Failed to import {tl_name}.")
+
+            if errors:
+                print(f"Errors: {', '.join(errors)}")
+
     def on_seek_to_measure(self):
         seek_str, success = QInputDialog.getText(None, "Seek", "Enter the seek value:")
         if not success or not seek_str:
@@ -1377,3 +1430,29 @@ class TimelineUIs:
         seek_time = min([el.seek_time for el in selected_elements])
 
         post(Post.PLAYER_SEEK, seek_time)
+
+
+    def on_get_segments_duration(self):
+        from tilia.ui.windows.phd_tools import MPB_TO_TILIA_PATH
+        import sys
+
+        file_code = get(Get.MEDIA_METADATA).get("file code")
+        if not file_code:
+            print("ERROR: File code not found.")
+            return
+
+        mpb_to_tilia_module_path = MPB_TO_TILIA_PATH.resolve().__str__()
+        sys.path.append(mpb_to_tilia_module_path)
+
+        from mpb_para_tilia.tilia import get_segments_duration
+
+        corpus_id, composition_id = file_code.split("-")
+
+        try:
+            duration_df = get_segments_duration(corpus_id, int(composition_id))
+        except Exception as e:
+            print(f"ERROR: {e}")
+        else:
+            print(duration_df)
+
+        sys.path.remove(mpb_to_tilia_module_path)
