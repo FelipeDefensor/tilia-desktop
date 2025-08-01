@@ -201,7 +201,7 @@ class FileManager:
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-        except json.decoder.JSONDecodeError as err:
+        except (json.decoder.JSONDecodeError, UnicodeDecodeError) as err:
             tilia.errors.display(
                 tilia.errors.MEDIA_METADATA_IMPORT_JSON_FAILED, path, repr(err)
             )
