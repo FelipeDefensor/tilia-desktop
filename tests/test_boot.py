@@ -4,23 +4,23 @@ import argparse
 
 import pytest
 
-from tilia.boot import get_initial_file, setup_parser
+from tilia.boot import setup_parser
 
 
 class TestGetInitialFilePath:
     def test_get_initial_file_no_file(self):
-        assert get_initial_file("") == ""
+        assert validate_initial_file("") == ""
 
     def test_get_initial_file_path_does_not_exist(self):
-        assert get_initial_file("inexistent.txt") == ""
+        assert validate_initial_file("inexistent.txt") == ""
 
     def test_get_initial_file_path_path_with_non_tla_extension(self):
-        assert get_initial_file(str(Path(__file__))) == ""
+        assert validate_initial_file(str(Path(__file__))) == ""
 
     def test_get_initial_file_path_good_path(self, tmp_path):
         file_path = tmp_path / "test.tla"
         file_path.touch()
-        assert Path(get_initial_file(str(file_path.resolve()))) == Path(file_path)
+        assert Path(validate_initial_file(str(file_path.resolve()))) == Path(file_path)
 
 
 class TestGetSetupParser:

@@ -34,6 +34,11 @@ def handle_expection(type, value, tb):
 
 
 def boot():
+    print(sys.argv)
+    if len(sys.argv) > 1:
+        argv_file = sys.argv.pop(1)
+    else:
+        argv_file = ""
     sys.excepthook = handle_expection
     dotenv_path = PROJECT_ROOT / ".env"
     success = dotenv.load_dotenv(dotenv_path)
@@ -52,7 +57,14 @@ def boot():
 
         icecream.install()
     # has to be done after ui has been created, so timelines will get displayed
-    if file := get_initial_file(args.file):
+    if argv_file:
+        file = argv_file
+    elif args.file:
+        file = args.file
+    else:
+        file = ""
+
+    if file := validate_initial_file(file):
         app.on_open(file)
     else:
         app.setup_file()
@@ -94,10 +106,9 @@ def setup_ui(q_application: QApplication, interface: str):
         return CLI()
 
 
-def get_initial_file(file: str):
+def validate_initial_file(file: str):
     """
-    Checks if a file path was passed as an argument to process.
-    If it was, returns its path. Else, returns the empty string.
+    Check if provided file exists and is a tla file.
     """
     if file and os.path.isfile(file) and file.endswith(".tla"):
         return file
