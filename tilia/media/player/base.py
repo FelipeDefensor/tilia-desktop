@@ -59,10 +59,10 @@ class Player(ABC):
         commands.register(
             "media.stop", self.stop, text="Stop", icon="MediaPlaybackStop"
         )
+        commands.register("media.toggle_play", self.toggle_play)
 
     def _setup_requests(self):
         LISTENS = {
-            (Post.PLAYER_TOGGLE_PLAY_PAUSE, self.toggle_play),
             (Post.PLAYER_VOLUME_CHANGE, self.on_volume_change),
             (Post.PLAYER_VOLUME_MUTE, self.on_volume_mute),
             (Post.PLAYER_PLAYBACK_RATE_TRY, self.on_playback_rate_try),

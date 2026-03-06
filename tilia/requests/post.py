@@ -46,7 +46,6 @@ class Post(Enum):
     PLAYER_SEEK_IF_NOT_PLAYING = auto()
     PLAYER_STOPPED = auto()
     PLAYER_TOGGLE_LOOP = auto()
-    PLAYER_TOGGLE_PLAY_PAUSE = auto()
     PLAYER_UI_UPDATE = auto()
     PLAYER_UPDATE_CONTROLS = auto()
     PLAYER_URL_CHANGED = auto()

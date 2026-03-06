@@ -145,7 +145,7 @@ class PlayerToolbar(QToolBar):
         self.play_toggle_action = QAction(self)
         self.play_toggle_action.setText("Play / Pause")
         self.play_toggle_action.triggered.connect(
-            lambda checked: post(Post.PLAYER_TOGGLE_PLAY_PAUSE, checked)
+            lambda checked: commands.execute("media.toggle_play", checked)
         )
         self.play_toggle_action.setCheckable(True)
         play_icon = QIcon()
