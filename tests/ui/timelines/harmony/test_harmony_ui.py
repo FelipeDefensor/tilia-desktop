@@ -24,17 +24,17 @@ class TestRightClick:
 
 
 class TestCopyPaste:
-    def test_paste_single_into_timeline(self, tlui, tilia_state):
+    def test_paste_single_into_timeline(self, tlui):
         _, hui = tlui.create_harmony(0)
         click_harmony_ui(tlui[0])
         commands.execute("timeline.component.copy")
         click_timeline_ui(tlui, 10)
-        tilia_state.current_time = 50
+        commands.execute("media.seek", 50)
         commands.execute("timeline.component.paste")
         assert len(tlui) == 2
         assert tlui[1].get_data("time") == 50
 
-    def test_paste_multiple_into_timeline(self, tlui, tilia_state):
+    def test_paste_multiple_into_timeline(self, tlui):
         _, hui1 = tlui.create_harmony(0)
         _, hui2 = tlui.create_harmony(10)
         _, hui3 = tlui.create_harmony(20)
@@ -43,7 +43,7 @@ class TestCopyPaste:
         click_harmony_ui(tlui[2], modifier="ctrl")
         commands.execute("timeline.component.copy")
         click_timeline_ui(tlui, 10)
-        tilia_state.current_time = 50
+        commands.execute("media.seek", 50)
         commands.execute("timeline.component.paste")
         assert len(tlui) == 6
         assert tlui[3].get_data("time") == 50

@@ -263,7 +263,7 @@ class TestScaleCropTimeline:
         self, scale_timelines, scale_factor, tilia_state, marker_tlui
     ):
         marker_time = 50
-        tilia_state.current_time = marker_time
+        commands.execute("media.seek", marker_time)
         commands.execute("timeline.marker.add")
         displacement_factor = 1
         for factor, should_scale in zip(scale_factor, scale_timelines, strict=True):
@@ -275,9 +275,9 @@ class TestScaleCropTimeline:
         assert marker_tlui[0].get_data("time") == marker_time * displacement_factor
 
     def test_scale_then_crop(self, marker_tlui, tilia_state):
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         commands.execute("timeline.marker.add")
-        tilia_state.current_time = 50
+        commands.execute("media.seek", 50)
         commands.execute("timeline.marker.add")
         tilia_state.set_duration(200, scale_timelines="yes")
         tilia_state.set_duration(50, scale_timelines="no")
@@ -285,9 +285,9 @@ class TestScaleCropTimeline:
         assert marker_tlui[0].get_data("time") == 20
 
     def test_crop_then_scale(self, marker_tlui, tilia_state):
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         commands.execute("timeline.marker.add")
-        tilia_state.current_time = 50
+        commands.execute("media.seek", 50)
         commands.execute("timeline.marker.add")
         tilia_state.set_duration(40, scale_timelines="no")
         tilia_state.set_duration(80, scale_timelines="yes")
@@ -295,9 +295,9 @@ class TestScaleCropTimeline:
         assert marker_tlui[0].get_data("time") == 20
 
     def test_crop_twice(self, marker_tlui, tilia_state):
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         commands.execute("timeline.marker.add")
-        tilia_state.current_time = 50
+        commands.execute("media.seek", 50)
         commands.execute("timeline.marker.add")
         tilia_state.set_duration(80, scale_timelines="no")
         tilia_state.set_duration(40, scale_timelines="no")
@@ -524,7 +524,7 @@ class TestOpen:
 
 
 class TestUndoRedo:
-    def test_undo_fails(self, tilia, qtui, tluis, tilia_state, tilia_errors):
+    def test_undo_fails(self, tilia, qtui, tluis, tilia_errors):
         with Serve(Get.FROM_USER_STRING, (True, "test")):
             commands.execute("timelines.add.marker")
 
@@ -537,7 +537,7 @@ class TestUndoRedo:
         # will try to restore the previous, faulty state
         # Note: this could be improved by providing a state that is actually
         # similar to a healthy state
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         commands.execute("timeline.marker.add")
 
         commands.execute("edit.undo")

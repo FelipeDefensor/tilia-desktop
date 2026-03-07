@@ -3,7 +3,7 @@ The test suite is written in pytest. Below are some things to keep in my mind wh
 `pip install --group testing`
 ## How to simulate interaction with the UI?
 - The `user_actions` fixture can be used to trigger actions on the UI. This is equivalent to pressing buttons on the UI. We should also check that the actions are available in the UI where we expect them.
-- The `tilia_state` fixture can be used to make certain changes to state simulating user input (e.g. `tilia_state.current_time = 10`).
+- The `tilia_state` fixture can be used to make certain changes to state simulating user input (e.g. `tilia_state.duration = 10`.)
 - The `press_key` and `type_string` functions can be used to simulate keyboard input.
 
 ### Modal dialogs
@@ -26,7 +26,7 @@ Some known modal dialogs:
 An alternative to mocking modal dialogs would be appreciated. Experiments with mocking modal dialogs (to date) have not worked.
 
 ## How to simulate interaction with timelines?
-We shouldn't use methods of the `Timeline` or the `TimelineUI` classes, but instead try to simulate user input. This makes for tests that are more resilient to changes in implementation. For instance, this:
+We shouldn't use methods of the `Timeline` or the `TimelineUI` classes, but instead try to simulate user input or use commands. This makes for tests that are more resilient to changes in implementation. For instance, this:
 ```python
 def test_me(tlui, marker_tlui):
     tlui.create_marker(0)
@@ -36,8 +36,8 @@ def test_me(tlui, marker_tlui):
 can be rewritten as:
 
 ```python
-def test_me(marker_tlui, tilia_state):
-    tilia_state.current_time = 0
+def test_me(marker_tlui):
+    commands.execute("media.seek", 0)
     commands.execute("marker_add")
     assert not len(marker_tlui) == 1
 ```

@@ -9,8 +9,8 @@ class TestBeatTimeline:
         commands.execute("timeline.beat.add")
         assert len(beat_tlui) == 1
 
-    def test_create_beat_at_negative_time_fails(self, beat_tlui, tilia_state):
-        tilia_state.current_time = -10
+    def test_create_beat_at_negative_time_fails(self, beat_tlui):
+        commands.execute("media.seek", -10)
         commands.execute("timeline.beat.add")
         assert len(beat_tlui) == 0
 
@@ -18,22 +18,22 @@ class TestBeatTimeline:
         self, beat_tlui, tilia_state
     ):
         tilia_state.duration = 100
-        tilia_state.current_time = 101
+        commands.execute("media.seek", 101)
         commands.execute("timeline.beat.add")
         assert len(beat_tlui) == 0
 
     def test_create_beat_at_middle_updates_next_beats_is_first_in_measure(
-        self, beat_tlui, tilia_state
+        self, beat_tlui
     ):
         beat_tlui.timeline.beat_pattern = [2]
-        tilia_state.current_time = 0
+        commands.execute("media.seek", 0)
         commands.execute("timeline.beat.add")
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         commands.execute("timeline.beat.add")
-        tilia_state.current_time = 20
+        commands.execute("media.seek", 20)
         commands.execute("timeline.beat.add")
 
-        tilia_state.current_time = 5
+        commands.execute("media.seek", 5)
         commands.execute("timeline.beat.add")
 
         assert beat_tlui[0].get_data("is_first_in_measure") is True

@@ -69,12 +69,9 @@ class TestExportJSON:
 
         assert len(data["timelines"]) == 1
 
-    def test_export_timelines(
-        self, tilia, marker_tlui, harmony_tlui, tilia_state, tmp_path
-    ):
+    def test_export_timelines(self, tilia, marker_tlui, harmony_tlui, tmp_path):
         for i in range(5):
-            tilia_state.current_time = i
-            commands.execute("timeline.marker.add")
+            commands.execute("timeline.marker.add", time=i)
 
         harmony_tlui.create_harmony(0)
         harmony_tlui.create_mode(0)

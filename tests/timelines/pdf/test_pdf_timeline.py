@@ -15,10 +15,10 @@ class TestPageTotal:
 
 
 class TestPageNumber:
-    def test_marker_page_number_default_is_next_page(self, tilia_state, pdf_tl):
+    def test_marker_page_number_default_is_next_page(self, pdf_tl):
         pdf_tl.page_total = 2
         commands.execute("timeline.pdf.add")
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         commands.execute("timeline.pdf.add")
         assert pdf_tl[1].get_data("page_number") == 2
 
@@ -27,51 +27,42 @@ class TestPageNumber:
         commands.execute("timeline.pdf.add")
         assert pdf_tl[0].get_data("page_number") == 1
 
-    def test_correct_page_is_displayed(self, tilia_state, pdf_tlui, pdf_tl):
+    def test_correct_page_is_displayed(self, pdf_tlui, pdf_tl):
         pdf_tl.page_total = 2
         commands.execute("timeline.pdf.add")
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         commands.execute("timeline.pdf.add")
-        tilia_state.current_time = 11
+        commands.execute("media.seek", 11)
         assert pdf_tlui.current_page == 2
 
-    def test_correct_page_is_displayed_when_marker_is_created(
-        self, tilia_state, pdf_tlui, pdf_tl
-    ):
+    def test_correct_page_is_displayed_when_marker_is_created(self, pdf_tlui, pdf_tl):
         pdf_tl.page_total = 2
         commands.execute("timeline.pdf.add")
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         commands.execute("timeline.pdf.add")
         assert pdf_tlui.current_page == 2
 
-    def test_correct_page_is_displayed_when_marker_is_deleted(
-        self, tilia_state, pdf_tl, pdf_tlui
-    ):
-        commands.execute("timeline.pdf.add")
-        tilia_state.current_time = 10
-        commands.execute("timeline.pdf.add")
+    def test_correct_page_is_displayed_when_marker_is_deleted(self, pdf_tl, pdf_tlui):
+        pdf_tl.page_total = 2
+        commands.execute("timeline.pdf.add", time=0, page_number=1)
+        commands.execute("timeline.pdf.add", time=10, page_number=2)
+        commands.execute("media.seek", time=10)
+        assert pdf_tlui.current_page == 2
         pdf_tl.delete_components([pdf_tl[1]])
         assert pdf_tlui.current_page == 1
 
     def test_correct_page_is_displayed_when_current_time_is_same_as_marker(
-        self, tilia_state, pdf_tlui, pdf_tl
+        self, pdf_tlui, pdf_tl
     ):
         pdf_tl.page_total = 2
-        commands.execute("timeline.pdf.add")
-        tilia_state.current_time = 10
-        commands.execute("timeline.pdf.add")
-        tilia_state.current_time = 20
-        commands.execute("timeline.pdf.add")
-        tilia_state.current_time = 10
+        commands.execute("timeline.pdf.add", time=0)
+        commands.execute("timeline.pdf.add", time=10)
+        commands.execute("timeline.pdf.add", time=20)
+        commands.execute("media.seek", 10)
         assert pdf_tlui.current_page == 2
 
-    def test_page_number_is_limited_by_page_total(self, tilia_state, pdf_tl):
+    def test_page_number_for_new_marker_is_capped_at_page_total(self, pdf_tl, pdf_tlui):
         pdf_tl.page_total = 2
-        commands.execute("timeline.pdf.add")
-        tilia_state.current_time = 10
-        commands.execute("timeline.pdf.add")
-        tilia_state.current_time = 20
-        commands.execute("timeline.pdf.add")
-        tilia_state.current_time = 30
-        commands.execute("timeline.pdf.add")
+        for time in range(10):
+            commands.execute("timeline.pdf.add", time=time)
         assert pdf_tl[-1].get_data("page_number") == 2

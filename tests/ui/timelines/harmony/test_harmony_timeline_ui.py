@@ -126,12 +126,10 @@ class TestRomanNumeralDisplay:
 
 
 class TestCopyPaste:
-    def test_paste_multiple_to_harmony_with_mode_as_first_copied(
-        self, tilia_state, harmony_tlui
-    ):
+    def test_paste_multiple_to_harmony_with_mode_as_first_copied(self, harmony_tlui):
         add_harmony()
         add_mode()
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         add_harmony()
 
         click_harmony_ui(harmony_tlui.modes()[0])
