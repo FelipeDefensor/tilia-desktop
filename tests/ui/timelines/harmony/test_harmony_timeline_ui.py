@@ -10,7 +10,7 @@ FLAT_SIGN = "`b"
 SHARP_SIGN = "`#"
 
 
-def add_harmony(**kwargs):
+def add_harmony(time: float | None = None, **kwargs):
     default_params = {
         "step": 0,
         "accidental": 0,
@@ -21,11 +21,15 @@ def add_harmony(**kwargs):
         "level": 1,
     }
     default_params.update(kwargs)
+
     with Serve(Get.FROM_USER_HARMONY_PARAMS, (True, default_params)):
-        tilia.ui.commands.execute("timeline.harmony.add_harmony")
+        if not time:
+            tilia.ui.commands.execute("timeline.harmony.add_harmony")
+        else:
+            tilia.ui.commands.execute("timeline.harmony.add_harmony", time)
 
 
-def add_mode(**kwargs):
+def add_mode(time: float | None = None, **kwargs):
     default_params = {
         "step": 0,
         "accidental": 0,
@@ -34,7 +38,10 @@ def add_mode(**kwargs):
     }
     default_params.update(kwargs)
     with Serve(Get.FROM_USER_MODE_PARAMS, (True, default_params)):
-        tilia.ui.commands.execute("timeline.harmony.add_mode")
+        if not time:
+            tilia.ui.commands.execute("timeline.harmony.add_mode")
+        else:
+            tilia.ui.commands.execute("timeline.harmony.add_mode", time)
 
 
 class TestRomanNumeralDisplay:
