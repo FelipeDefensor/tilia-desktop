@@ -185,7 +185,7 @@ class TestAutoScroll:
     def test_is_not_triggered_when_seeking(self, scroll_type, tluis):
         self._set_auto_scroll(scroll_type)
         with patch.object(tluis, "center_on_time") as center_on_time_mock:
-            post(Post.PLAYER_SEEK, 50)
+            commands.execute("media.seek", 50)
         center_on_time_mock.assert_not_called()
 
     @pytest.mark.parametrize("scroll_type", [ScrollType.CONTINUOUS, ScrollType.BY_PAGE])
@@ -239,7 +239,7 @@ def test_set_timeline_height_updates_playback_line_height(tls, tluis):
 
 def test_zooming_updates_playback_line_position(tls, tluis):
     tls.create_timeline(TimelineKind.MARKER_TIMELINE)
-    post(Post.PLAYER_SEEK, 50)
+    commands.execute("media.seek", 50)
     commands.execute("view.zoom.in")
     assert tluis[0].scene.playback_line.line().x1() == pytest.approx(
         time_x_converter.get_x_by_time(50)

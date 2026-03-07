@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import functools
 from abc import ABC, abstractmethod
 from enum import Enum, auto
 from pathlib import Path
@@ -60,17 +59,13 @@ class Player(ABC):
             "media.stop", self.stop, text="Stop", icon="MediaPlaybackStop"
         )
         commands.register("media.toggle_play", self.toggle_play)
+        commands.register("media.seek", self.on_seek)
 
     def _setup_requests(self):
         LISTENS = {
             (Post.PLAYER_VOLUME_CHANGE, self.on_volume_change),
             (Post.PLAYER_VOLUME_MUTE, self.on_volume_mute),
             (Post.PLAYER_PLAYBACK_RATE_TRY, self.on_playback_rate_try),
-            (Post.PLAYER_SEEK, self.on_seek),
-            (
-                Post.PLAYER_SEEK_IF_NOT_PLAYING,
-                functools.partial(self.on_seek, if_paused=True),
-            ),
             (Post.PLAYER_EXPORT_AUDIO, self.on_export_audio),
             (Post.PLAYER_CURRENT_LOOP_CHANGED, self.on_loop_changed),
         }
@@ -198,8 +193,8 @@ class Player(ABC):
     def on_playback_rate_try(self, playback_rate: float) -> None:
         self._engine_try_playback_rate(playback_rate)
 
-    def on_seek(self, time: float, if_paused: bool = False) -> None:
-        if if_paused and self.is_playing:
+    def on_seek(self, time: float, if_playing: bool = True) -> None:
+        if not if_playing and self.is_playing:
             return
 
         if self.is_media_loaded:

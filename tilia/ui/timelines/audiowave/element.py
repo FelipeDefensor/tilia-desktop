@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QGraphicsLineItem
 
 from tilia.requests import Get, Post, get, post
 from tilia.settings import settings
+from tilia.ui import commands
 from tilia.ui.timelines.base.element import TimelineUIElement
 
 from ...color import get_tinted_color
@@ -71,7 +72,7 @@ class AmplitudeBarUI(TimelineUIElement):
         return [self.body]
 
     def on_double_left_click(self, _):
-        post(Post.PLAYER_SEEK, self.seek_time)
+        commands.execute("media.seek", self.seek_time)
 
     def setup_drag(self):
         DragManager(

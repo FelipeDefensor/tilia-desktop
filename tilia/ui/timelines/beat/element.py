@@ -7,6 +7,7 @@ from PySide6.QtGui import QColor, QFont, QPen
 from PySide6.QtWidgets import QGraphicsLineItem, QGraphicsScene, QGraphicsTextItem
 
 from tilia.requests import Get, Post, get, post
+from tilia.ui import commands
 from tilia.ui.timelines.base.element import TimelineUIElement
 
 from ...coords import time_x_converter
@@ -146,7 +147,7 @@ class BeatUI(TimelineUIElement):
         if self.drag_manager:
             self.drag_manager.on_release()
             self.drag_manager = None
-        post(Post.PLAYER_SEEK, self.seek_time)
+        commands.execute("media.seek", self.seek_time)
 
     def right_click_triggers(self):
         return [self.body, self.label]
