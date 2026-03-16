@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 import tests.utils
+import tilia.constants
 import tilia.log
 from tests.constants import EXAMPLE_MEDIA_DURATION, EXAMPLE_MEDIA_PATH
 from tests.mock import (
@@ -844,6 +845,7 @@ class TestWindowTitle:
 
         commands.execute("file.open", path)
         self.assert_window_title(qtui, file_title)
+
 
     def test_is_filename_after_file_load_if_no_title(self, qtui, tmp_path):
         save_tilia_to_tmp_path(tmp_path, "test_window_title.tla")

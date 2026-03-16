@@ -42,6 +42,7 @@ from tilia.ui.timelines.collection.collection import TimelineUIs
 from tilia.ui.zoom_toolbar import ZoomToolbar
 from tilia.utils import get_tilia_class_string
 
+from ..file.media_metadata import MediaMetadata
 from ..media.player import QtAudioPlayer, QtVideoPlayer, YouTubePlayer
 from ..timelines.base.timeline import Timeline
 from .dialog_manager import DialogManager
@@ -419,6 +420,7 @@ class QtUI:
         if geometry and state:
             self.main_window.restoreGeometry(geometry)
             self.main_window.restoreState(state)
+        self._set_window_title_from_metadata_title()
 
         self._set_window_title_from_metadata_title()
 
