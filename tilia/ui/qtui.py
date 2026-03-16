@@ -42,6 +42,7 @@ from tilia.ui import commands
 from tilia.ui.timelines.collection.collection import TimelineUIs
 from tilia.utils import get_tilia_class_string
 
+from ..file.media_metadata import MediaMetadata
 from ..media.player import QtAudioPlayer, QtVideoPlayer, YouTubePlayer
 from ..timelines.base.timeline import Timeline
 from .dialog_manager import DialogManager
@@ -150,6 +151,8 @@ class TiliaMainWindow(QMainWindow):
 
 
 class QtUI:
+    DEFAULT_WINDOW_TITLE = f"untitled.tla - {tilia.constants.APP_NAME}"
+
     def __init__(self, q_application: QApplication, mw: TiliaMainWindow):
         self.app = None
         self.q_application = q_application
@@ -172,6 +175,14 @@ class QtUI:
     def timeline_width(self):
         return self.playback_area_width + 2 * self.playback_area_margin
 
+    @property
+    def window_title(self):
+        return self.main_window.windowTitle()
+
+    @window_title.setter
+    def window_title(self, value: str):
+        self.main_window.setWindowTitle(value)
+
     def _setup_sizes(self):
         self.playback_area_width = tilia.ui.timelines.constants.PLAYBACK_AREA_WIDTH
         self.playback_area_margin = tilia.ui.timelines.constants.PLAYBACK_AREA_MARGIN
@@ -179,6 +190,9 @@ class QtUI:
     def _setup_requests(self):
         LISTENS = {
             (Post.APP_FILE_LOADED, self.on_file_loaded),
+            (Post.APP_SETUP_FILE, self.on_file_setup),
+            (Post.FILE_SAVED, self.on_file_saved),
+            (Post.MEDIA_METADATA_TITLE_UPDATED, self.on_metadata_title_set_done),
             (Post.PLAYBACK_AREA_SET_WIDTH, self.on_timeline_set_width),
             (Post.WINDOW_OPEN, self.on_window_open),
             (Post.WINDOW_CLOSE, self.on_window_close),
@@ -248,6 +262,7 @@ class QtUI:
 
     def _setup_main_window(self, mw: TiliaMainWindow):
         self.main_window = mw
+        self._reset_window_title()
 
     @staticmethod
     def _setup_fonts():
@@ -324,11 +339,43 @@ class QtUI:
     def get_window_state(self):
         return self.main_window.saveState()
 
+    def _set_window_title(self, title: str) -> None:
+        self.window_title = f"{title} - {tilia.constants.APP_NAME}"
+
+    def _reset_window_title(self) -> None:
+        self.window_title = self.DEFAULT_WINDOW_TITLE
+
+    def _set_window_title_from_metadata_title(self) -> None:
+        title = get(Get.MEDIA_METADATA).get("title")
+        if not title or title == MediaMetadata.REQUIRED_FIELDS.get("title"):
+            # If there is no title, or title is the default, take title from file name
+            title = Path(get(Get.FILE_PATH)).stem
+
+        if not title:
+            self._reset_window_title()  # pragma: no cover
+        else:
+            self._set_window_title(str(title))
+
+    def on_metadata_title_set_done(self, title: str) -> None:
+        if title:
+            self._set_window_title(title)
+        elif path := get(Get.FILE_PATH):
+            self._set_window_title(Path(path).stem)
+        else:
+            self._reset_window_title()
+
+    def on_file_saved(self, path: Path | str) -> None:
+        self._set_window_title_from_metadata_title()
+
+    def on_file_setup(self) -> None:
+        self._reset_window_title()
+
     def on_file_loaded(self, file: TiliaFile) -> None:
         geometry, state = settings.get_geometry_and_state_from_path(file.file_path)
         if geometry and state:
             self.main_window.restoreGeometry(geometry)
             self.main_window.restoreState(state)
+        self._set_window_title_from_metadata_title()
 
     def on_status_message_set(self, text: str, fraction: float) -> None:
         # fraction == -1 means indeterminate; we just show the phrase.
