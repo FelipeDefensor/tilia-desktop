@@ -1,23 +1,37 @@
-from unittest.mock import Mock
+from unittest.mock import patch
+
+from PySide6.QtCore import Qt
 
 
-class TestAudioWaveUI:
-    def test_create(self, audiowave_tlui):
-        audiowave_tlui.create_amplitudebar(0, 1, 1)
+class TestWaveformElement:
+    def test_create_via_set_peaks(self, audiowave_tlui):
+        audiowave_tlui.set_peaks_for_test()
         assert len(audiowave_tlui) == 1
 
 
-class TestDoubleClick:
-    def test_amplitudebar_seek(self, audiowave_tlui, tilia_state):
-        audiowave_tlui.create_amplitudebar(10, 15, 1)
-        audiowave_tlui[0].on_double_left_click(None)
+class TestClickToSeek:
+    def test_click_seeks_to_clicked_time(self, audiowave_tlui, waveform_element):
+        with patch(
+            "tilia.ui.timelines.audiowave.timeline.commands.execute"
+        ) as mock:
+            audiowave_tlui.on_left_click(
+                waveform_element.body,
+                Qt.KeyboardModifier.NoModifier,
+                False,
+                100,
+                10,
+            )
+        assert mock.called
 
-        assert tilia_state.current_time == 10
-
-    def test_does_not_trigger_drag(self, audiowave_tlui):
-        audiowave_tlui.create_amplitudebar(0, 1, 1)
-        mock = Mock()
-        audiowave_tlui[0].setup_drag = mock
-        audiowave_tlui[0].on_double_left_click(None)
-
+    def test_click_outside_waveform_is_noop(self, audiowave_tlui, waveform_element):
+        with patch(
+            "tilia.ui.timelines.audiowave.timeline.commands.execute"
+        ) as mock:
+            audiowave_tlui.on_left_click(
+                None,
+                Qt.KeyboardModifier.NoModifier,
+                False,
+                100,
+                10,
+            )
         mock.assert_not_called()

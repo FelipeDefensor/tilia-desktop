@@ -185,14 +185,11 @@ class TestRoundTripPerTimelineKind:
         assert second["timelines"] == first["timelines"]
 
     def test_audiowave_round_trip(self, slider_tlui, audiowave_tlui, tmp_path):
-        # No add command for audiowave; create amplitudebars via the
-        # timeline API the fixture exposes.
-        for start, end, amplitude in [
-            (0.0, 1.0, 0.1),
-            (1.0, 2.0, 0.5),
-            (2.0, 3.0, 0.3),
-        ]:
-            audiowave_tlui.create_amplitudebar(start, end, amplitude)
+        # No add command for audiowave; the fixture seeds a single Waveform
+        # component holding the audio metadata that gets serialized.
+        audiowave_tlui.set_peaks_for_test(
+            samplerate=44100, total_frames=88200, frames_per_peak=512
+        )
 
         first, second = _save_open_save(tmp_path)
         assert second["timelines"] == first["timelines"]
