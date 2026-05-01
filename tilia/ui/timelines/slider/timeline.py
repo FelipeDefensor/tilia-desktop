@@ -132,7 +132,7 @@ class SliderTimelineUI(TimelineUI):
             if double:
                 commands.execute("media.seek", time)
             else:
-                commands.execute("media.seek", if_playing=False)
+                commands.execute("media.seek", time, if_playing=False)
         elif item_id == self.trough:
             self.setup_drag()
 
