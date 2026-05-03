@@ -156,9 +156,11 @@ class SliderTimelineUI(TimelineUI):
         post(Post.SLIDER_DRAG, x)
 
     def on_drag_end(self):
-        post(
-            Post.PLAYER_SEEK, time_x_converter.get_time_by_x(self.x)
-        )  # maybe not necessary
+        # `Post.PLAYER_SEEK` had no listeners, so the trough's release was
+        # never updating the actual playback position — only the visuals
+        # (set during the drag via SLIDER_DRAG). Route the seek through
+        # `media.seek` like the click handler does.
+        commands.execute("media.seek", time_x_converter.get_time_by_x(self.x))
         self.dragging = False
         post(Post.SLIDER_DRAG_END)
 
