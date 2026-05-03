@@ -40,7 +40,6 @@ class Post(Enum):
     PLAYER_CURRENT_LOOP_CHANGED = auto()
     PLAYER_CURRENT_TIME_CHANGED = auto()
     PLAYER_DURATION_AVAILABLE = auto()
-    PLAYER_EXPORT_AUDIO = auto()
     PLAYER_SEEK = auto()
     PLAYER_SEEK_IF_NOT_PLAYING = auto()
     PLAYER_STOPPED = auto()

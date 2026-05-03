@@ -63,10 +63,10 @@ class Player(ABC):
         commands.register("media.volume.change", self.on_volume_change)
         commands.register("media.volume.mute", self.on_volume_mute)
         commands.register("media.playback_rate.try", self.on_playback_rate_try)
+        commands.register("media.export_audio", self.on_export_audio)
 
     def _setup_requests(self):
         LISTENS = {
-            (Post.PLAYER_EXPORT_AUDIO, self.on_export_audio),
             (Post.PLAYER_CURRENT_LOOP_CHANGED, self.on_loop_changed),
         }
 
