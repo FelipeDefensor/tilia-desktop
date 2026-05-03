@@ -222,7 +222,7 @@ class PlayerToolbar(QToolBar):
 
     def add_volume_slider(self):
         def on_volume_slide(value: int) -> None:
-            post(Post.PLAYER_VOLUME_CHANGE, value)
+            commands.execute("media.volume.change", value)
 
         self.volume_slider = QSlider(Qt.Orientation.Horizontal)
         self.volume_slider.setMinimum(0)

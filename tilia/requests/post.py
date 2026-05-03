@@ -49,7 +49,6 @@ class Post(Enum):
     PLAYER_UI_UPDATE = auto()
     PLAYER_UPDATE_CONTROLS = auto()
     PLAYER_URL_CHANGED = auto()
-    PLAYER_VOLUME_CHANGE = auto()
     PLAYER_VOLUME_MUTE = auto()
     REQUEST_CLEAR_UI = auto()
     REQUEST_IMPORT_MEDIA_METADATA_FROM_PATH = auto()

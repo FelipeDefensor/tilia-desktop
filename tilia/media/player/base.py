@@ -60,10 +60,10 @@ class Player(ABC):
         )
         commands.register("media.toggle_play", self.toggle_play)
         commands.register("media.seek", self.on_seek)
+        commands.register("media.volume.change", self.on_volume_change)
 
     def _setup_requests(self):
         LISTENS = {
-            (Post.PLAYER_VOLUME_CHANGE, self.on_volume_change),
             (Post.PLAYER_VOLUME_MUTE, self.on_volume_mute),
             (Post.PLAYER_PLAYBACK_RATE_TRY, self.on_playback_rate_try),
             (Post.PLAYER_EXPORT_AUDIO, self.on_export_audio),
