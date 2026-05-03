@@ -243,7 +243,7 @@ class PlayerToolbar(QToolBar):
 
     def add_playback_rate_spinbox(self):
         def on_playback_rate_changed(rate: float) -> None:
-            post(Post.PLAYER_PLAYBACK_RATE_TRY, rate)
+            commands.execute("media.playback_rate.try", rate)
 
             if get(Get.MEDIA_TYPE) == "youtube":
                 self.playback_rate_spinbox_update_silent()
