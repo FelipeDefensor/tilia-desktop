@@ -205,7 +205,7 @@ class PlayerToolbar(QToolBar):
                     else QIcon.ThemeIcon.AudioVolumeHigh
                 )
             )
-            post(Post.PLAYER_VOLUME_MUTE, checked)
+            commands.execute("media.volume.mute", checked)
             self.volume_slider.setEnabled(not checked)
 
         self.volume_toggle_action = QAction(self)
