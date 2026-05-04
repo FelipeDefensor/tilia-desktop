@@ -145,7 +145,7 @@ class PlayerToolbar(QToolBar):
         self.play_toggle_action = QAction(self)
         self.play_toggle_action.setText("Play / Pause")
         self.play_toggle_action.triggered.connect(
-            lambda checked: post(Post.PLAYER_TOGGLE_PLAY_PAUSE, checked)
+            lambda checked: commands.execute("media.toggle_play", checked)
         )
         self.play_toggle_action.setCheckable(True)
         play_icon = QIcon()
@@ -205,7 +205,7 @@ class PlayerToolbar(QToolBar):
                     else QIcon.ThemeIcon.AudioVolumeHigh
                 )
             )
-            post(Post.PLAYER_VOLUME_MUTE, checked)
+            commands.execute("media.volume.mute", checked)
             self.volume_slider.setEnabled(not checked)
 
         self.volume_toggle_action = QAction(self)
@@ -222,7 +222,7 @@ class PlayerToolbar(QToolBar):
 
     def add_volume_slider(self):
         def on_volume_slide(value: int) -> None:
-            post(Post.PLAYER_VOLUME_CHANGE, value)
+            commands.execute("media.volume.change", value)
 
         self.volume_slider = QSlider(Qt.Orientation.Horizontal)
         self.volume_slider.setMinimum(0)
@@ -243,7 +243,7 @@ class PlayerToolbar(QToolBar):
 
     def add_playback_rate_spinbox(self):
         def on_playback_rate_changed(rate: float) -> None:
-            post(Post.PLAYER_PLAYBACK_RATE_TRY, rate)
+            commands.execute("media.playback_rate.try", rate)
 
             if get(Get.MEDIA_TYPE) == "youtube":
                 self.playback_rate_spinbox_update_silent()

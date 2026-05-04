@@ -7,6 +7,7 @@ from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsTextItem
 
 from tilia.requests import Get, Post, get, post
+from tilia.ui import commands
 from tilia.ui.coords import time_x_converter
 from tilia.ui.timelines.base.element import TimelineUIElement
 from tilia.ui.timelines.drag import DragManager
@@ -229,7 +230,7 @@ class HarmonyUI(TimelineUIElement):
         if self.drag_manager:
             self.drag_manager.on_release()
             self.drag_manager = None
-        post(Post.PLAYER_SEEK, self.seek_time)
+        commands.execute("media.seek", self.seek_time)
 
     def setup_drag(self):
         self.drag_manager = DragManager(

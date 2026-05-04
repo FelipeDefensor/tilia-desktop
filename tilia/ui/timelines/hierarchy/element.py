@@ -18,6 +18,7 @@ from tilia.requests import (
     stop_listening_to_all,
 )
 from tilia.settings import settings
+from tilia.ui import commands
 from tilia.ui.timelines.base.element import TimelineUIElement
 from tilia.ui.timelines.copy_paste import CopyAttributes
 
@@ -523,7 +524,7 @@ class HierarchyUI(TimelineUIElement):
         if self.drag_manager:
             self.drag_manager.on_release()
             self.drag_manager = None
-        post(Post.PLAYER_SEEK, self.seek_time)
+        commands.execute("media.seek", self.seek_time)
 
     def right_click_triggers(self):
         return [self.body, self.label, self.comments_icon]

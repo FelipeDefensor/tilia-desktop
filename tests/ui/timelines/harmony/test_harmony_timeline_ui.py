@@ -10,7 +10,7 @@ FLAT_SIGN = "`b"
 SHARP_SIGN = "`#"
 
 
-def add_harmony(**kwargs):
+def add_harmony(time: float | None = None, **kwargs):
     default_params = {
         "step": 0,
         "accidental": 0,
@@ -21,11 +21,15 @@ def add_harmony(**kwargs):
         "level": 1,
     }
     default_params.update(kwargs)
+
     with Serve(Get.FROM_USER_HARMONY_PARAMS, (True, default_params)):
-        tilia.ui.commands.execute("timeline.harmony.add_harmony")
+        if not time:
+            tilia.ui.commands.execute("timeline.harmony.add_harmony")
+        else:
+            tilia.ui.commands.execute("timeline.harmony.add_harmony", time)
 
 
-def add_mode(**kwargs):
+def add_mode(time: float | None = None, **kwargs):
     default_params = {
         "step": 0,
         "accidental": 0,
@@ -34,7 +38,10 @@ def add_mode(**kwargs):
     }
     default_params.update(kwargs)
     with Serve(Get.FROM_USER_MODE_PARAMS, (True, default_params)):
-        tilia.ui.commands.execute("timeline.harmony.add_mode")
+        if not time:
+            tilia.ui.commands.execute("timeline.harmony.add_mode")
+        else:
+            tilia.ui.commands.execute("timeline.harmony.add_mode", time)
 
 
 class TestRomanNumeralDisplay:
@@ -126,12 +133,10 @@ class TestRomanNumeralDisplay:
 
 
 class TestCopyPaste:
-    def test_paste_multiple_to_harmony_with_mode_as_first_copied(
-        self, tilia_state, harmony_tlui
-    ):
+    def test_paste_multiple_to_harmony_with_mode_as_first_copied(self, harmony_tlui):
         add_harmony()
         add_mode()
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         add_harmony()
 
         click_harmony_ui(harmony_tlui.modes()[0])

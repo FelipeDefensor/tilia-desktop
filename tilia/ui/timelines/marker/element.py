@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 
 from tilia.requests import Get, Post, get, post
 from tilia.settings import settings
+from tilia.ui import commands
 from tilia.ui.timelines.base.element import TimelineUIElement
 
 from ...color import get_tinted_color
@@ -120,7 +121,7 @@ class MarkerUI(TimelineUIElement):
         if self.drag_manager:
             self.drag_manager.on_release()
             self.drag_manager = None
-        post(Post.PLAYER_SEEK, self.seek_time)
+        commands.execute("media.seek", self.seek_time)
 
     def setup_drag(self):
         self.drag_manager = DragManager(

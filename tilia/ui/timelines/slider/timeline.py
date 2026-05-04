@@ -16,6 +16,7 @@ from tilia.settings import settings
 from tilia.timelines.base.component import TimelineComponent
 from tilia.timelines.component_kinds import ComponentKind
 from tilia.timelines.slider.timeline import SliderTimeline
+from tilia.ui import commands
 from tilia.ui.coords import time_x_converter
 from tilia.ui.smooth_scroll import setup_smooth, smooth
 from tilia.ui.timelines.base.element_manager import ElementManager
@@ -129,9 +130,9 @@ class SliderTimelineUI(TimelineUI):
         if item_id == self.line:
             time = time_x_converter.get_time_by_x(x)
             if double:
-                post(Post.PLAYER_SEEK, time)
+                commands.execute("media.seek", time)
             else:
-                post(Post.PLAYER_SEEK_IF_NOT_PLAYING, time)
+                commands.execute("media.seek", time, if_playing=False)
         elif item_id == self.trough:
             self.setup_drag()
 
@@ -155,9 +156,7 @@ class SliderTimelineUI(TimelineUI):
         post(Post.SLIDER_DRAG, x)
 
     def on_drag_end(self):
-        post(
-            Post.PLAYER_SEEK, time_x_converter.get_time_by_x(self.x)
-        )  # maybe not necessary
+        commands.execute("media.seek", time_x_converter.get_time_by_x(self.x))
         self.dragging = False
         post(Post.SLIDER_DRAG_END)
 

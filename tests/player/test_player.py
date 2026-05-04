@@ -4,6 +4,7 @@ import pytest
 
 from tests.constants import EXAMPLE_MEDIA_PATH
 from tilia.requests import Post, post
+from tilia.ui import commands
 
 
 @pytest.fixture
@@ -33,11 +34,11 @@ class TestPlayer:
 
     def test_unload_media_after_playing(self, tilia):
         self._load_example()
-        post(Post.PLAYER_TOGGLE_PLAY_PAUSE, False)
-        post(Post.PLAYER_TOGGLE_PLAY_PAUSE, True)
+        commands.execute("media.toggle_play", False)
+        commands.execute("media.toggle_play", True)
         post(Post.APP_CLEAR)
 
     def test_unload_media_while_playing(self, tilia):
         self._load_example()
-        post(Post.PLAYER_TOGGLE_PLAY_PAUSE, False)
+        commands.execute("media.toggle_play", False)
         post(Post.APP_CLEAR)

@@ -735,9 +735,9 @@ class SvgStaveNote(QGraphicsSvgItem):
     def mouseDoubleClickEvent(self, event) -> None:
         t0, t1 = self.get_time(self.seek_x)
         if not t1 or abs(t0[1]) < abs(t1[1]):
-            post(Post.PLAYER_SEEK, t0[0])
+            commands.execute("media.seek", t0[0])
         else:
-            post(Post.PLAYER_SEEK, t1[0])
+            commands.execute("media.seek", t1[0])
         return super().mouseDoubleClickEvent(event)
 
 

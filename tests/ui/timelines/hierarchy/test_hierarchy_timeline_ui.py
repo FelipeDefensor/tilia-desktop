@@ -121,7 +121,7 @@ class TestActions:
         assert tlui[0].get_data("pre_start") != tlui[0].get_data("start")
         assert tlui[0].pre_start_handle
 
-    def test_add_post_end(self, tlui, tilia_state):
+    def test_add_post_end(self, tlui):
         tlui.create_hierarchy(0, 1, 1)
         tlui.select_element(tlui[0])
 
@@ -131,10 +131,10 @@ class TestActions:
         assert tlui[0].get_data("post_end") != tlui[0].get_data("end")
         assert tlui[0].post_end_handle
 
-    def test_split(self, tlui, tilia_state):
+    def test_split(self, tlui):
         tlui.create_hierarchy(0, 1, 1)
         assert len(tlui) == 1
-        tilia_state.current_time = 0.5
+        commands.execute("media.seek", 0.5)
         commands.execute("timeline.hierarchy.split")
 
         assert len(tlui) == 2

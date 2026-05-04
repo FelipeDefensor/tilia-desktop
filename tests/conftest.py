@@ -86,7 +86,11 @@ class TiliaState:
     def reset(self):
         self.app.on_clear()
         self.duration = 100
-        self.current_time = 0
+
+        # reset current time
+        self.player.current_time = 0
+        post(Post.PLAYER_CURRENT_TIME_CHANGED, 0, MediaTimeChangeReason.PLAYBACK)
+
         self.media_path = ""
         self._reset_undo_manager()
         post(Post.REQUEST_CLEAR_UI)

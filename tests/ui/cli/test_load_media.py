@@ -11,6 +11,7 @@ from tests.constants import (
     EXAMPLE_MEDIA_SCALE_FACTOR,
 )
 from tilia.requests import Get, get
+from tilia.ui import commands
 from tilia.ui.cli.player import CLIYoutubePlayer
 
 
@@ -50,7 +51,8 @@ def test_load_with_spaces(cli, tilia_errors, resources, tmp_path):
 
 
 def test_with_timelines_scale_yes(cli, tilia_state, marker_tl):
-    tilia_state.current_time = tilia_state.duration / 2
+    commands.execute("media.seek", tilia_state.duration / 2)
+
     marker_tl.create_marker(tilia_state.current_time)
 
     cli.parse_and_run(f"load-media {EXAMPLE_MEDIA_PATH} --scale-timelines yes")

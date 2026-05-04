@@ -1,8 +1,9 @@
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 import pytest
 
 from tests.ui.timelines.harmony.interact import click_harmony_ui
+from tests.ui.timelines.harmony.test_harmony_timeline_ui import add_harmony, add_mode
 from tests.ui.timelines.interact import click_timeline_ui
 from tilia.ui import commands
 
@@ -24,17 +25,17 @@ class TestRightClick:
 
 
 class TestCopyPaste:
-    def test_paste_single_into_timeline(self, tlui, tilia_state):
+    def test_paste_single_into_timeline(self, tlui):
         _, hui = tlui.create_harmony(0)
         click_harmony_ui(tlui[0])
         commands.execute("timeline.component.copy")
         click_timeline_ui(tlui, 10)
-        tilia_state.current_time = 50
+        commands.execute("media.seek", 50)
         commands.execute("timeline.component.paste")
         assert len(tlui) == 2
         assert tlui[1].get_data("time") == 50
 
-    def test_paste_multiple_into_timeline(self, tlui, tilia_state):
+    def test_paste_multiple_into_timeline(self, tlui):
         _, hui1 = tlui.create_harmony(0)
         _, hui2 = tlui.create_harmony(10)
         _, hui3 = tlui.create_harmony(20)
@@ -43,7 +44,7 @@ class TestCopyPaste:
         click_harmony_ui(tlui[2], modifier="ctrl")
         commands.execute("timeline.component.copy")
         click_timeline_ui(tlui, 10)
-        tilia_state.current_time = 50
+        commands.execute("media.seek", 50)
         commands.execute("timeline.component.paste")
         assert len(tlui) == 6
         assert tlui[3].get_data("time") == 50
@@ -119,3 +120,33 @@ class TestCopyPaste:
         assert len(tlui) == 6
         for attr in attributes_to_copy.keys():
             assert target_hui.get_data(attr) == attributes_to_copy[attr]
+
+
+class TestDoubleClick:
+    def test_harmony_seeks(self, harmony_tlui, tilia_state):
+        add_harmony(10)
+        harmony_tlui[0].on_double_left_click(None)
+
+        assert tilia_state.current_time == 10
+
+    def test_harmony_does_not_trigger_drag(self, harmony_tlui):
+        add_harmony()
+        mock = Mock()
+        harmony_tlui[0].setup_drag = mock
+        harmony_tlui[0].on_double_left_click(None)
+
+        mock.assert_not_called()
+
+    def test_mode_seeks(self, harmony_tlui, tilia_state):
+        add_mode(10)
+        harmony_tlui[0].on_double_left_click(None)
+
+        assert tilia_state.current_time == 10
+
+    def test_mode_does_not_trigger_drag(self, harmony_tlui):
+        add_mode()
+        mock = Mock()
+        harmony_tlui[0].setup_drag = mock
+        harmony_tlui[0].on_double_left_click(None)
+
+        mock.assert_not_called()

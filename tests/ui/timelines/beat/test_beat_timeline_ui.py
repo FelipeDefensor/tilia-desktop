@@ -105,14 +105,14 @@ class TestCreateDeleteBeat:
         assert get_displayed_measure_number(beat_tlui[0]) == "1"
         assert get_displayed_measure_number(beat_tlui[1]) == "2"
 
-    def test_create_update_next_measures_numbers(self, beat_tlui, tilia_state):
+    def test_create_update_next_measures_numbers(self, beat_tlui):
         beat_tlui.timeline.beat_pattern = [1]
         beat_tlui.timeline.measures_to_force_display = [0, 1, 2, 3]
         beat_tlui.create_beat(0)
         beat_tlui.create_beat(1)
         beat_tlui.create_beat(2)
 
-        tilia_state.current_time = 0.5
+        commands.execute("media.seek", 0.5)
         commands.execute("timeline.beat.add")
 
         assert [get_displayed_measure_number(beat) for beat in beat_tlui] == [
@@ -561,8 +561,8 @@ class TestFillWithBeats:
 
 
 class TestUndoRedo:
-    def test_undo_redo_add_beat(self, beat_tlui, tluis, tilia_state):
-        tilia_state.current_time = 10
+    def test_undo_redo_add_beat(self, beat_tlui, tluis):
+        commands.execute("media.seek", 10)
         commands.execute("timeline.beat.add")
 
         commands.execute("edit.undo")

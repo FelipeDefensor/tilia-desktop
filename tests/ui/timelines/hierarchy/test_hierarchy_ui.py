@@ -2,7 +2,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from tests.mock import PatchPost
 from tilia.requests import Post, post
 from tilia.ui.coords import time_x_converter
 from tilia.ui.timelines.hierarchy import HierarchyUI
@@ -312,14 +311,11 @@ class TestCommentsIndicator:
 
 
 class TestDoubleClick:
-    def test_posts_seek(self, tlui):
+    def test_posts_seek(self, tlui, tilia_state):
         tlui.create_hierarchy(10, 15, 1)
-        with PatchPost(
-            "tilia.ui.timelines.hierarchy.element", Post.PLAYER_SEEK
-        ) as mock:
-            tlui[0].on_double_left_click(None)
+        tlui[0].on_double_left_click(None)
 
-        mock.assert_called_with(Post.PLAYER_SEEK, 10)
+        assert tilia_state.current_time == 10
 
     def test_does_not_trigger_drag(self, tlui):
         tlui.create_hierarchy(0, 1, 1)

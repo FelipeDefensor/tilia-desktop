@@ -4,6 +4,7 @@ from tilia.requests import Get, Post, get, listen, post
 from tilia.settings import settings
 from tilia.timelines.component_kinds import ComponentKind
 from tilia.timelines.hierarchy.timeline import HierarchyTimeline
+from tilia.ui import commands
 from tilia.ui.menus import HierarchyMenu
 from tilia.ui.timelines.base.timeline import (
     TimelineUI,
@@ -392,8 +393,8 @@ class HierarchyTimelineUI(TimelineUI):
     @with_elements
     def on_export_audio(self, elements: list[HierarchyUI]) -> bool:
         for elm in elements:
-            post(
-                Post.PLAYER_EXPORT_AUDIO,
+            commands.execute(
+                "media.export_audio",
                 segment_name=elm.full_name,
                 start_time=elm.get_data("start"),
                 end_time=elm.get_data("end"),
