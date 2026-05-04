@@ -15,7 +15,7 @@ from tilia.parsers.score.musicxml import notes_from_musicXML
 from tilia.requests import Get, get
 from tilia.timelines.component_kinds import ComponentKind
 from tilia.timelines.score.components import Clef
-from tilia.timelines.timeline_kinds import TimelineKind
+from tilia.timelines.score.timeline import ScoreTimeline
 from tilia.ui import commands
 
 
@@ -60,9 +60,7 @@ def test_create_key_signature(score_tlui, fifths):
 def _check_attrs(tmp_path, items_per_attr):
     @reloadable(tmp_path / "file.tla")
     def check_attrs() -> None:
-        score = get(
-            Get.TIMELINE_UI_BY_ATTR, "TIMELINE_KIND", TimelineKind.SCORE_TIMELINE
-        )
+        score = get(Get.TIMELINE_UI_BY_ATTR, "timeline_class", ScoreTimeline)
         for cmp_kind in (
             ComponentKind.CLEF,
             ComponentKind.KEY_SIGNATURE,
@@ -129,7 +127,7 @@ def test_missing_staff_deletes_timeline(qtui, tls, tilia_errors, tmp_path):
     file_data = get_blank_file_data()
     file_data["timelines"] = {
         0: {
-            "kind": "SCORE_TIMELINE",
+            "kind": "Score",
             "height": 1,
             "is_visible": True,
             "name": "",
@@ -174,14 +172,14 @@ def test_missing_staff_deletes_timeline(qtui, tls, tilia_errors, tmp_path):
         commands.execute("file.open")
 
     tilia_errors.assert_in_error_title(SCORE_STAFF_ID_ERROR.title)
-    assert tls.get_timeline_by_attr("KIND", TimelineKind.SCORE_TIMELINE) is None
+    assert tls.get_timeline_by_type(ScoreTimeline) is None
 
 
 def test_duplicate_staff_deletes_timeline(qtui, tls, tilia_errors, tmp_path):
     file_data = get_blank_file_data()
     file_data["timelines"] = {
         0: {
-            "kind": "SCORE_TIMELINE",
+            "kind": "Score",
             "height": 1,
             "is_visible": True,
             "name": "",
@@ -204,14 +202,14 @@ def test_duplicate_staff_deletes_timeline(qtui, tls, tilia_errors, tmp_path):
         commands.execute("file.open")
 
     tilia_errors.assert_in_error_title(SCORE_STAFF_ID_ERROR.title)
-    assert tls.get_timeline_by_attr("KIND", TimelineKind.SCORE_TIMELINE) is None
+    assert tls.get_timeline_by_type(ScoreTimeline) is None
 
 
 def test_symbol_staff_collision(qtui, tmp_path):
     file_data_with_symbols = get_blank_file_data()
     file_data_with_symbols["timelines"] = {
         0: {
-            "kind": "SCORE_TIMELINE",
+            "kind": "Score",
             "height": 1,
             "is_visible": True,
             "name": "",
@@ -244,7 +242,7 @@ def test_symbol_staff_collision(qtui, tmp_path):
     with patch_file_dialog(True, [tmp_file_with_symbols]):
         commands.execute("file.open")
 
-    score = get(Get.TIMELINE_UI_BY_ATTR, "TIMELINE_KIND", TimelineKind.SCORE_TIMELINE)
+    score = get(Get.TIMELINE_UI_BY_ATTR, "timeline_class", ScoreTimeline)
     clef = score.timeline.get_component_by_attr("KIND", ComponentKind.CLEF)
     staff = score.timeline.get_component_by_attr("KIND", ComponentKind.STAFF)
 
@@ -257,7 +255,7 @@ def test_symbol_staff_collision(qtui, tmp_path):
     file_data_sans_symbols = get_blank_file_data()
     file_data_sans_symbols["timelines"] = {
         0: {
-            "kind": "SCORE_TIMELINE",
+            "kind": "Score",
             "height": 1,
             "is_visible": True,
             "name": "",
@@ -283,7 +281,7 @@ def test_symbol_staff_collision(qtui, tmp_path):
     ):
         commands.execute("file.open")
 
-    score = get(Get.TIMELINE_UI_BY_ATTR, "TIMELINE_KIND", TimelineKind.SCORE_TIMELINE)
+    score = get(Get.TIMELINE_UI_BY_ATTR, "timeline_class", ScoreTimeline)
     staff = score.timeline.get_component_by_attr("KIND", ComponentKind.STAFF)
 
     staff_top_y_sans_symbols = (
