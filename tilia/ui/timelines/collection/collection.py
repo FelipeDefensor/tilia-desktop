@@ -180,7 +180,7 @@ class TimelineUIs:
         commands.register(
             "timeline.set_name",
             self.on_timeline_set_name,
-            "Set name",
+            "Set timeline name",
         )
 
         commands.register(
