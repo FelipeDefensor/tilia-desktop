@@ -1,0 +1,6 @@
+start,end,row,label,color,comments
+0,10,Good,first OK row,,baseline
+nonsense,20,Bad,bad start,,bad start gets error and is skipped
+20,nope,Bad,bad end,,bad end gets error and is skipped
+30,40,,Bad,,empty row name gets error and is skipped
+40,50,Good,second OK row,#abcdef,

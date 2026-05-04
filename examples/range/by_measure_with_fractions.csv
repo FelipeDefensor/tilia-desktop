@@ -1,0 +1,6 @@
+start,start_fraction,end,end_fraction,row,label,color
+1,0,4,1,Form,Intro,#cfe2ff
+5,0.5,8,0.5,Form,Verse,
+9,0,12,0,Form,Chorus,#ffe680
+13,0.25,16,0.75,Form,Bridge,
+17,0,20,1,Form,Outro,#d4edda

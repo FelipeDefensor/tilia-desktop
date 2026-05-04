@@ -257,7 +257,7 @@ class TimelineUIs:
 
     def on_timeline_command(
         self,
-        kind: type(Timeline) | list[type(Timeline)],
+        kind: type[Timeline] | list[type[Timeline]],
         callback: Callable | str,
         selector: TimelineSelector,
         *args,
@@ -344,7 +344,7 @@ class TimelineUIs:
             return True
         return False
 
-    def on_timeline_add(self, cls: type(Timeline), name: str | None = None):
+    def on_timeline_add(self, cls: type[Timeline], name: str | None = None):
         def _get_media_is_loaded():
             if get(Get.MEDIA_DURATION) == 0:
                 return False
@@ -498,7 +498,7 @@ class TimelineUIs:
         for request, callback in SERVES:
             serve(self, request, callback)
 
-    def create_timeline_ui(self, kind: type(Timeline), id: int) -> TimelineUI:
+    def create_timeline_ui(self, kind: type[Timeline], id: int) -> TimelineUI:
         timeline_class = self.get_timeline_ui_class(kind)
         w = get(Get.TIMELINE_WIDTH)
         h = get(Get.TIMELINE, id).get_data("height")
@@ -525,7 +525,7 @@ class TimelineUIs:
 
     def on_timeline_component_created(
         self,
-        _: type(Timeline),
+        _: type[Timeline],
         tl_id: int,
         component_kind: ComponentKind,
         component_id: int,
@@ -537,7 +537,7 @@ class TimelineUIs:
         )
 
     def on_timeline_component_deleted(
-        self, _: type(Timeline), tl_id: int, component_id: int
+        self, _: type[Timeline], tl_id: int, component_id: int
     ):
         if (tl_id, component_id) in self.loop_elements:
             if (tl_id, component_id) not in self.loop_delete_ignore:
@@ -588,6 +588,7 @@ class TimelineUIs:
 
     def _add_to_timeline_ui_select_order(self, tl_ui: TimelineUI) -> None:
         self._select_order.insert(0, tl_ui)
+        post(Post.TIMELINE_UI_SELECTED, tl_ui)
 
     def _remove_from_timeline_ui_select_order(self, tl_ui: TimelineUI) -> None:
         try:
@@ -601,6 +602,7 @@ class TimelineUIs:
     def _send_to_top_of_select_order(self, tl_ui: TimelineUI):
         self._select_order.remove(tl_ui)
         self._select_order.insert(0, tl_ui)
+        post(Post.TIMELINE_UI_SELECTED, tl_ui)
 
     def add_timeline_view_to_scene(self, view: TimelineView, ordinal: int) -> None:
         view.proxy = self.scene.addWidget(view)
@@ -663,7 +665,7 @@ class TimelineUIs:
             tlui.element_manager.update_time_on_elements()
 
     @staticmethod
-    def get_timeline_ui_class(kind: type(Timeline)) -> type[TimelineUI]:
+    def get_timeline_ui_class(kind: type[Timeline]) -> type[TimelineUI]:
         for cls in TimelineUI.subclasses():
             if cls.timeline_class is kind:
                 return cls
@@ -684,7 +686,7 @@ class TimelineUIs:
     def create_timeline_view(scene: TimelineScene):
         return TimelineView(scene)
 
-    def setup_toolbar(self, tl_type: type(Timeline)):
+    def setup_toolbar(self, tl_type: type[Timeline]):
         tl_class = self.get_timeline_ui_class(tl_type)
         if not tl_class.TOOLBAR_CLASS:
             return
@@ -1324,7 +1326,7 @@ class TimelineUIs:
             settings.set("general", "prioritise_performance", False)
 
     @command_callback
-    def on_import_to_timeline(self, tl_type: type(Timeline)):
+    def on_import_to_timeline(self, tl_type: type[Timeline]):
         # Refactor later: merge this with _on_import_to_timeline()
         prev_state = get(Get.APP_STATE)
         success, errors = _on_import_to_timeline(self, tl_type)
@@ -1427,7 +1429,7 @@ class TimelineUIs:
         if self.kind_to_timeline()[timeline_ui.timeline_class] == 0:
             self.kind_to_toolbar[timeline_ui.timeline_class].hide()
 
-    def _show_toolbar(self, kind: type(Timeline)):
+    def _show_toolbar(self, kind: type[Timeline]):
         self.kind_to_toolbar[kind].show()
 
     def get_selected_time(self):
@@ -1451,19 +1453,20 @@ class TimelineUIs:
     def get_timeline_uis_by_attr(self, attr: str, value: Any) -> list[TimelineUI]:
         return [tlui for tlui in self if getattr(tlui, attr) == value]
 
-    def get_timeline_uis_by_type(self, tl_type: type(Timeline)) -> list[TimelineUI]:
+    def get_timeline_uis_by_type(self, tl_type: type[Timeline]) -> list[TimelineUI]:
         return [tlui for tlui in self if tlui.timeline_class is tl_type]
 
-    def get_first_timeline_ui_in_select_order(self, kind: type(Timeline)):
+    def get_first_timeline_ui_in_select_order(self, kind: type[Timeline]):
         return next(
-            (tlui for tlui in self._select_order if tlui.get_data("KIND") == kind), None
+            (tlui for tlui in self._select_order if isinstance(tlui.timeline, kind)),
+            None,
         )
 
     def _get_choose_timeline_dialog(
         self,
         title: str,
         prompt: str,
-        kind: type(Timeline) | list[type(Timeline)] | None = None,
+        kind: type[Timeline] | list[type[Timeline]] | None = None,
     ) -> ChooseDialog:
         if kind and not isinstance(kind, list):
             kind = [kind]
@@ -1480,7 +1483,7 @@ class TimelineUIs:
         self,
         title: str,
         prompt: str,
-        kind: type(Timeline) | list[type(Timeline)] | None = None,
+        kind: type[Timeline] | list[type[Timeline]] | None = None,
     ) -> Timeline | None:
         """
         Opens a dialog where the user may choose an existing timeline.
@@ -1502,7 +1505,7 @@ class TimelineUIs:
     def on_component_event(
         self,
         event: Post,
-        _: type(Timeline),
+        _: type[Timeline],
         tl_id: int,
         component_id: int,
         *args,
@@ -1520,7 +1523,7 @@ class TimelineUIs:
 
         event_to_callback[event](tlui, *args, **kwargs)
 
-    def on_timeline_created(self, kind: type(Timeline), id: int):
+    def on_timeline_created(self, kind: type[Timeline], id: int):
         self.create_timeline_ui(kind, id)
 
     def on_timeline_deleted(self, id: int):

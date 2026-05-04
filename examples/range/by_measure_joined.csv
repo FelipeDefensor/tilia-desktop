@@ -1,0 +1,6 @@
+start,end,row,label,joined_with_next
+1,8,Form,Intro,true
+9,16,Form,Verse,true
+17,24,Form,Chorus,false
+1,16,Dynamics,piano,true
+17,24,Dynamics,forte,false

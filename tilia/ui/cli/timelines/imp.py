@@ -2,12 +2,14 @@ from pathlib import Path
 from typing import Literal, Tuple, cast
 
 from tilia.parsers.csv import beat, hierarchy, marker
+from tilia.parsers.csv import range as range_parser
 from tilia.parsers.score import musicxml
 from tilia.requests import Get, Post, get, post
 from tilia.timelines.base.timeline import Timeline
 from tilia.timelines.beat.timeline import BeatTimeline
 from tilia.timelines.hierarchy.timeline import HierarchyTimeline
 from tilia.timelines.marker.timeline import MarkerTimeline
+from tilia.timelines.range.timeline import RangeTimeline
 from tilia.timelines.score.timeline import ScoreTimeline
 
 
@@ -23,27 +25,36 @@ def setup_parser(subparsers):
     setup_import_marker_and_hierarchy_parser(import_subparsers)
     setup_import_score_parser(import_subparsers)
     setup_import_beat_parser(import_subparsers)
+    setup_import_range_parser(import_subparsers)
+
+
+def setup_import_range_parser(subparser):
+    parser = subparser.add_parser(
+        "range",
+        help="Import range timeline data",
+    )
+    subparsers = parser.add_subparsers(dest="measure_or_time")
+    setup_import_by_time(subparsers)
+    setup_import_by_measure(subparsers)
 
 
 def setup_import_beat_parser(subparser):
     parser = subparser.add_parser(
         "beat",
         help="Import beat timelines",
-        aliases=["b"],
     )
     setup_import_file_and_target_args(parser)
 
 
 def setup_import_marker_and_hierarchy_parser(subparser):
     component_info = [
-        ("marker", "markers", ["mrk"]),
-        ("hierarchy", "hierarchies", ["hrc"]),
+        ("marker", "markers"),
+        ("hierarchy", "hierarchies"),
     ]
-    for kind, plural, aliases in component_info:
+    for kind, plural in component_info:
         parser = subparser.add_parser(
             kind,
             help=f"Import {plural} data",
-            aliases=aliases,
         )
         subparsers = parser.add_subparsers(dest="measure_or_time")
         setup_import_by_time(subparsers)
@@ -51,9 +62,7 @@ def setup_import_marker_and_hierarchy_parser(subparser):
 
 
 def setup_import_score_parser(subparser):
-    parser = subparser.add_parser(
-        "score", help="Import score (.mxl, .musicxml) data", aliases=["sco"]
-    )
+    parser = subparser.add_parser("score", help="Import score (.mxl, .musicxml) data")
     named_args = setup_import_file_and_target_args(parser)
 
     ref_group = named_args.add_mutually_exclusive_group(required=True)
@@ -70,7 +79,6 @@ def setup_import_by_time(subparser):
     import_time_parser = subparser.add_parser(
         "by-time",
         help="Import components by time",
-        aliases=["t"],
     )
     setup_import_file_and_target_args(import_time_parser)
 
@@ -79,7 +87,6 @@ def setup_import_by_measure(subparser):
     parser = subparser.add_parser(
         "by-measure",
         help="Import components by measure and fraction",
-        aliases=["m"],
     )
     named_args = setup_import_file_and_target_args(parser)
 
@@ -114,7 +121,7 @@ def setup_import_file_and_target_args(subparser):
 def validate_timelines_for_import(
     tl: Timeline,
     ref_tl: Timeline | None,
-    kind_str: Literal["beat", "hierarchy", "marker", "score"],
+    kind_str: Literal["beat", "hierarchy", "marker", "range", "score"],
     by: Literal["by-measure", "by-time"] | None,
 ) -> Tuple[bool, str]:
     success = True
@@ -179,6 +186,10 @@ def import_timeline(namespace):
     prev_state = get(Get.APP_STATE)
 
     tl.clear()
+    if isinstance(tl, RangeTimeline):
+        # Mirror the GUI flow: rows are part of range-timeline state, so
+        # drop them too and let the import re-create them by name.
+        tl.clear_rows()
 
     errors = None
     if tl_type == "marker":
@@ -196,12 +207,21 @@ def import_timeline(namespace):
     elif tl_type == "beat":
         tl = cast(BeatTimeline, tl)
         success, errors = beat.beats_from_csv(tl, file)
-
+    elif tl_type == "range":
+        tl = cast(RangeTimeline, tl)
+        if measure_or_time == "by-measure":
+            success, errors = range_parser.import_by_measure(tl, ref_tl, file)
+        else:
+            success, errors = range_parser.import_by_time(tl, file)
     elif tl_type == "score":
         tl = cast(ScoreTimeline, tl)
         success, errors = musicxml.notes_from_musicXML(tl, ref_tl, str(file.resolve()))
     else:
         raise ValueError(f"Unknown timeline kind: {tl_type}")
+
+    if isinstance(tl, RangeTimeline) and not tl.rows:
+        # Restore the >=1-row invariant if the import yielded nothing.
+        tl.setup_blank_timeline()
 
     if errors:
         post(Post.DISPLAY_ERROR, "Import error", f"Errors: {errors}")

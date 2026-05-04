@@ -131,6 +131,27 @@ class TestActions:
         assert tlui[0].get_data("post_end") != tlui[0].get_data("end")
         assert tlui[0].post_end_handle
 
+    def test_whisker_hover_changes_cursor(self, tlui):
+        # Regression: hovering the whisker grab tab didn't change the cursor
+        # because the VLine sits inside a QGraphicsItemGroup whose default
+        # routing prevented hover events from reaching the child.
+        from PySide6.QtCore import QEvent, QPointF, Qt
+        from PySide6.QtGui import QGuiApplication
+        from PySide6.QtWidgets import QGraphicsSceneHoverEvent
+
+        tlui.create_hierarchy(0.1, 1, 1)
+        tlui.select_element(tlui[0])
+        with Serve(Get.FROM_USER_FLOAT, (True, 0.05)):
+            commands.execute("timeline.hierarchy.add_pre_start")
+        vline = tlui[0].pre_start_handle.vertical_line
+
+        QGuiApplication.restoreOverrideCursor()
+        event = QGraphicsSceneHoverEvent(QEvent.Type.GraphicsSceneHoverEnter)
+        event.setPos(QPointF(0, 0))
+        tlui.scene.sendEvent(vline, event)
+        cur = QGuiApplication.overrideCursor()
+        assert cur is not None and cur.shape() == Qt.CursorShape.SizeHorCursor
+
     def test_split(self, tlui):
         tlui.create_hierarchy(0, 1, 1)
         assert len(tlui) == 1

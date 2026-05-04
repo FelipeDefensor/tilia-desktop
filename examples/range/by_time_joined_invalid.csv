@@ -1,0 +1,6 @@
+start,end,row,label,joined_with_next
+0,10,A,gap follows next,true
+20,30,A,starts after a gap; previous join is invalid,false
+0,10,B,overlap follows next,true
+5,15,B,starts before the previous range's end; previous join is invalid,false
+0,10,C,no next neighbor on row C,true
