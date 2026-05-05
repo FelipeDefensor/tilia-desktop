@@ -96,10 +96,17 @@ class TestImportTimeline:
             f"--file {str(csv_path.resolve())}"
         )
 
+        rows_by_name = {r.name: r.id for r in range_tl.rows}
         ranges = sorted(range_tl, key=lambda r: r.start)
         assert ranges[0].get_data("label") == "first"
+        assert ranges[0].get_data("start") == 0
+        assert ranges[0].get_data("end") == 1
+        assert ranges[0].get_data("row_id") == rows_by_name["A"]
         assert ranges[1].get_data("label") == "second"
-        assert {r.name for r in range_tl.rows} == {"A", "B"}
+        assert ranges[1].get_data("start") == 1
+        assert ranges[1].get_data("end") == 2
+        assert ranges[1].get_data("row_id") == rows_by_name["B"]
+        assert set(rows_by_name) == {"A", "B"}
 
     def test_ranges_by_measure(self, cli, range_tl, beat_tl, tmp_path):
         beat_tl.beat_pattern = [1]
@@ -115,9 +122,16 @@ class TestImportTimeline:
             f"--reference-tl-ordinal 2 --file {str(csv_path.resolve())}"
         )
 
+        rows_by_name = {r.name: r.id for r in range_tl.rows}
         ranges = sorted(range_tl, key=lambda r: r.start)
         assert ranges[0].get_data("label") == "first"
+        assert ranges[0].get_data("start") == 1
+        assert ranges[0].get_data("end") == 2
+        assert ranges[0].get_data("row_id") == rows_by_name["A"]
         assert ranges[1].get_data("label") == "second"
+        assert ranges[1].get_data("start") == 3
+        assert ranges[1].get_data("end") == 4
+        assert ranges[1].get_data("row_id") == rows_by_name["B"]
 
     def test_ranges_replace_drops_pre_existing_rows(self, cli, range_tl, tmp_path):
         # Pre-existing row + component should be wiped on import — the
