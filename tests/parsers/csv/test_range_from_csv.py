@@ -146,13 +146,13 @@ class TestImportByMeasure:
     def test_with_fractions(self, range_tlui, populated_beat_tl):
         data = "start,end,start_fraction,end_fraction,row\n1,2,0.5,0.5,A"
         _trigger_import_through_command("measure", data)
-        assert len(range_tlui.timeline) == 1
+        range_tl = range_tlui.timeline
+        assert len(range_tl) == 1
         # Beats at 1,2 → measure 1 starts at 1, measure 2 starts at 2;
         # fraction 0.5 within measure 1 (length 1) gives 1.5; within
         # measure 2 (length 1, end-side) gives 2.5.
-        ranges = list(range_tlui.timeline)
-        assert ranges[0].start == 1.5
-        assert ranges[0].end == 2.5
+        assert range_tl[0].start == 1.5
+        assert range_tl[0].end == 2.5
 
     def test_missing_required_column_fails(self, range_tlui, populated_beat_tl):
         data = "start,end,label\n1,2,A"
