@@ -1,5 +1,7 @@
 import pytest
-from PySide6.QtGui import QColor
+from PySide6.QtCore import QEvent, QPointF, Qt
+from PySide6.QtGui import QColor, QGuiApplication
+from PySide6.QtWidgets import QGraphicsSceneHoverEvent
 
 from tests.mock import Serve, patch_yes_or_no_dialog
 from tilia.requests import Get, Post, post
@@ -135,10 +137,6 @@ class TestActions:
         # Regression: hovering the whisker grab tab didn't change the cursor
         # because the VLine sits inside a QGraphicsItemGroup whose default
         # routing prevented hover events from reaching the child.
-        from PySide6.QtCore import QEvent, QPointF, Qt
-        from PySide6.QtGui import QGuiApplication
-        from PySide6.QtWidgets import QGraphicsSceneHoverEvent
-
         tlui.create_hierarchy(0.1, 1, 1)
         tlui.select_element(tlui[0])
         with Serve(Get.FROM_USER_FLOAT, (True, 0.05)):
