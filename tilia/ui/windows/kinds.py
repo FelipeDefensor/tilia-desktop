@@ -7,3 +7,4 @@ class WindowKind(Enum):
     MANAGE_TIMELINES = "manage timelines"
     INSPECT = "inspect"
     SETTINGS = "settings"
+    PHD_TOOLS = "phd_tools"

@@ -110,6 +110,7 @@ class FileMenu(TiliaMenu):
         (MenuItemKind.SEPARATOR, None),
         (MenuItemKind.SUBMENU, LoadMediaMenu),
         (MenuItemKind.COMMAND, "window.open.metadata"),
+        (MenuItemKind.COMMAND, "window.open.phd_tools"),
         (MenuItemKind.SEPARATOR, None),
         (MenuItemKind.COMMAND, "folder.open.autosaves"),
     ]
