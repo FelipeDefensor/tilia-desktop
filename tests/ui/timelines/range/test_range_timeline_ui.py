@@ -1,12 +1,14 @@
 from unittest.mock import patch
 
 import pytest
+from PySide6.QtCore import Qt
 
 from tests.mock import Serve
 from tests.ui.timelines.interact import (
     click_timeline_ui,
     click_timeline_ui_view,
     drag_mouse_in_timeline_view,
+    press_key,
 )
 from tests.ui.timelines.range.interact import (
     click_end_handle,
@@ -148,6 +150,13 @@ class TestCreateDeleteComponent:
             start=10,
             end=10 + settings.get("range_timeline", "default_range_size"),
         )
+
+    def test_create_with_shortcut(self, range_tlui):
+        click_timeline_ui(range_tlui, 0)
+        commands.execute("media.seek", 10)
+        press_key("r")
+        assert len(range_tlui) == 1
+        assert_range(range_tlui, 0, start=10)
 
     def test_create_at_selected_time_caps_at_media_duration(
         self, range_tlui, use_test_settings, tilia_state
@@ -381,6 +390,15 @@ class TestJoinRanges:
         with undoable():
             commands.execute("timeline.range.join_ranges")
             assert r1.get_data("end") == 25  # gap filled
+
+    def test_join_with_shortcut(self, range_tlui):
+        commands.execute("timeline.range.add_range", start=10, end=20)
+        commands.execute("timeline.range.add_range", start=25, end=35)
+        r1, r2 = range_tlui[0], range_tlui[1]
+        click_range_ui(r1)
+        click_range_ui(r2, modifier="ctrl")
+        press_key("j")
+        assert r1.get_data("joined_right") == r2.id
 
     def test_join_three_ranges(self, range_tlui):
         commands.execute("timeline.range.add_range", start=0, end=10)
@@ -2797,7 +2815,7 @@ class TestPreStartPostEnd:
         # Regression: hovering the whisker grab tab didn't change the cursor
         # because the VLine sits inside a QGraphicsItemGroup whose default
         # routing prevented hover events from reaching the child.
-        from PySide6.QtCore import QEvent, QPointF, Qt
+        from PySide6.QtCore import QEvent, QPointF
         from PySide6.QtGui import QGuiApplication
         from PySide6.QtWidgets import QGraphicsSceneHoverEvent
 
@@ -2820,7 +2838,7 @@ class TestPreStartPostEnd:
         # back to start, hiding the whisker. Qt sends no hoverLeaveEvent
         # when an item disappears under the cursor, so the override cursor
         # used to stay applied even when hovering empty timeline space.
-        from PySide6.QtCore import QEvent, QPointF, Qt
+        from PySide6.QtCore import QEvent, QPointF
         from PySide6.QtGui import QGuiApplication
         from PySide6.QtWidgets import QGraphicsSceneHoverEvent
 
@@ -2885,6 +2903,17 @@ class TestMergeRanges:
         for e in (a, b):
             range_tlui.select_element(e)
         commands.execute("timeline.range.merge_ranges")
+        assert len(range_tlui) == 1
+        survivor = list(range_tlui)[0]
+        assert survivor.get_data("start") == 0
+        assert survivor.get_data("end") == 30
+
+    def test_merge_with_shortcut(self, range_tlui):
+        a = self._add(range_tlui, 0, 10)
+        b = self._add(range_tlui, 20, 30)
+        click_range_ui(a)
+        click_range_ui(b, modifier="ctrl")
+        press_key("e")
         assert len(range_tlui) == 1
         survivor = list(range_tlui)[0]
         assert survivor.get_data("start") == 0
@@ -3454,6 +3483,17 @@ class TestSplitRange:
         assert right.get_data("start") == 20
         assert right.get_data("end") == 30
         assert left.get_data("joined_right") == right.id
+
+    def test_split_with_shortcut(self, range_tlui, tilia_state):
+        tilia_state.duration = 100
+        commands.execute("timeline.range.add_range", start=10, end=30)
+        click_range_ui(range_tlui[0])
+        self._seek(20)
+        press_key("s")
+        ranges = sorted(range_tlui)
+        assert len(ranges) == 2
+        assert ranges[0].get_data("end") == 20
+        assert ranges[1].get_data("start") == 20
 
     def test_split_inherits_attributes(self, range_tlui, tilia_state):
         tilia_state.duration = 100
