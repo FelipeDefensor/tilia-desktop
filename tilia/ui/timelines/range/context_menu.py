@@ -75,7 +75,7 @@ class RangeTimelineContextMenu(TimelineUIContextMenu):
             # row was found by y-coordinate but isn't in timeline.rows — stale
             # UI reference. Skip the move actions so we never execute against a
             # detached row, and surface the divergence in the log.
-            logger.warning(
+            logger.error(
                 "RangeTimelineContextMenu: row %r not found in timeline.rows; "
                 "move/remove actions skipped.",
                 self.row,
