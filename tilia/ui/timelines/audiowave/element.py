@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from PySide6.QtCore import QLineF, QPointF, QRectF, Qt, QTimer
@@ -15,31 +16,34 @@ from tilia.ui.timelines.base.element import TimelineUIElement
 from ...coords import time_x_converter
 from ..cursors import CursorMixIn
 
+if TYPE_CHECKING:
+    from tilia.timelines.audiowave.components import Waveform
+
 
 class WaveformElement(TimelineUIElement):
     UPDATE_TRIGGERS = []
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.body = WaveformItem(self)
         self.scene.addItem(self.body)
         listen(self, Post.AUDIOWAVE_PEAKS_READY, self._on_peaks_ready)
 
     @property
-    def waveform_component(self):
+    def waveform_component(self) -> "Waveform":
         return self.tl_component
 
     @property
     def height(self) -> int:
         return self.timeline_ui.get_data("height")
 
-    def child_items(self):
+    def child_items(self) -> list[QGraphicsItem]:
         return [self.body]
 
-    def left_click_triggers(self):
+    def left_click_triggers(self) -> list[QGraphicsItem]:
         return [self.body]
 
-    def update_position(self):
+    def update_position(self) -> None:
         # Scene width / zoom changed — invalidate bounding rect and repaint.
         self.body.prepareGeometryChange()
         self.body.update()
@@ -59,7 +63,7 @@ class WaveformElement(TimelineUIElement):
     def on_deselect(self) -> None:
         pass
 
-    def delete(self):
+    def delete(self) -> None:
         stop_listening(self, Post.AUDIOWAVE_PEAKS_READY)
         self.body.cleanup()
         super().delete()
@@ -72,11 +76,11 @@ class WaveformItem(CursorMixIn, QGraphicsItem):
     LOADING_SPINNER_MIN_DIAMETER = 18.0
     LOADING_SPINNER_MAX_DIAMETER = 36.0
 
-    def __init__(self, element: WaveformElement):
+    def __init__(self, element: WaveformElement) -> None:
         super().__init__(cursor_shape=Qt.CursorShape.PointingHandCursor)
         self.element = element
         self.setAcceptedMouseButtons(Qt.MouseButton.LeftButton)
-        self._spinner_angle = 0.0
+        self._spinner_angle: float = 0.0
         self._spinner_timer = QTimer()
         self._spinner_timer.setInterval(self.LOADING_SPINNER_INTERVAL_MS)
         self._spinner_timer.timeout.connect(self._tick_spinner)
@@ -154,7 +158,7 @@ class WaveformItem(CursorMixIn, QGraphicsItem):
     # Painting
     # ------------------------------------------------------------------
 
-    def paint(self, painter, option, widget=None):
+    def paint(self, painter: QPainter, option: Any, widget: Any = None) -> None:
         try:
             self._paint(painter)
         except Exception:
@@ -164,7 +168,7 @@ class WaveformItem(CursorMixIn, QGraphicsItem):
             # traceback so the bug isn't silently swallowed.
             logger.exception("audiowave paint() failed")
 
-    def _paint(self, painter):
+    def _paint(self, painter: QPainter) -> None:
         wf = self.element.waveform_component
         height = self.element.height
         bounding = self.boundingRect()

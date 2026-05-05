@@ -8,8 +8,8 @@ from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal
 
 
 class CancelToken:
-    def __init__(self):
-        self.cancelled = False
+    def __init__(self) -> None:
+        self.cancelled: bool = False
 
 
 # Total bytes of float32 across base + all derived LOD levels per (min, max).
@@ -124,7 +124,7 @@ class _PeaksRunnable(QRunnable):
         frames_per_peak: int,
         signals: _PeaksWorkerSignals,
         cancel: CancelToken,
-    ):
+    ) -> None:
         super().__init__()
         self.path = path
         self.frames_per_peak = frames_per_peak

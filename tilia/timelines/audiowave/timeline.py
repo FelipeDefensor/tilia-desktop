@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 import soundfile
 
@@ -21,9 +23,12 @@ from tilia.timelines.base.timeline import (
 )
 from tilia.timelines.component_kinds import ComponentKind
 
+if TYPE_CHECKING:
+    from tilia.timelines.audiowave.components import Waveform
+
 
 class AudioWaveTLComponentManager(TimelineComponentManager):
-    def __init__(self, timeline: AudioWaveTimeline):
+    def __init__(self, timeline: AudioWaveTimeline) -> None:
         super().__init__(timeline, [ComponentKind.AUDIOWAVE])
 
 
@@ -36,15 +41,15 @@ class AudioWaveTimeline(Timeline):
         TimelineFlag.COMPONENTS_NOT_DELETABLE,
     ]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._pending_cancel: CancelToken | None = None
         # `_pending_signals` keeps the QObject alive so its signal->slot
         # connection survives until the worker emits.
-        self._pending_signals = None
+        self._pending_signals: Any = None
 
     @property
-    def default_height(self):
+    def default_height(self) -> int:
         return settings.get("audiowave_timeline", "default_height")
 
     @property
@@ -52,11 +57,11 @@ class AudioWaveTimeline(Timeline):
         return int(settings.get("audiowave_timeline", "frames_per_peak"))
 
     @property
-    def waveform_component(self):
+    def waveform_component(self) -> "Waveform | None":
         components = self.components
         return components[0] if components else None
 
-    def refresh(self):
+    def refresh(self) -> None:
         self._cancel_pending_computation()
         self.clear()
 
@@ -98,7 +103,7 @@ class AudioWaveTimeline(Timeline):
             return
         self._launch_peak_computation(path, component)
 
-    def _launch_peak_computation(self, path: str, component) -> None:
+    def _launch_peak_computation(self, path: str, component: "Waveform") -> None:
         cancel, signals = compute_peaks_async(
             path,
             component.frames_per_peak,
@@ -112,7 +117,7 @@ class AudioWaveTimeline(Timeline):
 
     def _on_peaks_ready(
         self,
-        component,
+        component: "Waveform",
         peaks_min: np.ndarray,
         peaks_max: np.ndarray,
         samplerate: int,
@@ -138,7 +143,7 @@ class AudioWaveTimeline(Timeline):
         self._pending_cancel = None
         self._pending_signals = None
 
-    def deserialize_components(self, components):
+    def deserialize_components(self, components: dict[int, dict[str, Any]]) -> None:
         is_legacy = any(
             isinstance(c, dict) and "amplitude" in c
             for c in components.values()
@@ -152,7 +157,7 @@ class AudioWaveTimeline(Timeline):
         if component is not None and path:
             self._launch_peak_computation(path, component)
 
-    def _update_visibility(self, is_visible: bool):
+    def _update_visibility(self, is_visible: bool) -> None:
         if self.get_data("is_visible") != is_visible:
             self.set_data("is_visible", is_visible)
             post(Post.TIMELINE_SET_DATA_DONE, self.id, "is_visible", is_visible)
