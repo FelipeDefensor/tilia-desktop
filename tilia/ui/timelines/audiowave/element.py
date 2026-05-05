@@ -7,6 +7,7 @@ from PySide6.QtCore import QLineF, QPointF, QRectF, Qt, QTimer
 from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import QGraphicsItem
 
+from tilia.log import logger
 from tilia.requests import Post, listen, stop_listening
 from tilia.settings import settings
 from tilia.ui.timelines.base.element import TimelineUIElement
@@ -138,14 +139,16 @@ class WaveformItem(CursorMixIn, QGraphicsItem):
             outer_view = self.element.timeline_ui.collection.view
             viewport = outer_view.current_viewport_x
             proxy = self.element.timeline_ui.view.proxy
-            offset = proxy.x() if proxy is not None else 0.0
-            left = max(bounding.left(), viewport[0] - offset)
-            right = min(bounding.right(), viewport[1] - offset)
-            if right - left < 1:
-                return bounding.left(), bounding.right()
-            return left, right
-        except Exception:
+        except AttributeError:
+            # Collection/view not wired yet (during init). Fall back to
+            # painting the full bounding rect.
             return bounding.left(), bounding.right()
+        offset = proxy.x() if proxy is not None else 0.0
+        left = max(bounding.left(), viewport[0] - offset)
+        right = min(bounding.right(), viewport[1] - offset)
+        if right - left < 1:
+            return bounding.left(), bounding.right()
+        return left, right
 
     # ------------------------------------------------------------------
     # Painting
@@ -154,12 +157,12 @@ class WaveformItem(CursorMixIn, QGraphicsItem):
     def paint(self, painter, option, widget=None):
         try:
             self._paint(painter)
-        except Exception as exc:
-            # Never let an exception escape paint() — Qt leaves QPainter
-            # in a half-active state if we do, which cascades into stray
-            # warnings, mismatched begin/end pairs, and segfaults on the
-            # next repaint.  Log via stdout (visible in dev) and bail.
-            print(f"[audiowave] paint failed: {exc!r}")
+        except Exception:
+            # Letting an exception escape paint() leaves QPainter in a
+            # half-active state — Qt then issues mismatched begin/end
+            # warnings and may segfault on the next repaint. Log with full
+            # traceback so the bug isn't silently swallowed.
+            logger.exception("audiowave paint() failed")
 
     def _paint(self, painter):
         wf = self.element.waveform_component
