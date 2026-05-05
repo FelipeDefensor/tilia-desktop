@@ -110,3 +110,75 @@ class TestLegacyTlaFormat:
             audiowave_tl.refresh = original_refresh
 
         assert called["count"] == 1
+
+
+class TestLodPyramidInvariant:
+    """Each pyramid level must be a faithful min-of-mins / max-of-maxes
+    aggregation of the level below."""
+
+    def test_random_signal_satisfies_invariant(self):
+        rng = np.random.default_rng(seed=42)
+        n = 1024
+        mins = rng.uniform(-1.0, 0.0, size=n).astype(np.float32)
+        maxs = rng.uniform(0.0, 1.0, size=n).astype(np.float32)
+
+        lod_min, lod_max = build_lod_pyramid(mins, maxs)
+
+        for k in range(len(lod_min) - 1):
+            child_min = lod_min[k]
+            child_max = lod_max[k]
+            parent_min = lod_min[k + 1]
+            parent_max = lod_max[k + 1]
+            n_pairs = len(parent_min)
+            for i in range(n_pairs):
+                expected_min = min(child_min[2 * i], child_min[2 * i + 1])
+                expected_max = max(child_max[2 * i], child_max[2 * i + 1])
+                assert parent_min[i] == pytest.approx(expected_min)
+                assert parent_max[i] == pytest.approx(expected_max)
+
+
+class TestComputePeaksEdges:
+    def test_total_frames_not_divisible_by_frames_per_peak(self, tmp_path):
+        # 2050 frames at fpp=1024 → 2 buckets, last 2 frames discarded.
+        path = os.fspath(tmp_path / "odd.wav")
+        samples = np.full(2050, 0.5, dtype=np.float32)
+        _write_test_wav(path, samples, samplerate=44100)
+        mins, maxs, _, total = compute_peaks_sync(path, frames_per_peak=1024)
+        assert total == 2050
+        assert mins.shape == (2,)
+        assert maxs.shape == (2,)
+
+    def test_silent_signal_produces_zero_peaks(self, tmp_path):
+        path = os.fspath(tmp_path / "silent.wav")
+        _write_test_wav(path, np.zeros(2048, dtype=np.float32))
+        mins, maxs, _, _ = compute_peaks_sync(path, frames_per_peak=1024)
+        # Normalization of all-zeros doesn't blow up; values stay at 0.
+        np.testing.assert_array_equal(mins, np.zeros(2, dtype=np.float32))
+        np.testing.assert_array_equal(maxs, np.zeros(2, dtype=np.float32))
+
+    def test_sine_envelope_reaches_unit_amplitude(self, tmp_path):
+        # 1 kHz sine at 44.1 kHz, 0.5 seconds.  After normalization the
+        # level-0 envelope should hit ±1.0 in every bucket.
+        path = os.fspath(tmp_path / "sine.wav")
+        sr = 44100
+        n = sr // 2
+        t = np.arange(n) / sr
+        samples = np.sin(2 * np.pi * 1000 * t).astype(np.float32)
+        _write_test_wav(path, samples, samplerate=sr)
+        mins, maxs, _, _ = compute_peaks_sync(path, frames_per_peak=512)
+        # Each bucket holds ≥11 cycles, so it must contain a near-peak in both directions.
+        assert np.all(maxs > 0.95)
+        assert np.all(mins < -0.95)
+
+
+class TestCancellation:
+    def test_cancel_during_compute_returns_partial(self, tmp_path):
+        path = os.fspath(tmp_path / "long.wav")
+        # 16k frames / 1024 fpp = 16 buckets — enough to cancel midway.
+        _write_test_wav(path, np.zeros(16384, dtype=np.float32))
+        token = compute_peaks_sync.__globals__["CancelToken"]()
+        token.cancelled = True
+        mins, maxs, _, _ = compute_peaks_sync(path, frames_per_peak=1024, cancel=token)
+        # When cancelled before the loop, the buckets stay at zero.
+        np.testing.assert_array_equal(mins, np.zeros_like(mins))
+        np.testing.assert_array_equal(maxs, np.zeros_like(maxs))
