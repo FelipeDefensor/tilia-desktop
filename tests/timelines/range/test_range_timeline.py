@@ -53,7 +53,7 @@ class TestRangeTimelineComponentManager:
         range_tl.component_manager.deserialize_components(serialized_components)
 
         assert len(range_tl) == 2
-        restored = sorted(range_tl, key=lambda c: c.start)
+        restored = sorted(range_tl)
         assert restored[0].start == r1.start
         assert restored[0].end == r1.end
         assert restored[0].row_id == r1.row_id

@@ -97,7 +97,7 @@ class TestImportTimeline:
         )
 
         rows_by_name = {r.name: r.id for r in range_tl.rows}
-        ranges = sorted(range_tl, key=lambda r: r.start)
+        ranges = sorted(range_tl)
         assert ranges[0].get_data("label") == "first"
         assert ranges[0].get_data("start") == 0
         assert ranges[0].get_data("end") == 1
@@ -123,7 +123,7 @@ class TestImportTimeline:
         )
 
         rows_by_name = {r.name: r.id for r in range_tl.rows}
-        ranges = sorted(range_tl, key=lambda r: r.start)
+        ranges = sorted(range_tl)
         assert ranges[0].get_data("label") == "first"
         assert ranges[0].get_data("start") == 1
         assert ranges[0].get_data("end") == 2

@@ -54,7 +54,7 @@ class TestImportByTime:
         success, errors = _trigger_import_through_command("time", data)
         assert success
         assert errors == []
-        ranges = sorted(range_tlui.timeline, key=lambda r: r.start)
+        ranges = sorted(range_tlui.timeline)
         assert ranges[0].start == 0
         assert ranges[0].end == 1
         assert ranges[0].label == "first"
@@ -83,7 +83,7 @@ class TestImportByTime:
             "1,2,A,,note two"
         )
         _trigger_import_through_command("time", data)
-        ranges = sorted(range_tlui.timeline, key=lambda r: r.start)
+        ranges = sorted(range_tlui.timeline)
         assert ranges[0].color == "#abcdef"
         assert ranges[0].comments == "note one"
         assert ranges[1].color is None
@@ -128,7 +128,7 @@ class TestImportByMeasure:
         success, errors = _trigger_import_through_command("measure", data)
         assert success
         assert errors == []
-        ranges = sorted(range_tlui.timeline, key=lambda r: r.start)
+        ranges = sorted(range_tlui.timeline)
         assert ranges[0].start == 1
         assert ranges[0].end == 2
         assert ranges[0].label == "first"
@@ -213,7 +213,7 @@ class TestJoinedWithNextByTime:
         success, errors = _trigger_import_through_command("time", data)
         assert success
         assert errors == []
-        ranges = sorted(range_tlui.timeline, key=lambda r: r.start)
+        ranges = sorted(range_tlui.timeline)
         assert ranges[0].joined_right == ranges[1].id
         assert ranges[1].joined_right is None
 
@@ -225,7 +225,7 @@ class TestJoinedWithNextByTime:
             "2,3,A,false"
         )
         _trigger_import_through_command("time", data)
-        ranges = sorted(range_tlui.timeline, key=lambda r: r.start)
+        ranges = sorted(range_tlui.timeline)
         assert ranges[0].joined_right == ranges[1].id
         assert ranges[1].joined_right == ranges[2].id
         assert ranges[2].joined_right is None
@@ -260,7 +260,7 @@ class TestJoinedWithNextByTime:
         # in the CSV.
         data = "start,end,row,joined_with_next\n" "1,2,A,false\n" "0,1,A,true\n"
         _trigger_import_through_command("time", data)
-        ranges_by_start = sorted(range_tlui.timeline, key=lambda r: r.start)
+        ranges_by_start = sorted(range_tlui.timeline)
         assert ranges_by_start[0].joined_right == ranges_by_start[1].id
         assert ranges_by_start[1].joined_right is None
 
@@ -269,7 +269,7 @@ class TestJoinedWithNextByTime:
         success, errors = _trigger_import_through_command("time", data)
         assert success
         assert any("joined_with_next" in e and "maybe" in e for e in errors)
-        ranges = sorted(range_tlui.timeline, key=lambda r: r.start)
+        ranges = sorted(range_tlui.timeline)
         assert ranges[0].joined_right is None
 
 
@@ -279,7 +279,7 @@ class TestJoinedWithNextByMeasure:
         success, errors = _trigger_import_through_command("measure", data)
         assert success
         assert errors == []
-        ranges = sorted(range_tlui.timeline, key=lambda r: r.start)
+        ranges = sorted(range_tlui.timeline)
         assert ranges[0].joined_right == ranges[1].id
 
 
@@ -298,7 +298,7 @@ class TestJoinValidation:
         success, errors = _trigger_import_through_command("time", data)
         assert success
         assert any("must equal" in e for e in errors)
-        ranges = sorted(range_tlui.timeline, key=lambda r: r.start)
+        ranges = sorted(range_tlui.timeline)
         assert ranges[0].joined_right is None
 
     def test_overlap_between_joined_ranges_reports_error(self, range_tlui):
@@ -306,7 +306,7 @@ class TestJoinValidation:
         success, errors = _trigger_import_through_command("time", data)
         assert success
         assert any("must equal" in e for e in errors)
-        ranges = sorted(range_tlui.timeline, key=lambda r: r.start)
+        ranges = sorted(range_tlui.timeline)
         assert ranges[0].joined_right is None
 
     def test_only_invalid_join_is_dropped(self, range_tlui):
@@ -321,7 +321,7 @@ class TestJoinValidation:
         success, errors = _trigger_import_through_command("time", data)
         assert success
         assert len(errors) == 1
-        ranges = sorted(range_tlui.timeline, key=lambda r: r.start)
+        ranges = sorted(range_tlui.timeline)
         assert ranges[0].joined_right == ranges[1].id
         assert ranges[1].joined_right is None
         assert ranges[2].joined_right is None
@@ -333,7 +333,7 @@ class TestJoinValidation:
         success, errors = _trigger_import_through_command("measure", data)
         assert success
         assert any("must equal" in e for e in errors)
-        ranges = sorted(range_tlui.timeline, key=lambda r: r.start)
+        ranges = sorted(range_tlui.timeline)
         assert ranges[0].joined_right is None
 
 

@@ -2443,7 +2443,7 @@ class TestHorizontalArrowNavigation:
     def test_right_at_last_keeps_selection(self, range_tlui):
         self._add(range_tlui, 10, 20)
         self._add(range_tlui, 30, 40)
-        last_in_row = sorted(range_tlui, key=lambda e: e.get_data("start"))[-1]
+        last_in_row = sorted(range_tlui)[-1]
         range_tlui.select_element(last_in_row)
         post(Post.TIMELINE_KEY_PRESS_RIGHT)
         assert range_tlui.selected_elements == [last_in_row]
@@ -2606,7 +2606,7 @@ class TestPreStartPostEnd:
             range_tlui.select_element(e)
         with Serve(Get.FROM_USER_FLOAT, (True, 3.0)):
             commands.execute("timeline.range.add_pre_start")
-        ranges = sorted(range_tlui, key=lambda r: r.get_data("start"))
+        ranges = sorted(range_tlui)
         assert ranges[0].get_data("pre_start") == 7.0
         assert ranges[1].get_data("pre_start") == 27.0
 
@@ -3446,7 +3446,7 @@ class TestSplitRange:
         original_id = original.id
         self._seek(20)
         commands.execute("timeline.range.split_range")
-        ranges = sorted(range_tlui, key=lambda r: r.get_data("start"))
+        ranges = sorted(range_tlui)
         assert len(ranges) == 2
         left, right = ranges
         assert left.id == original_id  # left half kept the original id
@@ -3464,7 +3464,7 @@ class TestSplitRange:
         range_tlui.timeline.set_component_data(elem.id, "comments", "note")
         self._seek(20)
         commands.execute("timeline.range.split_range")
-        ranges = sorted(range_tlui, key=lambda r: r.get_data("start"))
+        ranges = sorted(range_tlui)
         for r in ranges:
             assert r.get_data("label") == "lbl"
             assert r.get_data("color") == "#abcdef"
@@ -3480,7 +3480,7 @@ class TestSplitRange:
         range_tlui.timeline.set_component_data(elem.id, "post_end", 35)
         self._seek(20)
         commands.execute("timeline.range.split_range")
-        ranges = sorted(range_tlui, key=lambda r: r.get_data("start"))
+        ranges = sorted(range_tlui)
         left, right = ranges
         assert left.get_data("pre_start") == 5
         assert right.get_data("post_end") == 35
@@ -3489,7 +3489,7 @@ class TestSplitRange:
         tilia_state.duration = 100
         commands.execute("timeline.range.add_range", start=0, end=20)
         commands.execute("timeline.range.add_range", start=20, end=30)
-        a, b = sorted(range_tlui, key=lambda r: r.get_data("start"))
+        a, b = sorted(range_tlui)
         click_range_ui(a)
         click_range_ui(b, modifier="ctrl")
         commands.execute("timeline.range.join_ranges")
@@ -3497,7 +3497,7 @@ class TestSplitRange:
 
         self._seek(10)
         commands.execute("timeline.range.split_range")
-        ranges = sorted(range_tlui, key=lambda r: r.get_data("start"))
+        ranges = sorted(range_tlui)
         # A_left → A_right → B; the new range carries A's old joined_right.
         assert ranges[0].get_data("joined_right") == ranges[1].id
         assert ranges[1].get_data("joined_right") == ranges[2].id
@@ -3506,7 +3506,7 @@ class TestSplitRange:
         tilia_state.duration = 100
         commands.execute("timeline.range.add_range", start=10, end=20)
         commands.execute("timeline.range.add_range", start=20, end=30)
-        a, b = sorted(range_tlui, key=lambda r: r.get_data("start"))
+        a, b = sorted(range_tlui)
         click_range_ui(a)
         click_range_ui(b, modifier="ctrl")
         commands.execute("timeline.range.join_ranges")
