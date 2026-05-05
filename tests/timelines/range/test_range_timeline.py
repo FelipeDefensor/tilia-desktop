@@ -69,7 +69,7 @@ class TestRangeTimelineComponentManager:
         )
         assert c is not None
 
-        # Try overlapping - SHOULD SUCCEED NOW
+        # Try overlapping
         c, _ = range_tl.create_component(
             ComponentKind.RANGE, id=2, start=15, end=25, row_id=row_id
         )
