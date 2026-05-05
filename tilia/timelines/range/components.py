@@ -95,6 +95,9 @@ class Range(SegmentLikeTimelineComponent):
     def end(self, value: float) -> None:
         prev_end = self._end
         self._end = value
+        # Mirror of the start setter: drag post_end along when end moves
+        # past it, or keep it pinned to end if no extension was set
+        # (post_end was at prev_end).
         if self.post_end < value or self.post_end == prev_end:
             self.post_end = value
 
