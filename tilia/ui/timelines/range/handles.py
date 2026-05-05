@@ -139,7 +139,8 @@ class RangeFrameHandle(QGraphicsItemGroup):
             self.set_position(x0, x1, y)
             self.set_pen(width)
             # Non-interactive: clicks should fall through to the timeline
-            # so rubber-band selection still works underneath.
+            # so click-to-select and rubber-band selection both still
+            # work on the ranges underneath.
             self.ignore_right_click = True
 
         def set_pen(self, width: int) -> None:
