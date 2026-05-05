@@ -70,12 +70,13 @@ def start_drag(range_ui: RangeUI, item: QGraphicsItem) -> None:
 
 
 def _start_frame_drag(range_ui: RangeUI, extremity: Extremity) -> None:
-    if extremity == "pre_start":
-        get_min_x = lambda: get(Get.LEFT_MARGIN_X)  # noqa: E731
-        get_max_x = lambda: range_ui.start_x  # noqa: E731
-    else:
-        get_min_x = lambda: range_ui.end_x  # noqa: E731
-        get_max_x = lambda: get(Get.RIGHT_MARGIN_X)  # noqa: E731
+    is_pre_start = extremity == "pre_start"
+
+    def get_min_x() -> float:
+        return get(Get.LEFT_MARGIN_X) if is_pre_start else range_ui.end_x
+
+    def get_max_x() -> float:
+        return range_ui.start_x if is_pre_start else get(Get.RIGHT_MARGIN_X)
 
     range_ui.drag_manager = DragManager(
         get_min_x=get_min_x,
