@@ -81,7 +81,7 @@ class RangeTLComponentManager(TimelineComponentManager):
         if any(r.row_id != row_id for r in ranges):
             return False, "Ranges must be in the same row."
 
-        ranges = sorted(ranges, key=lambda r: r.start)
+        ranges = sorted(ranges)
 
         for i in range(len(ranges) - 1):
             if ranges[i].end > ranges[i + 1].start:
@@ -125,7 +125,7 @@ class RangeTLComponentManager(TimelineComponentManager):
         if any(r.row_id != row_id for r in ranges):
             return False, "Ranges must be in the same row."
 
-        ranges = sorted(ranges, key=lambda r: r.start)
+        ranges = sorted(ranges)
         merged_ids = {r.id for r in ranges}
         survivor = ranges[0]
         last = ranges[-1]

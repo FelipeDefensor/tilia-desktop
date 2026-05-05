@@ -56,7 +56,7 @@ def _apply_pending_joins(
         by_row.setdefault(row_id, []).append((rng, flag))
 
     for row_id, entries in by_row.items():
-        entries.sort(key=lambda e: e[0].start)
+        entries.sort(key=lambda e: e[0])
         row = timeline.get_row_by_id(row_id)
         row_label = row.name if row is not None else row_id
         for i, (rng, flag) in enumerate(entries):
