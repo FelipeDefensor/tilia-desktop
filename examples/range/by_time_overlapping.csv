@@ -1,5 +1,0 @@
-start,end,row,label,color,comments
-0,30,Form,A section,#cfe2ff,
-20,50,Form,A->B transition,#ffe680,overlap with A and B
-40,70,Form,B section,#f8d7da,
-0,70,Mood,Calm,#d4edda,

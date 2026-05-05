@@ -1,6 +1,0 @@
-start,end,row,label,joined_with_next
-0,30,Form,A,true
-0,60,Dynamics,piano,false
-30,60,Form,B,false
-60,90,Dynamics,forte,true
-90,120,Dynamics,piano,false

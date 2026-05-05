@@ -1,7 +1,0 @@
-start,end,row,label,joined_with_next
-0,15,Form,uses true,true
-15,30,Form,uses yes,yes
-30,45,Form,uses 1,1
-45,60,Form,uses Y,Y
-60,75,Form,uses TRUE,TRUE
-75,90,Form,uses false,false

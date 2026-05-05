@@ -1,6 +1,0 @@
-start,end,row,label,joined_with_next
-0,15,Form,Intro,true
-15,45,Form,Verse,true
-45,60,Form,Chorus,true
-60,90,Form,Bridge,false
-90,120,Form,Outro,true
