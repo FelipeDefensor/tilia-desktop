@@ -342,10 +342,6 @@ class RangeTimeline(Timeline):
         return settings.get("range_timeline", "merge_separator")
 
     @property
-    def is_empty(self) -> bool:
-        return len(self) == 0
-
-    @property
     def row_count(self) -> int:
         return len(self.rows)
 
