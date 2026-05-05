@@ -39,6 +39,9 @@ from tilia.ui.timelines.range import RangeTimelineUI
 from tilia.ui.timelines.range.context_menu import (
     RangeContextMenu,
 )
+from tilia.ui.timelines.range.drag import _row_at_y
+from tilia.ui.timelines.range.element import RangeCommentsIcon
+from tilia.ui.windows.kinds import WindowKind
 
 
 def get_timeline_context_menu_for_row(range_tlui, row_index=0):
@@ -512,8 +515,6 @@ class TestJoinRanges:
         assert r3.get_data("joined_right") is None
 
     def test_save_load_preserves_join_state(self, tilia, tluis, tilia_state, tmp_path):
-        from tilia.requests import Post, post
-
         commands.execute("timelines.add.range", name="range")
         range_tlui = tluis[0]
         commands.execute(
@@ -541,8 +542,6 @@ class TestJoinRanges:
         # `joined_right` still held pre-save IDs. The bug was masked when the
         # fresh ID counter happened to land on the same numbers; this test
         # advances the counter so saved IDs and fresh IDs cannot coincide.
-        from tilia.requests import Post, post
-
         commands.execute("timelines.add.range", name="range")
         range_tlui = tluis[0]
 
@@ -582,11 +581,11 @@ class TestJoinRanges:
         # a file used to leave the partner behind because the partner lookup
         # in drag.py used pre-save IDs that no longer matched the fresh IDs
         # assigned at deserialize.
-        from tilia.requests import Post, post
-
         commands.execute("timelines.add.range", name="range")
         range_tlui = tluis[0]
 
+        # Advance the ID counter so saved IDs and fresh post-load IDs cannot
+        # coincide; otherwise the bug above is masked.
         for _ in range(5):
             commands.execute(
                 "timeline.range.add_range", row=range_tlui.rows[0], start=0, end=5
@@ -826,8 +825,6 @@ class TestJoinedHandleVisibility:
         # before the left side. When that happens, the right side's
         # `has_incoming_join` check found no element pointing to it yet, so
         # its start_handle stayed opaque and covered the dashed separator.
-        from tilia.requests import Post, post
-
         commands.execute("timelines.add.range", name="range")
         range_tlui = tluis[0]
         commands.execute(
@@ -1570,8 +1567,6 @@ class TestRowHeight:
         tilia_errors.assert_no_error()
 
     def test_save_load_preserves_row_height(self, tilia, tluis, tilia_state, tmp_path):
-        from tilia.requests import Post, post
-
         commands.execute("timelines.add.range", name="range")
         with Serve(Get.FROM_USER_INT, (True, 75)):
             commands.execute("timeline.range.set_row_height")
@@ -3059,8 +3054,6 @@ class TestMergeRanges:
         # the merged label/comments. Fixed by blocking widget signals
         # during programmatic value updates in
         # tilia.ui.windows.inspect.Inspect.set_widget_value.
-        from tilia.ui.windows.kinds import WindowKind
-
         a = self._add(range_tlui, 0, 10)
         b = self._add(range_tlui, 10, 20)
         c = self._add(range_tlui, 20, 30)
@@ -3296,8 +3289,6 @@ class TestPerRowHeight:
         assert range_tlui.selected_row is range_tlui.rows[1]
 
     def test_row_at_y_in_drag_uses_per_row_heights(self, range_tlui):
-        from tilia.ui.timelines.range.drag import _row_at_y
-
         settings.set("range_timeline", "default_row_height", 30)
         commands.execute("timeline.range.add_row", name="tall")
         with Serve(Get.FROM_USER_INT, (True, 100)):
@@ -3663,8 +3654,6 @@ class TestCommentsIndicator:
         assert elem.get_data("end") == 70
 
     def test_icon_font_uses_default_size_at_default_row_height(self, range_tlui):
-        from tilia.ui.timelines.range.element import RangeCommentsIcon
-
         commands.execute("timeline.range.add_range", start=0, end=10)
         elem = range_tlui[0]
         range_tlui.timeline.set_component_data(elem.id, "comments", "note")
@@ -3674,8 +3663,6 @@ class TestCommentsIndicator:
         )
 
     def test_icon_font_shrinks_with_small_row_height(self, range_tlui):
-        from tilia.ui.timelines.range.element import RangeCommentsIcon
-
         commands.execute("timeline.range.add_range", start=0, end=10)
         elem = range_tlui[0]
         range_tlui.timeline.set_component_data(elem.id, "comments", "note")
@@ -3686,8 +3673,6 @@ class TestCommentsIndicator:
         assert size >= RangeCommentsIcon.MIN_PIXEL_SIZE
 
     def test_icon_font_floors_at_min(self, range_tlui):
-        from tilia.ui.timelines.range.element import RangeCommentsIcon
-
         commands.execute("timeline.range.add_range", start=0, end=10)
         elem = range_tlui[0]
         range_tlui.timeline.set_component_data(elem.id, "comments", "note")
