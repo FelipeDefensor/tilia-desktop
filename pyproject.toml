@@ -44,6 +44,9 @@ Homepage = "https://tilia-app.com"
 Repository = "https://github.com/TimeLineAnnotator/desktop"
 
 [dependency-groups]
+server = [
+    "mcp>=1.27.0",
+]
 build = [
     "build",
     "ImageIO; sys_platform == 'darwin'",
