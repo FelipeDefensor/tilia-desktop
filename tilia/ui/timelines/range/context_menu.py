@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Callable, cast
 from PySide6.QtCore import QPoint
 from PySide6.QtGui import QAction
 
+from tilia.log import logger
 from tilia.ui import commands
 from tilia.ui.menus import MenuItemKind
 from tilia.ui.timelines.base.context_menus import (
@@ -70,10 +71,20 @@ class RangeTimelineContextMenu(TimelineUIContextMenu):
         if self.row.height is not None:
             add_action("Reset row height", self.on_reset_row_height_for_row)
         row_idx = self.timeline_ui.timeline.row_index(self.row)
-        if row_idx is not None and row_idx > 0:
-            add_action("Move row up", self.on_move_row_up)
-        if row_idx is not None and row_idx < self.timeline_ui.timeline.row_count - 1:
-            add_action("Move row down", self.on_move_row_down)
+        if row_idx is None:
+            # row was found by y-coordinate but isn't in timeline.rows — stale
+            # UI reference. Skip the move actions so we never execute against a
+            # detached row, and surface the divergence in the log.
+            logger.warning(
+                "RangeTimelineContextMenu: row %r not found in timeline.rows; "
+                "move/remove actions skipped.",
+                self.row,
+            )
+        else:
+            if row_idx > 0:
+                add_action("Move row up", self.on_move_row_up)
+            if row_idx < self.timeline_ui.timeline.row_count - 1:
+                add_action("Move row down", self.on_move_row_down)
         if self.timeline_ui.timeline.row_count > 1:
             add_action("Remove row", self.on_remove_row)
 
