@@ -95,6 +95,10 @@ CLI_CREATE_TIMELINE_WITHOUT_DURATION = Error(
     "Cannot create timeline",
     "No media loaded and no duration set. Load a media file with 'load-media' or set a duration with 'metadata set-media-length'.",
 )
+CLI_ADD_TIMELINE_ARG_NOT_APPLICABLE = Error(
+    "Invalid argument",
+    "'{}' is not valid for timeline kind '{}'.",
+)
 OPEN_FILE_NOT_FOUND = Error("File not found", "File '{}' not found.")
 OPEN_FILE_INVALID_TLA = Error(
     "Invalid file type", "File '{}' is not a valid .tla file. {}"

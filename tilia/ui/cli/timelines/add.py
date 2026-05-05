@@ -99,9 +99,15 @@ def add(namespace: argparse.Namespace):
     kind = namespace.kind
     name = namespace.name
 
-    output(f"Adding timeline with {kind=}, {name=}")
-
     tl_type = KIND_STR_TO_TLKIND[kind]
+
+    if namespace.row_height is not None and tl_type is not RangeTimeline:
+        tilia.errors.display(
+            tilia.errors.CLI_ADD_TIMELINE_ARG_NOT_APPLICABLE, "--row-height", kind
+        )
+        return
+
+    output(f"Adding timeline with {kind=}, {name=}")
 
     kwargs = get_kwargs_by_timeline_type(namespace, tl_type)
 
