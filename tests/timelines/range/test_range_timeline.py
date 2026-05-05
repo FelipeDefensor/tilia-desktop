@@ -89,6 +89,32 @@ class TestRangeTimelineComponentManager:
         )
         assert c is not None
 
+    def test_pre_start_negative_rejected(self, range_tl):
+        row_id = range_tl.rows[0].id
+        c, reason = range_tl.create_component(
+            ComponentKind.RANGE,
+            id=1,
+            start=10,
+            end=20,
+            row_id=row_id,
+            pre_start=-1,
+        )
+        assert c is None
+        assert "pre_start" in reason
+
+    def test_post_end_past_duration_rejected(self, range_tl, tilia_state):
+        row_id = range_tl.rows[0].id
+        c, reason = range_tl.create_component(
+            ComponentKind.RANGE,
+            id=1,
+            start=10,
+            end=20,
+            row_id=row_id,
+            post_end=tilia_state.duration + 1,
+        )
+        assert c is None
+        assert "post_end" in reason
+
     def test_join_ranges(self, range_tl):
         row_id = range_tl.rows[0].id
         # Create two ranges

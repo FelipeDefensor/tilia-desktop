@@ -63,6 +63,14 @@ class RangeTLComponentManager(TimelineComponentManager):
         if start < 0 or end > media_duration:
             return False, "Range is outside media bounds."
 
+        pre_start = kwargs.get("pre_start")
+        if pre_start is not None and pre_start < 0:
+            return False, "pre_start is outside media bounds."
+
+        post_end = kwargs.get("post_end")
+        if post_end is not None and post_end > media_duration:
+            return False, "post_end is outside media bounds."
+
         return True, ""
 
     def join(self, ranges: list[Range]) -> tuple[bool, str]:
