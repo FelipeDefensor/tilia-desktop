@@ -39,10 +39,10 @@ class TestRangeTimelineComponentManager:
     # noinspection PyUnresolvedReferences
     def test_deserialize_components(self, range_tl):
         row_id = range_tl.rows[0].id
-        range_tl.create_component(
+        r1, _ = range_tl.create_component(
             ComponentKind.RANGE, id=1, start=0, end=10, row_id=row_id
         )
-        range_tl.create_component(
+        r2, _ = range_tl.create_component(
             ComponentKind.RANGE, id=2, start=10, end=20, row_id=row_id
         )
 
@@ -53,6 +53,13 @@ class TestRangeTimelineComponentManager:
         range_tl.component_manager.deserialize_components(serialized_components)
 
         assert len(range_tl) == 2
+        restored = sorted(range_tl, key=lambda c: c.start)
+        assert restored[0].start == r1.start
+        assert restored[0].end == r1.end
+        assert restored[0].row_id == r1.row_id
+        assert restored[1].start == r2.start
+        assert restored[1].end == r2.end
+        assert restored[1].row_id == r2.row_id
 
     def test_overlap_validation(self, range_tl):
         row_id = range_tl.rows[0].id
