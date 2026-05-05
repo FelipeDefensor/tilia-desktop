@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 
 from tilia.requests import Get, Post, get, post
 from tilia.settings import settings
+from tilia.timelines.audiowave.constants import FRAMES_PER_PEAK_OPTIONS
 from tilia.timelines.harmony.constants import HARMONY_DISPLAY_MODES
 from tilia.ui.timelines.range.toolbar import VALID_LABEL_ALIGNMENTS
 from tilia.ui.color import get_tinted_color
@@ -100,7 +101,7 @@ class SettingsWindow(QDialog):
             for name, value in self.settings_original[group_name].items():
                 if group_name == "beat_timeline" and name == "default_height":
                     continue
-                widget = get_widget_for_value(self, value)
+                widget = get_widget_for_value(self, value, name=name)
                 if (
                     "timeline" in group_name
                     and name == "default_height"
@@ -223,16 +224,22 @@ def select_color_button(parent, value, text="") -> QPushButton:
     return button
 
 
-def combobox(options: list, current_value: str) -> QComboBox:
+def combobox(options: list, current_value) -> QComboBox:
     combobox = QComboBox()
     for option in options:
-        combobox.addItem(option.title(), option)
-    combobox.setCurrentText(current_value.title())
+        display = option.title() if isinstance(option, str) else str(option)
+        combobox.addItem(display, option)
+    if isinstance(current_value, str):
+        combobox.setCurrentText(current_value.title())
+    else:
+        idx = combobox.findData(current_value)
+        if idx >= 0:
+            combobox.setCurrentIndex(idx)
     combobox.setObjectName("combobox")
     return combobox
 
 
-def get_widget_for_value(parent, value, text="") -> QWidget:
+def get_widget_for_value(parent, value, text="", name=None) -> QWidget:
     match value:
         case bool():
             checkbox = QCheckBox()
@@ -241,6 +248,8 @@ def get_widget_for_value(parent, value, text="") -> QWidget:
             return checkbox
 
         case int():
+            if name == "frames_per_peak" and value in FRAMES_PER_PEAK_OPTIONS:
+                return combobox(FRAMES_PER_PEAK_OPTIONS, value)
             int_input = QSpinBox()
             int_input.setMaximum(2147483647)
             int_input.setMinimum(1)
@@ -321,6 +330,9 @@ def get_value_for_widget(
             return widget.styleSheet().replace("background-color: ", "").split(";")[0]
 
         case "combobox":
+            data = widget.currentData()
+            if isinstance(data, int):
+                return data
             text = widget.currentText().lower()
             if text in ScrollType.get_option_list():
                 return ScrollType.get_enum_from_str(text)

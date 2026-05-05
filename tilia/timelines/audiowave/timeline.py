@@ -46,10 +46,7 @@ class AudioWaveTimeline(Timeline):
 
     @property
     def frames_per_peak(self) -> int:
-        try:
-            return int(settings.get("audiowave_timeline", "frames_per_peak"))
-        except KeyError:
-            return 512
+        return int(settings.get("audiowave_timeline", "frames_per_peak"))
 
     @property
     def waveform_component(self):
