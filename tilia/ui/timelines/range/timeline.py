@@ -169,7 +169,7 @@ class RangeTimelineUI(TimelineUI):
             ("separate_ranges", "Separate ranges", "", "range-separate"),
             ("merge_ranges", "Merge ranges", "e", "range-merge"),
             ("split_range", "Split range", "s", "range-split"),
-            ("set_range_color", "Set color", "c", ""),
+            ("set_range_color", "Set color", "", ""),
             ("move_to_row_above", "Move to row above", "Ctrl+Up", ""),
             ("move_to_row_below", "Move to row below", "Ctrl+Down", ""),
             ("set_row_height", "Set default row height", "", ""),
