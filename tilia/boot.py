@@ -45,6 +45,10 @@ def boot():
     app = setup_logic()
     ui = setup_ui(q_application, args.user_interface)
     logger.debug("INITIALISED")
+    if args.mcp_server is not None:
+        from tilia.server import start as start_mcp_server
+
+        start_mcp_server(port=args.mcp_server, parent=q_application)
     if os.environ.get("ENVIRONMENT") == "dev":
         try:
             # icecream is a replacement for print()
@@ -68,6 +72,15 @@ def setup_parser():
     parser = argparse.ArgumentParser(exit_on_error=False)
     parser.add_argument("--file", nargs="?", default="")
     parser.add_argument("--user-interface", "-i", choices=["qt", "cli"], default="qt")
+    parser.add_argument(
+        "--mcp-server",
+        nargs="?",
+        type=int,
+        const=8765,
+        default=None,
+        metavar="PORT",
+        help="Start an MCP server on localhost (default port 8765).",
+    )
     return parser.parse_args()
 
 
