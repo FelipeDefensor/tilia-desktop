@@ -5,8 +5,10 @@ import numpy as np
 import pytest
 
 from tilia.timelines.audiowave.peaks import (
+    adapt_frames_per_peak,
     build_lod_pyramid,
     compute_peaks_sync,
+    estimate_pyramid_bytes,
 )
 
 
@@ -169,6 +171,32 @@ class TestComputePeaksEdges:
         # Each bucket holds ≥11 cycles, so it must contain a near-peak in both directions.
         assert np.all(maxs > 0.95)
         assert np.all(mins < -0.95)
+
+
+class TestPyramidMemoryBound:
+    """The LOD pyramid is roughly 16 * total_frames / fpp bytes (factor 16 =
+    2 arrays * 4 bytes/float32 * geometric series sum 2 across all levels).
+    Cap memory by bumping fpp to powers of two until it fits."""
+
+    def test_short_file_uses_user_fpp(self):
+        # 30 s @ 44.1 kHz mono ≈ 1.3M frames * 16 / 128 = ~165 KB. Fits easily.
+        total_frames = 30 * 44100
+        assert adapt_frames_per_peak(total_frames, 128) == 128
+
+    def test_huge_file_bumps_to_power_of_two(self):
+        # 4 hours @ 44.1 kHz = ~635M frames; at fpp=128 → ~80 MB (fits).
+        # Force a tight budget to exercise the bumping logic.
+        total_frames = 4 * 3600 * 44100
+        bumped = adapt_frames_per_peak(total_frames, 128, budget_bytes=10 * 1024 * 1024)
+        assert bumped > 128
+        assert bumped & (bumped - 1) == 0  # power of two
+        assert estimate_pyramid_bytes(total_frames, bumped) <= 10 * 1024 * 1024
+
+    def test_budget_at_default_keeps_one_hour_at_default_fpp(self):
+        # Sanity check: at default frames_per_peak=128 and budget=100 MB,
+        # a 1-hour 44.1 kHz file should not get bumped.
+        total_frames = 3600 * 44100
+        assert adapt_frames_per_peak(total_frames, 128) == 128
 
 
 class TestCancellation:

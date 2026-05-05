@@ -4,12 +4,15 @@ import numpy as np
 import soundfile
 
 import tilia.errors
+from tilia.log import logger
 from tilia.requests import Get, Post, get, post
 from tilia.settings import settings
 from tilia.timelines.audiowave.peaks import (
     CancelToken,
+    adapt_frames_per_peak,
     build_lod_pyramid,
     compute_peaks_async,
+    estimate_pyramid_bytes,
 )
 from tilia.timelines.base.timeline import (
     Timeline,
@@ -72,11 +75,24 @@ class AudioWaveTimeline(Timeline):
             return
 
         self._update_visibility(True)
+        fpp = adapt_frames_per_peak(total_frames, self.frames_per_peak)
+        if fpp != self.frames_per_peak:
+            mb = estimate_pyramid_bytes(total_frames, self.frames_per_peak) / (
+                1024 * 1024
+            )
+            logger.warning(
+                "audiowave pyramid for %s would need ~%.0f MB at "
+                "frames_per_peak=%d; bumping to %d to fit memory budget.",
+                path,
+                mb,
+                self.frames_per_peak,
+                fpp,
+            )
         component, _ = self.create_component(
             ComponentKind.AUDIOWAVE,
             samplerate=samplerate,
             total_frames=total_frames,
-            frames_per_peak=self.frames_per_peak,
+            frames_per_peak=fpp,
         )
         if component is None:
             return

@@ -12,6 +12,36 @@ class CancelToken:
         self.cancelled = False
 
 
+# Total bytes of float32 across base + all derived LOD levels per (min, max).
+# Base: total_frames / fpp peaks * 4 bytes; pyramid sum is the geometric series
+# 1 + 1/2 + 1/4 + ... which approaches 2. Two arrays (min, max) → factor 16.
+PYRAMID_BYTES_PER_FRAME_PER_FPP = 16
+
+PYRAMID_MEMORY_BUDGET_BYTES = 100 * 1024 * 1024  # 100 MB
+
+
+def estimate_pyramid_bytes(total_frames: int, frames_per_peak: int) -> int:
+    if frames_per_peak <= 0:
+        return 0
+    return PYRAMID_BYTES_PER_FRAME_PER_FPP * total_frames // frames_per_peak
+
+
+def adapt_frames_per_peak(
+    total_frames: int,
+    frames_per_peak: int,
+    budget_bytes: int = PYRAMID_MEMORY_BUDGET_BYTES,
+) -> int:
+    """Return ``frames_per_peak`` bumped up to powers of two until the
+    resulting LOD pyramid fits in ``budget_bytes``.  Used to cap memory
+    on very long files even when the user-chosen ``frames_per_peak`` is
+    fine for shorter ones.
+    """
+    fpp = max(1, int(frames_per_peak))
+    while estimate_pyramid_bytes(total_frames, fpp) > budget_bytes:
+        fpp *= 2
+    return fpp
+
+
 def compute_peaks_sync(
     path: str,
     frames_per_peak: int,
