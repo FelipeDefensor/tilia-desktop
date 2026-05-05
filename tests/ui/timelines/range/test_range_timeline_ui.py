@@ -27,6 +27,7 @@ from tests.utils import (
     get_context_menu,
     get_main_window_menu,
     get_submenu,
+    save_and_reopen,
     undoable,
 )
 from tilia.requests import Get, Post, post
@@ -214,14 +215,7 @@ class TestSaveLoad:
             "timeline.range.rename_row", row=range_tlui.rows[0], new_name="row"
         )
 
-        file_path = tmp_path / "test.tla"
-
-        success = commands.execute("file.save_as", path=file_path)
-        assert success
-
-        commands.execute("file.new")
-        success = commands.execute("file.open", path=file_path)
-        assert success
+        save_and_reopen(tmp_path)
 
         assert len(tluis) == 2  # Slider timeline + Range timeline
         assert tluis[0].get_data("name") == "range"
@@ -235,13 +229,7 @@ class TestSaveLoad:
             "timeline.range.add_range", row=range_tlui.rows[0], start=1.0, end=5.0
         )
 
-        file_path = tmp_path / "test_single_row.tla"
-        success = commands.execute("file.save_as", path=file_path)
-        assert success
-
-        commands.execute("file.new")
-        success = commands.execute("file.open", path=file_path)
-        assert success
+        save_and_reopen(tmp_path)
 
         assert len(tluis) == 2
         loaded_range_tlui = tluis[0]
@@ -268,13 +256,7 @@ class TestSaveLoad:
             "timeline.range.add_range", row=range_tlui.rows[1], start=6.0, end=10.0
         )
 
-        file_path = tmp_path / "test_multi_row.tla"
-        success = commands.execute("file.save_as", path=file_path)
-        assert success
-
-        commands.execute("file.new")
-        success = commands.execute("file.open", path=file_path)
-        assert success
+        save_and_reopen(tmp_path)
 
         assert len(tluis) == 2
         loaded_range_tlui = tluis[0]
@@ -303,10 +285,7 @@ class TestSaveLoad:
         commands.execute("timeline.range.add_row")
         assert len(range_tlui.rows) == 3  # rows with no components
 
-        file_path = tmp_path / "test_empty_rows.tla"
-        commands.execute("file.save_as", path=file_path)
-        commands.execute("file.new")
-        commands.execute("file.open", path=file_path)
+        save_and_reopen(tmp_path)
 
         loaded = tluis[0]
         assert len(loaded.rows) == 3
@@ -324,12 +303,7 @@ class TestSaveLoad:
             "timeline.range.rename_row", row=range_tlui.rows[1], new_name="same"
         )
 
-        # We have a helper commands for saving and reopening in test utils, use that
-        # here and in correspoding places
-        file_path = tmp_path / "test_dup_names.tla"
-        commands.execute("file.save_as", path=file_path)
-        commands.execute("file.new")
-        commands.execute("file.open", path=file_path)
+        save_and_reopen(tmp_path)
 
         loaded = tluis[0]
         assert len(loaded.rows) == 2
@@ -353,10 +327,7 @@ class TestSaveLoad:
             "timeline.range.rename_row", row=range_tlui.rows[2], new_name="third"
         )
 
-        file_path = tmp_path / "test_row_order.tla"
-        commands.execute("file.save_as", path=file_path)
-        commands.execute("file.new")
-        commands.execute("file.open", path=file_path)
+        save_and_reopen(tmp_path)
 
         loaded = tluis[0]
         assert [r.name for r in loaded.rows] == ["first", "second", "third"]
@@ -371,10 +342,7 @@ class TestSaveLoad:
             color="#123456",
         )
 
-        file_path = tmp_path / "test_row_color.tla"
-        commands.execute("file.save_as", path=file_path)
-        commands.execute("file.new")
-        commands.execute("file.open", path=file_path)
+        save_and_reopen(tmp_path)
 
         loaded = tluis[0]
         assert loaded.rows[0].color == "#123456"
@@ -558,10 +526,7 @@ class TestJoinRanges:
         range_tlui.select_element(range_tlui[1])
         commands.execute("timeline.range.join_ranges")
 
-        file_path = tmp_path / "test_join.tla"
-        commands.execute("file.save_as", path=file_path)
-        commands.execute("file.new")
-        commands.execute("file.open", path=file_path)
+        save_and_reopen(tmp_path)
 
         loaded = tluis[0]
         assert loaded[0].get_data("joined_right") == loaded[1].id
@@ -601,10 +566,7 @@ class TestJoinRanges:
         saved_r1_id = range_tlui[0].id
         saved_r2_id = range_tlui[1].id
 
-        file_path = tmp_path / "test_high_ids.tla"
-        commands.execute("file.save_as", path=file_path)
-        commands.execute("file.new")
-        commands.execute("file.open", path=file_path)
+        save_and_reopen(tmp_path)
 
         loaded = tluis[0]
         assert loaded[0].id == saved_r1_id
@@ -642,10 +604,7 @@ class TestJoinRanges:
         range_tlui.select_element(range_tlui[1])
         commands.execute("timeline.range.join_ranges")
 
-        file_path = tmp_path / "test_joined_drag.tla"
-        commands.execute("file.save_as", path=file_path)
-        commands.execute("file.new")
-        commands.execute("file.open", path=file_path)
+        save_and_reopen(tmp_path)
 
         loaded = tluis[0]
         click_end_handle(loaded[0])
@@ -881,10 +840,7 @@ class TestJoinedHandleVisibility:
         range_tlui.select_element(range_tlui[1])
         commands.execute("timeline.range.join_ranges")
 
-        file_path = tmp_path / "test_joined_load.tla"
-        commands.execute("file.save_as", path=file_path)
-        commands.execute("file.new")
-        commands.execute("file.open", path=file_path)
+        save_and_reopen(tmp_path)
 
         loaded = tluis[0]
         assert loaded[0].end_handle.brush().color().alpha() == 0
@@ -1620,10 +1576,7 @@ class TestRowHeight:
         with Serve(Get.FROM_USER_INT, (True, 75)):
             commands.execute("timeline.range.set_row_height")
 
-        file_path = tmp_path / "test_row_height.tla"
-        commands.execute("file.save_as", path=file_path)
-        commands.execute("file.new")
-        commands.execute("file.open", path=file_path)
+        save_and_reopen(tmp_path)
 
         assert tluis[0].timeline.row_height == 75
         assert tluis[0].row_height == 75
@@ -1842,10 +1795,7 @@ class TestMultipleRangeTimelines:
         commands.execute("timeline.range.add_range", row=b.rows[0], start=30, end=40)
         commands.execute("timeline.range.add_range", row=b.rows[0], start=50, end=60)
 
-        path = tmp_path / "two_range_timelines.tla"
-        assert commands.execute("file.save_as", path=path)
-        commands.execute("file.new")
-        assert commands.execute("file.open", path=path)
+        save_and_reopen(tmp_path)
 
         # Slider + 2 range timelines
         assert len(tluis) == 3
@@ -2880,10 +2830,7 @@ class TestPreStartPostEnd:
         with Serve(Get.FROM_USER_FLOAT, (True, 5.0)):
             commands.execute("timeline.range.add_post_end")
 
-        path = tmp_path / "preserve.tla"
-        commands.execute("file.save_as", path=path)
-        commands.execute("file.new")
-        commands.execute("file.open", path=path)
+        save_and_reopen(tmp_path)
 
         new_tlui = next(t for t in tluis if isinstance(t, RangeTimelineUI))
         rng = list(new_tlui)[0]
@@ -3094,10 +3041,7 @@ class TestMergeRanges:
             == f"first note{sep}second note{sep}third note"
         )
 
-        path = tmp_path / "merged.tla"
-        commands.execute("file.save_as", path=path)
-        commands.execute("file.new")
-        commands.execute("file.open", path=path)
+        save_and_reopen(tmp_path)
 
         new_tlui = next(t for t in tluis if isinstance(t, RangeTimelineUI))
         assert len(new_tlui) == 1
@@ -3306,10 +3250,7 @@ class TestPerRowHeight:
                 "timeline.range.set_row_height_for_row", row=range_tlui.rows[1]
             )
 
-        path = tmp_path / "per_row.tla"
-        commands.execute("file.save_as", path=path)
-        commands.execute("file.new")
-        commands.execute("file.open", path=path)
+        save_and_reopen(tmp_path)
 
         new_tlui = next(t for t in tluis if isinstance(t, RangeTimelineUI))
         assert new_tlui.timeline.rows[1].height == 80
