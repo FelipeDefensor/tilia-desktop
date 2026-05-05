@@ -186,6 +186,29 @@ class TestCleanup:
         assert not spinner.isActive()
 
 
+class TestListenerCleanup:
+    def test_create_destroy_does_not_leak_listeners(self, tls, tluis):
+        from tilia.requests import Get, get
+        from tilia.requests.post import _posts_to_listeners
+        from tilia.timelines.audiowave.timeline import AudioWaveTimeline
+
+        baseline = len(_posts_to_listeners.get(Post.AUDIOWAVE_PEAKS_READY, {}))
+        collection = get(Get.TIMELINE_COLLECTION)
+
+        for _ in range(10):
+            tl = tls.create_timeline(AudioWaveTimeline)
+            tl.refresh = lambda: None  # stub network/file IO
+            tlui = tluis.get_timeline_ui(tl.id)
+            tlui.set_peaks_for_test = lambda **kw: None  # noqa: F841
+            collection.delete_timeline(tl)
+
+        after = len(_posts_to_listeners.get(Post.AUDIOWAVE_PEAKS_READY, {}))
+        # Listener count must be bounded — at most one per active timeline,
+        # which we've torn down. Allow a small slack for transient state but
+        # require it not to grow proportional to the loop count.
+        assert after - baseline <= 1
+
+
 class TestKnownDisplay:
     def test_constant_signal_paints_without_error(self, audiowave_tlui):
         # End-to-end: a constant signal injected via the test fixture
