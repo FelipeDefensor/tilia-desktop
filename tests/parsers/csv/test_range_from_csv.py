@@ -74,7 +74,7 @@ class TestImportByTime:
         data = "start,end,row\n0,1,Existing\n1,2,Existing"
         _import_by_time(range_tl, data)
         # Only one row should exist (no duplicate "Existing").
-        assert sum(1 for r in range_tl.rows if r.name == "Existing") == 1
+        assert len([r for r in range_tl.rows if r.name == "Existing"]) == 1
         assert all(c.row_id == existing.id for c in range_tl)
 
     def test_propagates_color_and_comments(self, range_tl):
