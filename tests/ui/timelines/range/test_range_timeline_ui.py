@@ -944,6 +944,26 @@ class TestCopyPaste:
         commands.execute("timeline.component.paste")
         assert len(range_tlui) == 1  # paste rejected, no new component
 
+    def test_paste_drops_only_out_of_bounds_member(self, range_tlui, tilia_state):
+        # In a multi-range paste batch, an out-of-bounds member should be
+        # skipped without aborting the whole paste — the in-bounds member
+        # should still land.
+        commands.execute("timeline.range.add_range", start=0, end=10)
+        commands.execute("timeline.range.add_range", start=80, end=90)
+        click_range_ui(range_tlui[0])
+        click_range_ui(range_tlui[1], modifier="ctrl")
+        commands.execute("timeline.component.copy")
+
+        click_timeline_ui(range_tlui, 400)  # deselect
+        # Reference time = 0; pasting at 20 maps the first range to [20, 30]
+        # (in bounds) and the second to [100, 110] (end past media duration).
+        commands.execute("media.seek", 20)
+        commands.execute("timeline.component.paste")
+
+        assert len(range_tlui) == 3  # 2 originals + 1 successfully pasted
+        starts = sorted(r.get_data("start") for r in range_tlui)
+        assert starts == [0, 20, 80]
+
 
 class TestMoveToRow:
     def test_move_to_row_above(self, range_tlui):
