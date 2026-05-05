@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import csv
 import functools
 import traceback
 from enum import Enum, auto
+from pathlib import Path
 from typing import Any, Callable, cast
 
 from PySide6.QtCore import QPoint, Qt
@@ -407,6 +409,7 @@ class TimelineUIs:
         LISTENS = {
             (Post.TIMELINE_CREATE_DONE, self.on_timeline_created),
             (Post.TIMELINE_DELETE_DONE, self.on_timeline_deleted),
+            (Post.REPORT_SECTIONS, self.on_report_sections),
             (Post.TIMELINE_COMPONENT_CREATED, self.on_timeline_component_created),
             (Post.TIMELINE_COMPONENT_DELETED, self.on_timeline_component_deleted),
             (
@@ -1511,6 +1514,63 @@ class TimelineUIs:
 
     def on_timeline_deleted(self, id: int):
         self.delete_timeline_ui(self.get_timeline_ui(id))
+
+    def on_report_sections(self):
+        timeline_name = 'Harm. segments'
+        tl_ui = next((tlui for tlui in self if tlui.get_data('name') == timeline_name), None)
+        if not tl_ui:
+            print(f'No timeline with name {timeline_name}.')
+            return
+
+        segments = []
+        for el in tl_ui:
+            start_metric_position = el.get_data("start_metric_position")
+            end_metric_position = el.get_data("end_metric_position")
+            interval = end_metric_position - start_metric_position
+            segments.append((el.get_data('label'), f'{interval.measures}.{interval.beats}'))
+
+        segments_deduplicated = []
+        for segment in segments:
+            if segment not in segments_deduplicated:
+                segments_deduplicated.append(segment)
+
+        # last measure was not counted, as it is incomplete
+        # so we add it here
+        last_segment = segments_deduplicated.pop()
+        last_segment = last_segment[0], str(float(last_segment[1]) + 1)
+        segments_deduplicated.append(last_segment)
+
+        title = get(Get.MEDIA_METADATA).get("file code")
+        print(f'## {title}')
+        for segment in segments_deduplicated:
+            if [x[0] for x in segments_deduplicated].count(segment[0]) > 1:
+                print(f'{segment[0]}: {segment[1]}  <--- DUPLICATED')
+            else:
+                print(f'{segment[0]}: {segment[1]}')
+
+        output_dir = Path('reports')
+        output_dir.mkdir(parents=True, exist_ok=True)
+        with open(output_dir / f'{title}-report.csv', 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['label', 'duration'])
+            for segment in segments_deduplicated:
+                writer.writerow(segment)
+
+        with open(output_dir / f'{title}-unfolded.csv', 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['corpus_id', 'composition_id', 'segment'])
+            try:
+                corpus, musica = title.split('-')
+            except (ValueError, AttributeError):
+                print("Title must be in format '<corpus>-<musica>'")
+                return
+
+            for segment in segments:
+                writer.writerow([corpus, musica, segment[0]])
+
+        print(" | ".join([(segment[0]) for segment in segments]))
+        print()
+        return segments_deduplicated
 
 
 class TimelineSelector(Enum):

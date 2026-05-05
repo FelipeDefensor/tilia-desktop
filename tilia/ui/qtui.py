@@ -65,6 +65,7 @@ from .windows.inspect import Inspect
 from .windows.kinds import WindowKind
 from .windows.manage_timelines import ManageTimelines
 from .windows.metadata import MediaMetadataWindow
+from .windows.phd_tools import PhdToolsWindow
 from .windows.settings import SettingsWindow
 
 
@@ -221,6 +222,7 @@ class QtUI:
             ("window.open.settings", WindowKind.SETTINGS, "Settings"),
             ("window.open.manage_timelines", WindowKind.MANAGE_TIMELINES, "Manage"),
             ("window.open.about", WindowKind.ABOUT, "About"),
+            ("window.open.phd_tools", WindowKind.PHD_TOOLS, "PhD Tools"),
         ]
 
         for command, kind, text in window_commands:
@@ -289,6 +291,7 @@ class QtUI:
             WindowKind.MANAGE_TIMELINES: None,
             WindowKind.ABOUT: None,
             WindowKind.SETTINGS: None,
+            WindowKind.PHD_TOOLS: None,
         }
 
     def update_dynamic_menus(self):
@@ -361,6 +364,7 @@ class QtUI:
             WindowKind.MEDIA_METADATA: self.open_media_metadata_window,
             WindowKind.ABOUT: self.open_about_window,
             WindowKind.SETTINGS: self.open_settings_window,
+            WindowKind.PHD_TOOLS: self.open_phd_tools_window,
         }
 
         if not self._windows[kind]:
@@ -391,6 +395,10 @@ class QtUI:
     @staticmethod
     def open_settings_window():
         return SettingsWindow()
+
+    @staticmethod
+    def open_phd_tools_window():
+        return PhdToolsWindow()
 
     def on_window_close(self, kind: WindowKind):
         if window := self._windows[kind]:

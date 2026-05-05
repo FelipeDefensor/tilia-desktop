@@ -96,6 +96,9 @@ class Post(Enum):
     WINDOW_UPDATE_REQUEST = auto()
     WINDOW_UPDATE_STATE = auto()
 
+    # PhD-fork additions
+    REPORT_SECTIONS = auto()
+
 
 _posts_to_listeners: weakref.WeakKeyDictionary[Post, Any] = weakref.WeakKeyDictionary(
     {post: {} for post in Post}
