@@ -57,7 +57,7 @@ class Timeline(ABC, Generic[TC]):
     validators = {
         "name": validate_string,
         "id": validate_read_only,
-        "height": functools.partial(validate_bounded_integer, lower=10),
+        "height": functools.partial(validate_bounded_integer, lower=1),
         "ordinal": validate_positive_integer,
         "is_visible": validate_boolean,
     }
