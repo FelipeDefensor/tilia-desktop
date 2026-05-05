@@ -20,7 +20,7 @@ VALID_LABEL_ALIGNMENTS = ("left", "center", "right")
 
 class _ToolbarSection(QWidget):
     """A ribbon-style group: a row of action buttons with a section label
-    underneath. Mimics the Office toolbar grouping."""
+    underneath."""
 
     def __init__(
         self,
