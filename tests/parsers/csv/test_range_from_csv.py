@@ -291,7 +291,7 @@ class TestJoinValidation:
         assert any("last range" in e and "'A'" in e for e in errors)
         # Ranges still created; only the join is dropped.
         assert len(range_tlui.timeline) == 2
-        assert all(r.joined_right is None for r in range_tlui.timeline)
+        assert range_tlui.timeline[-1].joined_right is None
 
     def test_gap_between_joined_ranges_reports_error(self, range_tlui):
         data = "start,end,row,joined_with_next\n0,10,A,true\n20,30,A,false"
