@@ -11,12 +11,11 @@ from PySide6.QtWidgets import (
 
 from tilia.requests import Get, Post, get, listen
 from tilia.settings import settings
-from tilia.timelines.range.timeline import (
-    VALID_LABEL_ALIGNMENTS,
-    RangeTimeline,
-)
+from tilia.timelines.range.timeline import RangeTimeline
 from tilia.ui import commands
 from tilia.ui.timelines.toolbar import TimelineToolbar
+
+VALID_LABEL_ALIGNMENTS = ("left", "center", "right")
 
 
 class _ToolbarSection(QWidget):

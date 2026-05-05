@@ -247,9 +247,6 @@ def _validate_row_height(value: Any) -> bool:
     return value is None or (isinstance(value, int) and value >= 10)
 
 
-VALID_LABEL_ALIGNMENTS = ("left", "center", "right")
-
-
 class RangeTimeline(Timeline):
     COMPONENT_MANAGER_CLASS = RangeTLComponentManager
     FLAGS = Timeline.FLAGS + [
