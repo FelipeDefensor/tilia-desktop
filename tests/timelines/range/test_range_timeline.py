@@ -32,6 +32,9 @@ class TestRangeTimelineComponentManager:
         assert serialized_components[r1.id]["start"] == r1.start
         assert serialized_components[r1.id]["end"] == r1.end
         assert serialized_components[r1.id]["row_id"] == r1.row_id
+        assert serialized_components[r2.id]["start"] == r2.start
+        assert serialized_components[r2.id]["end"] == r2.end
+        assert serialized_components[r2.id]["row_id"] == r2.row_id
 
     # noinspection PyUnresolvedReferences
     def test_deserialize_components(self, range_tl):
