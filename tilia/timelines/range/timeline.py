@@ -177,9 +177,7 @@ class RangeTLComponentManager(TimelineComponentManager):
         if not row_id or row_id not in self.timeline.row_ids:
             return False, "No row to split in."
 
-        same_row = sorted(
-            (r for r in self if r.row_id == row_id), key=lambda r: r.start
-        )
+        same_row = self.timeline.get_ranges_by_row(row_id)
 
         # Mid-range split: time strictly inside a range. The original range
         # becomes the left half (its `end` shrinks); a new range becomes
@@ -368,6 +366,12 @@ class RangeTimeline(Timeline):
             return None
         return self.rows[index]
 
+    def get_ranges_by_row(self, row_id: str) -> list[Range]:
+        """Return ranges on the given row, ordered by start time."""
+        return sorted(
+            (r for r in self if r.row_id == row_id), key=lambda r: r.start
+        )
+
     def setup_blank_timeline(self) -> None:
         if not self.rows:
             self.add_row(self.get_row_initial_name())
@@ -399,7 +403,7 @@ class RangeTimeline(Timeline):
         if row not in self.rows:
             return False
 
-        to_delete = [c for c in self if c.row_id == row.id]
+        to_delete = self.get_ranges_by_row(row.id)
         if to_delete:
             self.delete_components(to_delete)
 

@@ -931,7 +931,7 @@ class RangeTimelineUI(TimelineUI):
         candidates: list = []
         while 0 <= target_row_idx < self.timeline.row_count:
             target_row_id = self.timeline.rows[target_row_idx].id
-            candidates = [c for c in self.timeline if c.row_id == target_row_id]
+            candidates = self.timeline.get_ranges_by_row(target_row_id)
             if candidates:
                 break
             target_row_idx += step

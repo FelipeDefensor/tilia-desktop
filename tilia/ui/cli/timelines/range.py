@@ -263,7 +263,7 @@ def list_rows(timeline: RangeTimeline, namespace: argparse.Namespace) -> None:
     headers = ["index", "name", "color", "ranges"]
     data = []
     for idx, row in enumerate(timeline.rows):
-        ranges = sum(1 for c in timeline if c.row_id == row.id)
+        ranges = len(timeline.get_ranges_by_row(row.id))
         data.append((str(idx), row.name, row.color or "(default)", str(ranges)))
     io.tabulate(headers, data, title=f"Rows in {timeline.name!r}")
 

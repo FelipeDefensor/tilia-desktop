@@ -243,10 +243,8 @@ class TestJoinedWithNextByTime:
         range_tl = range_tlui.timeline
         row_a = next(r for r in range_tl.rows if r.name == "A")
         row_b = next(r for r in range_tl.rows if r.name == "B")
-        a_ranges = sorted(
-            (r for r in range_tl if r.row_id == row_a.id), key=lambda r: r.start
-        )
-        b_ranges = [r for r in range_tl if r.row_id == row_b.id]
+        a_ranges = range_tl.get_ranges_by_row(row_a.id)
+        b_ranges = range_tl.get_ranges_by_row(row_b.id)
         assert a_ranges[0].joined_right == a_ranges[1].id
         assert b_ranges[0].joined_right is None
 
