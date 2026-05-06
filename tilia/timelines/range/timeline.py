@@ -371,9 +371,7 @@ class RangeTimeline(Timeline):
 
     def get_ranges_by_row(self, row_id: str) -> list[Range]:
         """Return ranges on the given row, ordered by start time."""
-        return sorted(
-            (r for r in self if r.row_id == row_id), key=lambda r: r.start
-        )
+        return sorted(r for r in self if r.row_id == row_id)
 
     def setup_blank_timeline(self) -> None:
         if not self.rows:
