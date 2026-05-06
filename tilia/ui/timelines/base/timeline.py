@@ -491,6 +491,8 @@ class TimelineUI(ABC):  # noqa: B024
         if kind != WindowKind.INSPECT:
             return
         for element in self.selected_elements:
+            if not hasattr(element, "INSPECTOR_FIELDS"):
+                continue
             self.post_inspectable_selected_event(element)
 
     @staticmethod
