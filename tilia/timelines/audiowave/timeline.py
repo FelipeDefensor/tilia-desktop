@@ -230,10 +230,15 @@ class AudioWaveTimeline(Timeline):
                 component, mins, maxs, sr, tf, cache_key
             ),
             on_error=lambda exc: self._on_peaks_error(exc),
+            on_progress=self._on_peaks_progress,
             extractor=extractor,
         )
         self._pending_cancel = cancel
         self._pending_signals = signals
+
+    @staticmethod
+    def _on_peaks_progress(phase: str, fraction: float) -> None:
+        post(Post.STATUS_MESSAGE_SET, phase, fraction)
 
     def _on_peaks_ready(
         self,
@@ -253,6 +258,7 @@ class AudioWaveTimeline(Timeline):
         )
         component.is_ready = True
         post(Post.AUDIOWAVE_PEAKS_READY, self.id, component.id)
+        post(Post.STATUS_MESSAGE_CLEAR)
         if cache_key is not None:
             self._persist_to_cache(component, cache_key)
 
@@ -276,6 +282,7 @@ class AudioWaveTimeline(Timeline):
             logger.exception("audiowave: failed to persist pyramid cache")
 
     def _on_peaks_error(self, exc: Exception | None = None) -> None:
+        post(Post.STATUS_MESSAGE_CLEAR)
         if exc is not None:
             logger.warning("audiowave peaks extraction failed: %s", exc)
         if isinstance(exc, YTUnavailableError):
@@ -293,6 +300,7 @@ class AudioWaveTimeline(Timeline):
     def _cancel_pending_computation(self) -> None:
         if self._pending_cancel is not None:
             self._pending_cancel.cancelled = True
+            post(Post.STATUS_MESSAGE_CLEAR)
         self._pending_cancel = None
         self._pending_signals = None
 

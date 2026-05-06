@@ -163,7 +163,7 @@ class TestExtractGuards:
         # in-flight network IO.
         seen = {}
 
-        def _capture(url, cancel=None):
+        def _capture(url, cancel=None, progress=None):
             seen["url"] = url
             seen["cancel"] = cancel
             return "/tmp/x.m4a"
@@ -207,8 +207,9 @@ class TestExtractGuards:
             "tilia.timelines.audiowave.youtube.shutil.which", return_value="/x"
         ), patch(
             "tilia.timelines.audiowave.youtube.download_audio_to_tempfile",
-            side_effect=lambda url, cancel=None: download_calls.append(url)
-            or "/tmp/x.m4a",
+            side_effect=lambda url, cancel=None, progress=None: (
+                download_calls.append(url) or "/tmp/x.m4a"
+            ),
         ), patch(
             "tilia.timelines.audiowave.youtube.extract_peaks_via_ffmpeg",
             return_value=(None, None, 44100, 0),
@@ -275,9 +276,10 @@ class _FakePopen:
     with that returncode". After the list is exhausted the process is
     treated as exited with the last value (or 0)."""
 
-    def __init__(self, poll_responses, stderr_text=""):
+    def __init__(self, poll_responses, stderr_text="", stdout_text=""):
         self._responses = list(poll_responses)
         self.returncode = None
+        self.stdout = io.StringIO(stdout_text)
         self.stderr = io.StringIO(stderr_text)
         self.terminate_calls = 0
         self.kill_calls = 0
@@ -383,6 +385,47 @@ class TestDownloadCancellation:
 
         # Failure path should not terminate (process exited on its own).
         assert fake.terminate_calls == 0
+
+    def test_progress_callback_invoked_from_stdout_lines(self):
+        # Mimic yt-dlp's --newline output: one progress line per update.
+        stdout_text = (
+            "[download]   0.0% of 5.0MiB at 100KiB/s\n"
+            "[download]  50.0% of 5.0MiB at 100KiB/s\n"
+            "[download] 100.0% of 5.0MiB at 100KiB/s\n"
+        )
+        # Burn enough polls for the pump to drain stdout before exit.
+        fake = _FakePopen(
+            [None] * 5 + [0], stdout_text=stdout_text
+        )
+        seen = []
+
+        def _record(phase, fraction):
+            seen.append((phase, fraction))
+
+        with patch(
+            "tilia.timelines.audiowave.youtube.yt_dlp_command",
+            return_value=["/usr/bin/yt-dlp"],
+        ), patch(
+            "tilia.timelines.audiowave.youtube.subprocess.Popen",
+            return_value=fake,
+        ), patch(
+            "tilia.timelines.audiowave.youtube.time.sleep",
+            side_effect=lambda _: None,
+        ), patch(
+            "tilia.timelines.audiowave.youtube.os.path.exists",
+            return_value=True,
+        ):
+            youtube.download_audio_to_tempfile(
+                "https://yt.com/x", progress=_record
+            )
+
+        # We may have raced past one or two updates depending on pump
+        # timing, but at minimum some non-zero fraction must have come
+        # through with the right phase string.
+        assert any(
+            phase == "Downloading audio from YouTube" and 0.0 <= frac <= 1.0
+            for phase, frac in seen
+        ), seen
 
     def test_nonzero_exit_routes_to_typed_error(self):
         # Private-video stderr should bubble out as YTUnavailableError,

@@ -187,6 +187,8 @@ class QtUI:
             (Post.TIMELINE_TYPE_INSTANCED, self.on_timeline_type_change),
             (Post.TIMELINE_TYPE_NOT_INSTANCED, self.on_timeline_type_change),
             (Post.DISPLAY_ERROR, display_error),
+            (Post.STATUS_MESSAGE_SET, self.on_status_message_set),
+            (Post.STATUS_MESSAGE_CLEAR, self.on_status_message_clear),
             (Post.UI_EXIT, self.exit),
         }
 
@@ -327,6 +329,18 @@ class QtUI:
         if geometry and state:
             self.main_window.restoreGeometry(geometry)
             self.main_window.restoreState(state)
+
+    def on_status_message_set(self, text: str, fraction: float) -> None:
+        # fraction == -1 means indeterminate; we just show the phrase.
+        # 0..1 means we know the percent, so append it for feedback.
+        if 0.0 <= fraction <= 1.0:
+            display = f"{text}... {int(fraction * 100)}%"
+        else:
+            display = f"{text}..."
+        self.main_window.statusBar().showMessage(display)
+
+    def on_status_message_clear(self) -> None:
+        self.main_window.statusBar().clearMessage()
 
     def _setup_widgets(self):
         self.timeline_toolbars = QToolBar()

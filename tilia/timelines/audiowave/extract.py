@@ -8,7 +8,12 @@ import subprocess
 
 import numpy as np
 
-from tilia.timelines.audiowave.peaks import CancelToken
+from tilia.timelines.audiowave.peaks import (
+    PROGRESS_EMIT_INTERVAL,
+    PROGRESS_INDETERMINATE,
+    CancelToken,
+    ProgressCallback,
+)
 
 # Output samplerate is fixed at 44.1 kHz mono regardless of source. The
 # waveform display only needs amplitude envelope; resampling artefacts
@@ -24,6 +29,7 @@ def extract_peaks_via_ffmpeg(
     path: str,
     frames_per_peak: int,
     cancel: CancelToken | None = None,
+    progress: ProgressCallback | None = None,
 ) -> tuple[np.ndarray, np.ndarray, int, int]:
     """Run ffmpeg to decode + downmix + resample audio, aggregating min/max
     peaks per bucket as samples arrive on stdout.
@@ -61,6 +67,9 @@ def extract_peaks_via_ffmpeg(
     mins: list[int] = []
     maxs: list[int] = []
     total_frames = 0
+    chunk_index = 0
+    if progress is not None:
+        progress("Computing audio waveform", PROGRESS_INDETERMINATE)
     try:
         while True:
             if cancel is not None and cancel.cancelled:
@@ -76,6 +85,17 @@ def extract_peaks_via_ffmpeg(
             mins.append(int(arr.min()))
             maxs.append(int(arr.max()))
             total_frames += arr.size
+            chunk_index += 1
+            if (
+                progress is not None
+                and chunk_index % PROGRESS_EMIT_INTERVAL == 0
+            ):
+                # Total length is unknown until ffmpeg finishes — keep
+                # the bar indeterminate but heartbeat the phase so the
+                # user sees the worker is alive.
+                progress(
+                    "Computing audio waveform", PROGRESS_INDETERMINATE
+                )
         proc.wait()
     finally:
         if proc.stdout is not None:

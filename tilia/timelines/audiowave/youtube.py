@@ -24,7 +24,12 @@ from tilia.exceptions import NoReplyToRequest
 from tilia.requests import Get, get
 from tilia.settings import settings
 from tilia.timelines.audiowave.extract import extract_peaks_via_ffmpeg
-from tilia.timelines.audiowave.peaks import CancelToken
+from tilia.timelines.audiowave.peaks import CancelToken, ProgressCallback
+
+
+# yt-dlp prints download progress as e.g. "[download]   3.4% of 5.4MiB at ...".
+# With --newline, each update is its own line, parseable by this regex.
+_YT_DLP_PROGRESS_RE = re.compile(r"\[download\]\s+([\d.]+)%")
 
 
 # Generous total wall-clock cap. yt-dlp is bandwidth-bound, so even
@@ -197,6 +202,7 @@ def download_audio_to_tempfile(
     url: str,
     cancel: CancelToken | None = None,
     timeout_seconds: float = YT_DLP_TOTAL_TIMEOUT_SECONDS,
+    progress: ProgressCallback | None = None,
 ) -> str:
     """Download YT audio to a temp file. Caller deletes when done.
 
@@ -223,21 +229,57 @@ def download_audio_to_tempfile(
         "-o",
         tmp_path,
         "--no-playlist",
-        "--quiet",
+        # --newline forces yt-dlp to emit each progress update as its own
+        # line instead of \r-overwriting in place, which is what makes
+        # line-based stdout pumping useful.
+        "--newline",
         "--no-warnings",
         url,
     ]
     proc = subprocess.Popen(
         cmd,
-        stdout=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
     )
+
+    # Pump stdout in a daemon thread so progress lines never block on
+    # an unread pipe. The worker drains the queue inside the poll loop.
+    import threading
+    from collections import deque
+
+    stdout_lines: "deque[str]" = deque()
+
+    def _pump_stdout() -> None:
+        if proc.stdout is None:
+            return
+        try:
+            for line in iter(proc.stdout.readline, ""):
+                stdout_lines.append(line)
+        except (ValueError, OSError):
+            pass
+
+    pump = threading.Thread(target=_pump_stdout, daemon=True)
+    pump.start()
+
     start = time.monotonic()
     try:
         while True:
             if proc.poll() is not None:
                 break
+            while stdout_lines and progress is not None:
+                line = stdout_lines.popleft()
+                match = _YT_DLP_PROGRESS_RE.search(line)
+                if match is None:
+                    continue
+                try:
+                    pct = float(match.group(1)) / 100.0
+                except ValueError:
+                    continue
+                progress(
+                    "Downloading audio from YouTube",
+                    max(0.0, min(1.0, pct)),
+                )
             if cancel is not None and cancel.cancelled:
                 _terminate_proc(proc)
                 _cleanup_tmp(tmp_path)
@@ -281,6 +323,7 @@ def extract_peaks_via_yt_dlp(
     url: str,
     frames_per_peak: int,
     cancel: CancelToken | None = None,
+    progress: ProgressCallback | None = None,
 ) -> tuple[np.ndarray, np.ndarray, int, int]:
     """Download the audio stream from ``url`` and reuse the ffmpeg
     streaming pipeline to compute peaks.
@@ -300,9 +343,13 @@ def extract_peaks_via_yt_dlp(
     # leaves the setting False, and re-checking would spuriously fail
     # in that legitimate case.
 
-    tmp_path = download_audio_to_tempfile(url, cancel=cancel)
+    tmp_path = download_audio_to_tempfile(
+        url, cancel=cancel, progress=progress
+    )
     try:
-        return extract_peaks_via_ffmpeg(tmp_path, frames_per_peak, cancel)
+        return extract_peaks_via_ffmpeg(
+            tmp_path, frames_per_peak, cancel=cancel, progress=progress
+        )
     finally:
         try:
             os.unlink(tmp_path)

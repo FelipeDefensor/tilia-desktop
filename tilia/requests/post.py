@@ -17,6 +17,11 @@ class Post(Enum):
     APP_STATE_RESTORE = auto()
     APP_STATE_UNDO_OR_REDO_DONE = auto()
     AUDIOWAVE_PEAKS_READY = auto()
+    # Set/clear a long-running status message in the main window.
+    # Set payload: (text: str, fraction: float).  Pass -1 for fraction
+    # when progress is indeterminate.
+    STATUS_MESSAGE_SET = auto()
+    STATUS_MESSAGE_CLEAR = auto()
     BEAT_TIMELINE_COMPONENTS_DESERIALIZED = auto()
     BEAT_TIMELINE_MEASURE_NUMBER_CHANGE_DONE = auto()
     DISPLAY_ERROR = auto()

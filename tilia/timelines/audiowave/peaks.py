@@ -42,10 +42,20 @@ def adapt_frames_per_peak(
     return fpp
 
 
+PROGRESS_INDETERMINATE = -1.0
+# How often (in buckets / chunks / lines) extractors emit progress.
+# Tuning target: visible motion without flooding the GUI thread.
+PROGRESS_EMIT_INTERVAL = 64
+
+
+ProgressCallback = Callable[[str, float], None]
+
+
 def compute_peaks_sync(
     path: str,
     frames_per_peak: int,
     cancel: CancelToken | None = None,
+    progress: ProgressCallback | None = None,
 ) -> tuple[np.ndarray, np.ndarray, int, int]:
     """Read the audio file at ``path`` and compute per-bucket min/max peaks.
 
@@ -72,6 +82,12 @@ def compute_peaks_sync(
                 continue
             peaks_min[i] = mono.min()
             peaks_max[i] = mono.max()
+            if (
+                progress is not None
+                and n_buckets > 0
+                and (i % PROGRESS_EMIT_INTERVAL == 0)
+            ):
+                progress("Computing audio waveform", (i + 1) / n_buckets)
 
     abs_peak = max(
         float(np.abs(peaks_min).max(initial=0.0)),
@@ -115,10 +131,13 @@ def build_lod_pyramid(
 class _PeaksWorkerSignals(QObject):
     done = Signal(object, object, int, int)
     error = Signal(object)
+    # phase: short user-visible label, e.g. "Downloading audio from YouTube".
+    # fraction: 0.0 .. 1.0, or PROGRESS_INDETERMINATE (-1) when unknown.
+    progress = Signal(str, float)
 
 
 PeaksExtractor = Callable[
-    [str, int, "CancelToken | None"],
+    ...,
     tuple[np.ndarray, np.ndarray, int, int],
 ]
 
@@ -140,9 +159,17 @@ class _PeaksRunnable(QRunnable):
         self.extractor = extractor
 
     def run(self) -> None:
+        def _emit_progress(phase: str, fraction: float) -> None:
+            if self.cancel.cancelled:
+                return
+            self.signals.progress.emit(phase, fraction)
+
         try:
             mins, maxs, samplerate, total_frames = self.extractor(
-                self.path, self.frames_per_peak, self.cancel
+                self.path,
+                self.frames_per_peak,
+                cancel=self.cancel,
+                progress=_emit_progress,
             )
         except Exception as exc:
             if not self.cancel.cancelled:
@@ -158,6 +185,7 @@ def compute_peaks_async(
     frames_per_peak: int,
     on_done: Callable[[np.ndarray, np.ndarray, int, int], None],
     on_error: Callable[[Exception], None] | None = None,
+    on_progress: ProgressCallback | None = None,
     extractor: PeaksExtractor | None = None,
 ) -> tuple[CancelToken, _PeaksWorkerSignals]:
     """Submit a peak-computation runnable to the global QThreadPool.
@@ -168,6 +196,11 @@ def compute_peaks_async(
     without firing callbacks. ``extractor`` defaults to
     ``compute_peaks_sync`` (soundfile), but can be swapped for the
     ffmpeg or yt-dlp variants in extract.py / youtube.py.
+
+    ``on_progress(phase, fraction)`` (optional) is called on the GUI
+    thread for every progress update emitted by the extractor. Use
+    ``PROGRESS_INDETERMINATE`` for ``fraction`` when the total isn't
+    known up-front.
     """
     cancel = CancelToken()
     signals = _PeaksWorkerSignals()
@@ -183,8 +216,14 @@ def compute_peaks_async(
         if on_error is not None:
             on_error(exc)
 
+    def _on_progress(phase, fraction):
+        if cancel.cancelled or on_progress is None:
+            return
+        on_progress(phase, fraction)
+
     signals.done.connect(_on_done)
     signals.error.connect(_on_error)
+    signals.progress.connect(_on_progress)
 
     QThreadPool.globalInstance().start(
         _PeaksRunnable(
