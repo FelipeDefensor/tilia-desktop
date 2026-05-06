@@ -881,9 +881,9 @@ class RangeTimelineUI(TimelineUI):
         return changed
 
     def row_y(self, row_index: int) -> float:
-        # Cumulative top-y of the row at `row_index`. Each row may have
-        # an explicit `height`; rows that don't fall back to the timeline's
-        # `row_height`.
+        # Cumulative top-y of the row at `row_index`. Each row may set
+        # its own `height`; rows without one inherit the timeline's
+        # default row height.
         if row_index <= 0:
             return 0.0
         total = 0.0
