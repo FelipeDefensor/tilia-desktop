@@ -154,17 +154,33 @@ class TestExtractGuards:
             with pytest.raises(RuntimeError, match="ffmpeg"):
                 youtube.extract_peaks_via_yt_dlp("https://yt.com/x", 128)
 
-    def test_unacknowledged_raises_without_invoking_dialog(self):
-        # The disclaimer modal is built on the main thread by the timeline
-        # before submitting work to the pool. The worker entry point must
-        # NOT trigger the dialog itself (NSWindow main-thread assertion on
-        # macOS), so an unacknowledged setting raises immediately.
+    def test_extract_does_not_invoke_dialog(self):
+        # The disclaimer is shown on the main thread by the timeline
+        # before submitting work to the pool. The worker entry point
+        # must never trigger the dialog itself (NSWindow main-thread
+        # assertion on macOS) and must not block on the persisted
+        # setting either — accepting "OK" without ticking
+        # "don't show again" is a valid path that leaves the setting
+        # False but should still produce a waveform.
         settings.set("audiowave_timeline", "acknowledged_yt_dlp_terms", False)
+        download_calls = []
+
         with patch(
             "tilia.timelines.audiowave.youtube.is_yt_dlp_available",
             return_value=True,
         ), patch(
             "tilia.timelines.audiowave.youtube.shutil.which", return_value="/x"
-        ):
-            with pytest.raises(RuntimeError, match="acknowledged"):
-                youtube.extract_peaks_via_yt_dlp("https://yt.com/x", 128)
+        ), patch(
+            "tilia.timelines.audiowave.youtube.download_audio_to_tempfile",
+            side_effect=lambda url: download_calls.append(url) or "/tmp/x.m4a",
+        ), patch(
+            "tilia.timelines.audiowave.youtube.extract_peaks_via_ffmpeg",
+            return_value=(None, None, 44100, 0),
+        ), patch(
+            "tilia.timelines.audiowave.youtube.os.unlink"
+        ), serve_yt_dlp_acknowledgement((False, False)):
+            # serve_yt_dlp_acknowledgement is wired but should never
+            # be invoked from the worker entry point.
+            youtube.extract_peaks_via_yt_dlp("https://yt.com/x", 128)
+
+        assert download_calls == ["https://yt.com/x"]
