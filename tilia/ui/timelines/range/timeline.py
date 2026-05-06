@@ -273,11 +273,14 @@ class RangeTimelineUI(TimelineUI):
     def update_row_labels(self) -> None:
         current_row_ids = [row.id for row in self.timeline.rows]
 
+        # Drop labels for rows that have been removed.
         for row_id in list(self.row_labels.keys()):
             if row_id not in current_row_ids:
                 label = self.row_labels.pop(row_id)
                 self.scene.removeItem(label)
 
+        # Create labels for new rows; refresh text + font for all rows so
+        # renames and per-row height changes are picked up.
         for row_idx, row in enumerate(self.timeline.rows):
             if row.id not in self.row_labels:
                 label = LevelLabel(
@@ -290,6 +293,8 @@ class RangeTimelineUI(TimelineUI):
             label.setPlainText(row.name)
             self._apply_label_font(label, self.row_height_for(row))
 
+        # Reposition every label after height/order changes shift the y of
+        # rows below.
         for row_id, label in self.row_labels.items():
             label.set_position(
                 get(Get.LEFT_MARGIN_X) - 2, self.row_y(self.row_index(row_id)) - 2
