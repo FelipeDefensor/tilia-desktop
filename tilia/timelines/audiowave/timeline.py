@@ -25,6 +25,7 @@ from tilia.timelines.audiowave.peaks import (
     estimate_pyramid_bytes,
 )
 from tilia.timelines.audiowave.youtube import (
+    acknowledge_terms_or_cancel,
     extract_peaks_via_yt_dlp,
     get_video_id,
     is_yt_dlp_available,
@@ -94,6 +95,13 @@ class AudioWaveTimeline(Timeline):
         if kind is None:
             if classify_error is not None:
                 tilia.errors.display(classify_error)
+            self._update_visibility(False)
+            return
+
+        # YT downloads are subject to a one-time disclaimer. Ask on the
+        # main thread (here) before submitting any work to the pool —
+        # building QMessageBox off-thread crashes on macOS.
+        if kind == "youtube" and not acknowledge_terms_or_cancel():
             self._update_visibility(False)
             return
 

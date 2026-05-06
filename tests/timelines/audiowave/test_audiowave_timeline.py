@@ -249,6 +249,46 @@ class TestClassification:
             captured.append(extractor)
             return CancelToken(), object()
 
+        from tilia.settings import settings
+
+        settings.set("audiowave_timeline", "acknowledged_yt_dlp_terms", True)
+        try:
+            with patch(
+                "tilia.timelines.audiowave.timeline.is_yt_dlp_available",
+                return_value=True,
+            ), patch(
+                "tilia.timelines.audiowave.timeline.is_ffmpeg_available",
+                return_value=True,
+            ), patch(
+                "tilia.timelines.audiowave.timeline.compute_peaks_async", fake_async
+            ):
+                fresh_audiowave_tl.refresh()
+        finally:
+            settings.set("audiowave_timeline", "acknowledged_yt_dlp_terms", False)
+
+        from tilia.timelines.audiowave.youtube import extract_peaks_via_yt_dlp
+
+        assert captured == [extract_peaks_via_yt_dlp]
+
+    def test_yt_disclaimer_runs_on_main_thread_before_worker_submit(
+        self, fresh_audiowave_tl, tilia_state
+    ):
+        # Regression: previously the disclaimer was triggered inside the
+        # threadpool worker, building QMessageBox off the main thread and
+        # crashing on macOS. Verify acknowledge_terms_or_cancel is called
+        # *before* compute_peaks_async, and that a "no" answer hides the
+        # timeline without ever submitting work.
+        tilia_state.media_path = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        order = []
+
+        def fake_ack():
+            order.append("ack")
+            return False
+
+        def fake_async(*a, **kw):
+            order.append("async")
+            return CancelToken(), object()
+
         with patch(
             "tilia.timelines.audiowave.timeline.is_yt_dlp_available",
             return_value=True,
@@ -256,13 +296,15 @@ class TestClassification:
             "tilia.timelines.audiowave.timeline.is_ffmpeg_available",
             return_value=True,
         ), patch(
+            "tilia.timelines.audiowave.timeline.acknowledge_terms_or_cancel",
+            fake_ack,
+        ), patch(
             "tilia.timelines.audiowave.timeline.compute_peaks_async", fake_async
         ):
             fresh_audiowave_tl.refresh()
 
-        from tilia.timelines.audiowave.youtube import extract_peaks_via_yt_dlp
-
-        assert captured == [extract_peaks_via_yt_dlp]
+        assert order == ["ack"]
+        assert fresh_audiowave_tl.get_data("is_visible") is False
 
     def test_yt_url_without_yt_dlp_hides_timeline(
         self, fresh_audiowave_tl, tilia_state

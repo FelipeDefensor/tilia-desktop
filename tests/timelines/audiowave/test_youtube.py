@@ -154,13 +154,17 @@ class TestExtractGuards:
             with pytest.raises(RuntimeError, match="ffmpeg"):
                 youtube.extract_peaks_via_yt_dlp("https://yt.com/x", 128)
 
-    def test_user_declined_raises(self):
+    def test_unacknowledged_raises_without_invoking_dialog(self):
+        # The disclaimer modal is built on the main thread by the timeline
+        # before submitting work to the pool. The worker entry point must
+        # NOT trigger the dialog itself (NSWindow main-thread assertion on
+        # macOS), so an unacknowledged setting raises immediately.
         settings.set("audiowave_timeline", "acknowledged_yt_dlp_terms", False)
         with patch(
             "tilia.timelines.audiowave.youtube.is_yt_dlp_available",
             return_value=True,
         ), patch(
             "tilia.timelines.audiowave.youtube.shutil.which", return_value="/x"
-        ), serve_yt_dlp_acknowledgement((False, False)):
-            with pytest.raises(RuntimeError, match="acknowledge"):
+        ):
+            with pytest.raises(RuntimeError, match="acknowledged"):
                 youtube.extract_peaks_via_yt_dlp("https://yt.com/x", 128)

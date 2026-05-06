@@ -152,8 +152,15 @@ def extract_peaks_via_yt_dlp(
         raise RuntimeError("yt-dlp is not installed")
     if shutil.which("ffmpeg") is None:
         raise RuntimeError("ffmpeg is not installed")
-    if not acknowledge_terms_or_cancel():
-        raise RuntimeError("user did not acknowledge yt-dlp terms")
+    # The disclaimer modal lives on the main thread; the caller must
+    # have run acknowledge_terms_or_cancel() before submitting this to
+    # the worker pool, otherwise QMessageBox is built off-thread and
+    # crashes on macOS (NSWindow main-thread assertion).
+    if not settings.get("audiowave_timeline", "acknowledged_yt_dlp_terms"):
+        raise RuntimeError(
+            "yt-dlp terms must be acknowledged on the main thread "
+            "before extraction is submitted to the worker"
+        )
 
     tmp_path = download_audio_to_tempfile(url)
     try:
