@@ -93,6 +93,18 @@ class TestActions:
         assert tlui[1].get_data("level") == 1
         assert tlui[2].get_data("level") == 1
 
+    def test_increase_level_via_keypress(self, tlui):
+        h, _ = tlui.create_hierarchy(0, 1, 1)
+        tlui.select_element(tlui.get_element(h.id))
+        post(Post.TIMELINE_KEY_PRESS_CTRL_UP)
+        assert tlui.get_element(h.id).get_data("level") == 2
+
+    def test_decrease_level_via_keypress(self, tlui):
+        h, _ = tlui.create_hierarchy(0, 1, 2)
+        tlui.select_element(tlui.get_element(h.id))
+        post(Post.TIMELINE_KEY_PRESS_CTRL_DOWN)
+        assert tlui.get_element(h.id).get_data("level") == 1
+
     def test_set_color(self, tlui):
         tlui.create_hierarchy(0, 1, 1)
         tlui.select_element(tlui[0])

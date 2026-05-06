@@ -1034,6 +1034,23 @@ class TestMoveToRow:
         commands.execute("edit.undo")
         assert range_tlui[0].get_data("row_id") == original_row_id
 
+    def test_move_to_row_above_via_keypress(self, range_tlui):
+        commands.execute("timeline.range.add_row")
+        commands.execute("timeline.range.add_range", start=0, end=10)
+        r = range_tlui[0]
+        commands.execute("timeline.range.move_to_row_below", elements=[r])
+        range_tlui.select_element(r)
+        post(Post.TIMELINE_KEY_PRESS_CTRL_UP)
+        assert r.get_data("row_id") == range_tlui.rows[0].id
+
+    def test_move_to_row_below_via_keypress(self, range_tlui):
+        commands.execute("timeline.range.add_row")
+        commands.execute("timeline.range.add_range", start=0, end=10)
+        r = range_tlui[0]
+        range_tlui.select_element(r)
+        post(Post.TIMELINE_KEY_PRESS_CTRL_DOWN)
+        assert r.get_data("row_id") == range_tlui.rows[1].id
+
 
 class TestRangeElementContextMenu:
     def test_default_items_present(self, range_tlui):

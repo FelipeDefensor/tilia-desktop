@@ -57,14 +57,14 @@ class HierarchyTimelineUI(TimelineUI):
             (
                 "decrease_level",
                 "Move down a level",
-                "Ctrl+Down",
+                "",
                 "hierarchy-level-down",
             ),
             ("group", "Group", "g", "hierarchy-create-parent"),
             (
                 "increase_level",
                 "Move up a level",
-                "Ctrl+Up",
+                "",
                 "hierarchy-level-up",
             ),
             ("merge", "Merge", "e", "hierarchy-merge"),
@@ -241,6 +241,14 @@ class HierarchyTimelineUI(TimelineUI):
 
     def on_vertical_arrow_press(self, arrow: str):
         HierarchyTimelineUIKeyPressManager(self).on_vertical_arrow_press(arrow)
+
+    def on_ctrl_vertical_arrow_press(self, direction: str) -> None:
+        cmd = (
+            "timeline.hierarchy.increase_level"
+            if direction == "up"
+            else "timeline.hierarchy.decrease_level"
+        )
+        commands.execute(cmd)
 
     def get_max_hierarchy_height(self):
         max_level = max(

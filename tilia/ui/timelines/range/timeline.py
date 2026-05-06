@@ -12,6 +12,7 @@ from tilia.requests import Get, Post, get, listen, post
 from tilia.settings import settings
 from tilia.timelines.component_kinds import ComponentKind
 from tilia.timelines.range.timeline import RangeTimeline
+from tilia.ui import commands
 from tilia.ui.coords import time_x_converter
 from tilia.ui.dialogs.basic import ask_for_color
 from tilia.ui.menus import RangeMenu
@@ -170,8 +171,8 @@ class RangeTimelineUI(TimelineUI):
             ("merge_ranges", "Merge ranges", "e", "range-merge"),
             ("split_range", "Split range", "s", "range-split"),
             ("set_range_color", "Set color", "", ""),
-            ("move_to_row_above", "Move to row above", "Ctrl+Up", ""),
-            ("move_to_row_below", "Move to row below", "Ctrl+Down", ""),
+            ("move_to_row_above", "Move to row above", "", ""),
+            ("move_to_row_below", "Move to row below", "", ""),
             ("set_row_height", "Set default row height", "", ""),
             ("set_row_height_for_row", "Set height for this row", "", ""),
             ("reset_row_height_for_row", "Reset row height", "", ""),
@@ -914,6 +915,14 @@ class RangeTimelineUI(TimelineUI):
         if arrow not in ("up", "down"):
             raise ValueError(f"Invalid arrow '{arrow}'.")
         self._handle_arrow_navigation(arrow)
+
+    def on_ctrl_vertical_arrow_press(self, direction: str) -> None:
+        cmd = (
+            "timeline.range.move_to_row_above"
+            if direction == "up"
+            else "timeline.range.move_to_row_below"
+        )
+        commands.execute(cmd)
 
     def _handle_arrow_navigation(self, arrow: str) -> None:
         selection = self.selected_components
