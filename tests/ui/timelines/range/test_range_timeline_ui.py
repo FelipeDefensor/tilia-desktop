@@ -1406,7 +1406,7 @@ class TestTimelineContextMenu:
         action = get_action_by_object_name(menu, "set default row height")
         with Serve(Get.FROM_USER_INT, (True, 60)):
             action.trigger()
-        assert range_tlui.timeline.row_height == 60
+        assert range_tlui.timeline.default_row_height == 60
         assert range_tlui.default_row_height == 60
 
     def test_set_row_height_cancel_keeps_value(self, range_tlui):
@@ -1414,7 +1414,7 @@ class TestTimelineContextMenu:
         action = get_action_by_object_name(menu, "set default row height")
         with Serve(Get.FROM_USER_INT, (False, 0)):
             action.trigger()
-        assert range_tlui.timeline.row_height is None
+        assert range_tlui.timeline.default_row_height is None
 
     def test_rename_row_via_context_menu(self, range_tlui):
         menu = self._menu(range_tlui)
@@ -1544,7 +1544,7 @@ class TestResetRowColor:
 
 class TestRowHeight:
     def test_default_falls_back_to_settings(self, range_tlui):
-        assert range_tlui.timeline.row_height is None
+        assert range_tlui.timeline.default_row_height is None
         assert range_tlui.default_row_height == settings.get(
             "range_timeline", "default_row_height"
         )
@@ -1610,7 +1610,7 @@ class TestRowHeight:
 
         save_and_reopen(tmp_path)
 
-        assert tluis[0].timeline.row_height == 75
+        assert tluis[0].timeline.default_row_height == 75
         assert tluis[0].default_row_height == 75
         post(Post.TIMELINE_VIEW_LEFT_BUTTON_RELEASE)
 

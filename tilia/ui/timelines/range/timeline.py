@@ -87,7 +87,7 @@ class RangeTimelineUI(TimelineUI):
     CONTEXT_MENU_CLASS = RangeTimelineContextMenu
     UPDATE_TRIGGERS = TimelineUI.UPDATE_TRIGGERS + [
         "rows",
-        "row_height",
+        "default_row_height",
     ]
     DEFAULT_LABEL_PIXEL_SIZE = 12
     MIN_LABEL_PIXEL_SIZE = 6
@@ -168,7 +168,7 @@ class RangeTimelineUI(TimelineUI):
 
     @property
     def default_row_height(self) -> int:
-        return self.timeline.row_height or settings.get(
+        return self.timeline.default_row_height or settings.get(
             "range_timeline", "default_row_height"
         )
 
@@ -287,7 +287,7 @@ class RangeTimelineUI(TimelineUI):
             element.update_color()
             element.update_position()
 
-    def update_row_height(self) -> None:
+    def update_default_row_height(self) -> None:
         if self.row_highlight is not None:
             self.row_highlight.set_height(self.default_row_height)
             self.update_highlight_position()
@@ -689,7 +689,7 @@ class RangeTimelineUI(TimelineUI):
         # so `Post.TIMELINE_SET_DATA_DONE` is posted on success — that's
         # what triggers the UI refresh when the default row height changes.
         return get(Get.TIMELINE_COLLECTION).set_timeline_data(
-            self.id, "row_height", height
+            self.id, "default_row_height", height
         )
 
     @with_row

@@ -37,13 +37,13 @@ class TestAddRangeTimeline:
         range_cli.parse_and_run("timelines add range --name test --row-height 75")
 
         tl = tls.get_timelines()[0]
-        assert tl.row_height == 75
+        assert tl.default_row_height == 75
 
     def test_add_range_timeline_default_row_height_is_none(self, range_cli, tls):
         range_cli.parse_and_run("timelines add range --name test")
 
         tl = tls.get_timelines()[0]
-        assert tl.row_height is None
+        assert tl.default_row_height is None
 
 
 class TestRowAdd:
@@ -93,7 +93,7 @@ class TestRowSetHeight:
         range_cli.parse_and_run(
             "timelines range row set-height --tl-name R1 --height 75"
         )
-        assert range_tl.row_height == 75
+        assert range_tl.default_row_height == 75
 
 
 class TestRowList:
@@ -238,7 +238,7 @@ class TestRangeCliWithoutUi:
     def test_set_row_height(self, cli, tls):
         cli.parse_and_run("timelines add range --name R1")
         cli.parse_and_run("timelines range row set-height --tl-name R1 --height 75")
-        assert tls.get_timelines()[0].row_height == 75
+        assert tls.get_timelines()[0].default_row_height == 75
 
     def test_rename_row(self, cli, tls):
         cli.parse_and_run("timelines add range --name R1")
@@ -301,7 +301,7 @@ class TestSaveLoadRoundtrip:
         range_cli.parse_and_run(f"open {path}")
         tl = _get_range_timeline(tls)
         assert tl.name == "test"
-        assert tl.row_height == 75
+        assert tl.default_row_height == 75
         assert [r.name for r in tl.rows] == ["Row 0", "R2"]
         assert tl.rows[1].color == "#abcdef"
 
@@ -324,7 +324,7 @@ class TestSaveLoadRoundtrip:
         range_cli.parse_and_run(f"open {path2}")
 
         tl = _get_range_timeline(tls)
-        assert tl.row_height == 60
+        assert tl.default_row_height == 60
         assert [r.name for r in tl.rows] == ["Row 0", "R2"]
         assert tl.rows[0].color == "#112233"
 
@@ -351,7 +351,7 @@ class TestRangeScript:
 
         tl = _get_range_timeline(tls)
         assert tl.name == "FromScript"
-        assert tl.row_height == 40
+        assert tl.default_row_height == 40
         assert [r.name for r in tl.rows] == ["Choruses", "Row 0", "Verses"]
         # Choruses (was added with color)
         assert tl.rows[0].color == "#abcdef"
@@ -377,6 +377,6 @@ class TestRangeScript:
 
         range_cli.parse_and_run(f"open {save_path}")
         tl = _get_range_timeline(tls)
-        assert tl.row_height == 50
+        assert tl.default_row_height == 50
         assert [r.name for r in tl.rows] == ["Row 0", "R2"]
         assert tl.rows[1].color == "#aa00bb"

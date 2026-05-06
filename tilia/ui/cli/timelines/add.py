@@ -56,9 +56,11 @@ Examples:
     )
     add_subp.add_argument(
         "--row-height",
+        dest="default_row_height",
         type=int,
         default=None,
-        help="Per-timeline row height (range timelines only). Defaults to the global setting.",
+        help="Per-timeline default row height (range timelines only). "
+        "Defaults to the global setting.",
     )
     add_subp.set_defaults(func=add)
 
@@ -67,7 +69,7 @@ TLKIND_TO_KWARGS_NAMES = {
     BeatTimeline: ["name", "height", "beat_pattern"],
     HierarchyTimeline: ["name", "height"],
     MarkerTimeline: ["name", "height"],
-    RangeTimeline: ["name", "height", "row_height"],
+    RangeTimeline: ["name", "height", "default_row_height"],
     ScoreTimeline: ["name", "height"],
 }
 
@@ -101,7 +103,7 @@ def add(namespace: argparse.Namespace):
 
     tl_type = KIND_STR_TO_TLKIND[kind]
 
-    if namespace.row_height is not None and tl_type is not RangeTimeline:
+    if namespace.default_row_height is not None and tl_type is not RangeTimeline:
         tilia.errors.display(
             tilia.errors.CLI_ADD_TIMELINE_ARG_NOT_APPLICABLE, "--row-height", kind
         )

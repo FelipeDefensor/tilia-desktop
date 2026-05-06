@@ -86,7 +86,7 @@ class RangeUI(TimelineUIElement):
     @property
     def row_height(self) -> int:
         # Per-row height: each row may carry its own; rows without an
-        # explicit height fall back to the timeline's row_height.
+        # explicit height fall back to the timeline's default_row_height.
         row = self.timeline_ui.get_row_by_id(self.get_data("row_id"))
         return self.timeline_ui.row_height_for(row)
 

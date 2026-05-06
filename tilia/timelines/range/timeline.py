@@ -243,7 +243,7 @@ class RangeTLComponentManager(TimelineComponentManager):
         super().delete_component(component)
 
 
-def _validate_row_height(value: Any) -> bool:
+def _validate_default_row_height(value: Any) -> bool:
     return value is None or (isinstance(value, int) and value >= 10)
 
 
@@ -257,12 +257,12 @@ class RangeTimeline(Timeline):
 
     SERIALIZABLE = Timeline.SERIALIZABLE + [
         "rows",
-        "row_height",
+        "default_row_height",
     ]
 
     validators = Timeline.validators.copy()
     validators["rows"] = lambda x: (isinstance(x, list), "")
-    validators["row_height"] = _validate_row_height
+    validators["default_row_height"] = _validate_default_row_height
 
     class Row:
         def __init__(
@@ -317,7 +317,7 @@ class RangeTimeline(Timeline):
         self,
         *args,
         rows: list[dict] | None = None,
-        row_height: int | None = None,
+        default_row_height: int | None = None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -331,7 +331,7 @@ class RangeTimeline(Timeline):
             _rows.append(RangeTimeline.Row.from_dict(row))
 
         self.rows = _rows
-        self.row_height = row_height
+        self.default_row_height = default_row_height
 
     @property
     def default_color(self) -> str:
@@ -436,7 +436,7 @@ class RangeTimeline(Timeline):
         self._post_rows_update()
 
     def set_row_height(self, row: Row, height: int | None) -> None:
-        # height=None means "fall back to the timeline's row_height".
+        # height=None means "fall back to the timeline's default_row_height".
         row.height = height
         self._post_rows_update()
 
