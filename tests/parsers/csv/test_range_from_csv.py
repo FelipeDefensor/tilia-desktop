@@ -54,11 +54,10 @@ class TestImportByTime:
         success, errors = _trigger_import_through_command("time", data)
         assert success
         assert errors == []
-        ranges = sorted(range_tlui.timeline)
-        assert ranges[0].start == 0
-        assert ranges[0].end == 1
-        assert ranges[0].label == "first"
-        assert ranges[1].label == "second"
+        assert range_tlui[0].get_data("start") == 0
+        assert range_tlui[0].get_data("end") == 1
+        assert range_tlui[0].get_data("label") == "first"
+        assert range_tlui[1].get_data("label") == "second"
 
     def test_auto_creates_rows_by_name(self, range_tlui):
         data = "start,end,row\n0,1,Verses\n1,2,Choruses"
@@ -70,11 +69,11 @@ class TestImportByTime:
     def test_reuses_row_for_duplicate_name(self, range_tlui):
         data = "start,end,row\n0,1,Existing\n1,2,Existing"
         _trigger_import_through_command("time", data)
-        range_tl = range_tlui.timeline
+        rows = range_tlui.timeline.rows
         # Two CSV entries with the same row name produce a single row.
-        assert len([r for r in range_tl.rows if r.name == "Existing"]) == 1
-        existing = next(r for r in range_tl.rows if r.name == "Existing")
-        assert all(c.row_id == existing.id for c in range_tl)
+        assert len([r for r in rows if r.name == "Existing"]) == 1
+        existing = next(r for r in rows if r.name == "Existing")
+        assert all(e.get_data("row_id") == existing.id for e in range_tlui)
 
     def test_propagates_color_and_comments(self, range_tlui):
         data = (
@@ -83,11 +82,10 @@ class TestImportByTime:
             "1,2,A,,note two"
         )
         _trigger_import_through_command("time", data)
-        ranges = sorted(range_tlui.timeline)
-        assert ranges[0].color == "#abcdef"
-        assert ranges[0].comments == "note one"
-        assert ranges[1].color is None
-        assert ranges[1].comments == "note two"
+        assert range_tlui[0].get_data("color") == "#abcdef"
+        assert range_tlui[0].get_data("comments") == "note one"
+        assert range_tlui[1].get_data("color") is None
+        assert range_tlui[1].get_data("comments") == "note two"
 
     def test_missing_required_column_fails(self, range_tlui):
         data = "start,end,label\n0,1,first"
@@ -100,26 +98,26 @@ class TestImportByTime:
         success, errors = _trigger_import_through_command("time", data)
         assert success
         assert any("nonsense" in e for e in errors)
-        assert len(range_tlui.timeline) == 0
+        assert len(range_tlui) == 0
 
     def test_bad_end_value_yields_error(self, range_tlui):
         data = "start,end,row\n0,nonsense,A"
         success, errors = _trigger_import_through_command("time", data)
         assert success
         assert any("nonsense" in e for e in errors)
-        assert len(range_tlui.timeline) == 0
+        assert len(range_tlui) == 0
 
     def test_empty_row_name_skipped(self, range_tlui):
         data = "start,end,row\n0,1,\n1,2,A"
         success, errors = _trigger_import_through_command("time", data)
         assert success
         assert any("row name is empty" in e for e in errors)
-        assert len(range_tlui.timeline) == 1
+        assert len(range_tlui) == 1
 
     def test_skips_blank_lines(self, range_tlui):
         data = "start,end,row\n0,1,A\n\n2,3,A"
         _trigger_import_through_command("time", data)
-        assert len(range_tlui.timeline) == 2
+        assert len(range_tlui) == 2
 
 
 class TestImportByMeasure:
@@ -128,13 +126,12 @@ class TestImportByMeasure:
         success, errors = _trigger_import_through_command("measure", data)
         assert success
         assert errors == []
-        ranges = sorted(range_tlui.timeline)
-        assert ranges[0].start == 1
-        assert ranges[0].end == 2
-        assert ranges[0].label == "first"
-        assert ranges[1].start == 3
-        assert ranges[1].end == 4
-        assert ranges[1].label == "second"
+        assert range_tlui[0].get_data("start") == 1
+        assert range_tlui[0].get_data("end") == 2
+        assert range_tlui[0].get_data("label") == "first"
+        assert range_tlui[1].get_data("start") == 3
+        assert range_tlui[1].get_data("end") == 4
+        assert range_tlui[1].get_data("label") == "second"
 
     def test_auto_creates_rows(self, range_tlui, populated_beat_tl):
         data = "start,end,row\n1,2,Verses\n3,4,Choruses"
@@ -146,13 +143,12 @@ class TestImportByMeasure:
     def test_with_fractions(self, range_tlui, populated_beat_tl):
         data = "start,end,start_fraction,end_fraction,row\n1,2,0.5,0.5,A"
         _trigger_import_through_command("measure", data)
-        range_tl = range_tlui.timeline
-        assert len(range_tl) == 1
+        assert len(range_tlui) == 1
         # Beats at 1,2 → measure 1 starts at 1, measure 2 starts at 2;
         # fraction 0.5 within measure 1 (length 1) gives 1.5; within
         # measure 2 (length 1, end-side) gives 2.5.
-        assert range_tl[0].start == 1.5
-        assert range_tl[0].end == 2.5
+        assert range_tlui[0].get_data("start") == 1.5
+        assert range_tlui[0].get_data("end") == 2.5
 
     def test_missing_required_column_fails(self, range_tlui, populated_beat_tl):
         data = "start,end,label\n1,2,A"
@@ -172,14 +168,14 @@ class TestImportByMeasure:
         assert success
         assert any("nonsense" in e for e in errors)
         # Despite the bad fraction the range is still created with fraction=0.
-        assert len(range_tlui.timeline) == 1
+        assert len(range_tlui) == 1
 
     def test_unknown_measure_yields_error(self, range_tlui, populated_beat_tl):
         data = "start,end,row\n99,100,A"
         success, errors = _trigger_import_through_command("measure", data)
         assert success
         assert any("99" in e for e in errors)
-        assert len(range_tlui.timeline) == 0
+        assert len(range_tlui) == 0
 
 
 class TestImportReplacesExistingRows:
@@ -213,9 +209,8 @@ class TestJoinedWithNextByTime:
         success, errors = _trigger_import_through_command("time", data)
         assert success
         assert errors == []
-        ranges = sorted(range_tlui.timeline)
-        assert ranges[0].joined_right == ranges[1].id
-        assert ranges[1].joined_right is None
+        assert range_tlui[0].get_data("joined_right") == range_tlui[1].id
+        assert range_tlui[1].get_data("joined_right") is None
 
     def test_chain_of_three(self, range_tlui):
         data = (
@@ -225,10 +220,9 @@ class TestJoinedWithNextByTime:
             "2,3,A,false"
         )
         _trigger_import_through_command("time", data)
-        ranges = sorted(range_tlui.timeline)
-        assert ranges[0].joined_right == ranges[1].id
-        assert ranges[1].joined_right == ranges[2].id
-        assert ranges[2].joined_right is None
+        assert range_tlui[0].get_data("joined_right") == range_tlui[1].id
+        assert range_tlui[1].get_data("joined_right") == range_tlui[2].id
+        assert range_tlui[2].get_data("joined_right") is None
 
     def test_join_only_within_same_row(self, range_tlui):
         # A.next is true but the next CSV entry lives on a different row;
@@ -240,19 +234,19 @@ class TestJoinedWithNextByTime:
             "1,2,A,false"
         )
         _trigger_import_through_command("time", data)
-        range_tl = range_tlui.timeline
-        row_a = next(r for r in range_tl.rows if r.name == "A")
-        row_b = next(r for r in range_tl.rows if r.name == "B")
-        a_ranges = range_tl.get_ranges_by_row(row_a.id)
-        b_ranges = range_tl.get_ranges_by_row(row_b.id)
-        assert a_ranges[0].joined_right == a_ranges[1].id
-        assert b_ranges[0].joined_right is None
+        rows = range_tlui.timeline.rows
+        row_a = next(r for r in rows if r.name == "A")
+        row_b = next(r for r in rows if r.name == "B")
+        a_elems = [e for e in range_tlui if e.get_data("row_id") == row_a.id]
+        b_elems = [e for e in range_tlui if e.get_data("row_id") == row_b.id]
+        assert a_elems[0].get_data("joined_right") == a_elems[1].id
+        assert b_elems[0].get_data("joined_right") is None
 
     def test_default_is_unjoined(self, range_tlui):
         data = "start,end,row\n0,1,A\n1,2,A"
         _trigger_import_through_command("time", data)
-        for r in range_tlui.timeline:
-            assert r.joined_right is None
+        for e in range_tlui:
+            assert e.get_data("joined_right") is None
 
     def test_join_target_uses_temporal_order_not_csv_order(self, range_tlui):
         # CSV is *not* sorted by start. The flagged range (start=0) must
@@ -260,17 +254,15 @@ class TestJoinedWithNextByTime:
         # in the CSV.
         data = "start,end,row,joined_with_next\n" "1,2,A,false\n" "0,1,A,true\n"
         _trigger_import_through_command("time", data)
-        ranges_by_start = sorted(range_tlui.timeline)
-        assert ranges_by_start[0].joined_right == ranges_by_start[1].id
-        assert ranges_by_start[1].joined_right is None
+        assert range_tlui[0].get_data("joined_right") == range_tlui[1].id
+        assert range_tlui[1].get_data("joined_right") is None
 
     def test_invalid_boolean_reports_error(self, range_tlui):
         data = "start,end,row,joined_with_next\n0,1,A,maybe\n1,2,A,false"
         success, errors = _trigger_import_through_command("time", data)
         assert success
         assert any("joined_with_next" in e and "maybe" in e for e in errors)
-        ranges = sorted(range_tlui.timeline)
-        assert ranges[0].joined_right is None
+        assert range_tlui[0].get_data("joined_right") is None
 
 
 class TestJoinedWithNextByMeasure:
@@ -279,8 +271,7 @@ class TestJoinedWithNextByMeasure:
         success, errors = _trigger_import_through_command("measure", data)
         assert success
         assert errors == []
-        ranges = sorted(range_tlui.timeline)
-        assert ranges[0].joined_right == ranges[1].id
+        assert range_tlui[0].get_data("joined_right") == range_tlui[1].id
 
 
 class TestJoinValidation:
@@ -290,24 +281,22 @@ class TestJoinValidation:
         assert success
         assert any("last range" in e and "'A'" in e for e in errors)
         # Ranges still created; only the join is dropped.
-        assert len(range_tlui.timeline) == 2
-        assert range_tlui.timeline[-1].joined_right is None
+        assert len(range_tlui) == 2
+        assert range_tlui[-1].get_data("joined_right") is None
 
     def test_gap_between_joined_ranges_reports_error(self, range_tlui):
         data = "start,end,row,joined_with_next\n0,10,A,true\n20,30,A,false"
         success, errors = _trigger_import_through_command("time", data)
         assert success
         assert any("must equal" in e for e in errors)
-        ranges = sorted(range_tlui.timeline)
-        assert ranges[0].joined_right is None
+        assert range_tlui[0].get_data("joined_right") is None
 
     def test_overlap_between_joined_ranges_reports_error(self, range_tlui):
         data = "start,end,row,joined_with_next\n0,10,A,true\n5,15,A,false"
         success, errors = _trigger_import_through_command("time", data)
         assert success
         assert any("must equal" in e for e in errors)
-        ranges = sorted(range_tlui.timeline)
-        assert ranges[0].joined_right is None
+        assert range_tlui[0].get_data("joined_right") is None
 
     def test_only_invalid_join_is_dropped(self, range_tlui):
         # Three ranges on row A: 0→10 (true, ok), 10→20 (true, gap follows),
@@ -321,10 +310,9 @@ class TestJoinValidation:
         success, errors = _trigger_import_through_command("time", data)
         assert success
         assert len(errors) == 1
-        ranges = sorted(range_tlui.timeline)
-        assert ranges[0].joined_right == ranges[1].id
-        assert ranges[1].joined_right is None
-        assert ranges[2].joined_right is None
+        assert range_tlui[0].get_data("joined_right") == range_tlui[1].id
+        assert range_tlui[1].get_data("joined_right") is None
+        assert range_tlui[2].get_data("joined_right") is None
 
     def test_validation_runs_under_measure_mode(self, range_tlui, populated_beat_tl):
         # Beat fixture creates beats at 1..5 → measures 1..5; measures 1 and
@@ -333,8 +321,7 @@ class TestJoinValidation:
         success, errors = _trigger_import_through_command("measure", data)
         assert success
         assert any("must equal" in e for e in errors)
-        ranges = sorted(range_tlui.timeline)
-        assert ranges[0].joined_right is None
+        assert range_tlui[0].get_data("joined_right") is None
 
 
 class TestParserDispatch:
