@@ -43,6 +43,63 @@ class YTDownloadCancelled(Exception):
     emitting errors) — this exists for clarity in logs and tests."""
 
 
+class YTDownloadError(RuntimeError):
+    """Base class for typed yt-dlp failures we surface to the user."""
+
+
+class YTUnavailableError(YTDownloadError):
+    """The video itself can't be fetched: private, age-restricted,
+    geo-blocked, removed, members-only, etc. Re-trying won't help."""
+
+
+class YTNetworkError(YTDownloadError):
+    """DNS / connection / HTTP failure between us and YouTube. Often
+    transient — re-trying may help."""
+
+
+# Substrings to look for in yt-dlp's stderr. Lowercased before match.
+# Order doesn't matter; first hit wins.
+_NETWORK_MARKERS = (
+    "errno -2",
+    "errno 8",
+    "errno 11001",
+    "could not resolve",
+    "network is unreachable",
+    "name or service not known",
+    "temporary failure in name resolution",
+    "connection refused",
+    "connection reset",
+    "connection timed out",
+    "no route to host",
+    "unable to download webpage",
+)
+_UNAVAILABLE_MARKERS = (
+    "private video",
+    "this video is private",
+    "video unavailable",
+    "video has been removed",
+    "no longer available",
+    "is not available in your country",
+    "geo restricted",
+    "members-only content",
+    "members only",
+    "sign in to confirm your age",
+    "age-restricted",
+    "removed by the uploader",
+    "this video has been removed",
+)
+
+
+def classify_yt_stderr(stderr: str) -> type[YTDownloadError]:
+    """Pick the most informative typed error class for ``stderr``."""
+    text = (stderr or "").lower()
+    if any(marker in text for marker in _NETWORK_MARKERS):
+        return YTNetworkError
+    if any(marker in text for marker in _UNAVAILABLE_MARKERS):
+        return YTUnavailableError
+    return YTDownloadError
+
+
 def get_video_id(url: str) -> str | None:
     match = re.match(tilia.constants.YOUTUBE_URL_REGEX, url)
     return match[6] if match else None
@@ -204,7 +261,8 @@ def download_audio_to_tempfile(
             except OSError:
                 pass
         _cleanup_tmp(tmp_path)
-        raise RuntimeError(
+        error_cls = classify_yt_stderr(stderr)
+        raise error_cls(
             f"yt-dlp exited with code {proc.returncode}: {stderr.strip()}"
         )
     # yt-dlp may add an extension if the source format differs. Find

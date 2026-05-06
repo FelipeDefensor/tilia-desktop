@@ -141,6 +141,63 @@ class TestWorkerError:
         mock_display.assert_called_once_with(tilia.errors.AUDIOWAVE_INVALID_FILE)
         assert fresh_audiowave_tl.get_data("is_visible") is False
 
+    @pytest.mark.parametrize(
+        "exc_factory,expected_error",
+        [
+            (
+                lambda: __import__(
+                    "tilia.timelines.audiowave.youtube",
+                    fromlist=["YTUnavailableError"],
+                ).YTUnavailableError("private"),
+                "YT_VIDEO_UNAVAILABLE",
+            ),
+            (
+                lambda: __import__(
+                    "tilia.timelines.audiowave.youtube",
+                    fromlist=["YTNetworkError"],
+                ).YTNetworkError("dns"),
+                "YT_NETWORK_ERROR",
+            ),
+            (
+                lambda: __import__(
+                    "tilia.timelines.audiowave.youtube",
+                    fromlist=["YTDownloadError"],
+                ).YTDownloadError("weird"),
+                "YT_DLP_DOWNLOAD_FAILED",
+            ),
+        ],
+    )
+    def test_typed_yt_errors_route_to_specific_user_messages(
+        self,
+        fresh_audiowave_tl,
+        tilia_state,
+        tmp_path,
+        exc_factory,
+        expected_error,
+    ):
+        audio_path = os.fspath(tmp_path / "a.wav")
+        _write_silent_wav(audio_path)
+        tilia_state.media_path = audio_path
+
+        captured_on_error = []
+
+        def fake_async(path, fpp, on_done, on_error=None, **_):
+            captured_on_error.append(on_error)
+            return CancelToken(), object()
+
+        with patch(
+            "tilia.timelines.audiowave.timeline.compute_peaks_async", fake_async
+        ):
+            fresh_audiowave_tl.refresh()
+
+        with patch.object(tilia.errors, "display") as mock_display:
+            captured_on_error[0](exc_factory())
+
+        # First positional arg of display(error, *args) is the Error tuple.
+        called_with = mock_display.call_args.args[0]
+        assert called_with is getattr(tilia.errors, expected_error)
+        assert fresh_audiowave_tl.get_data("is_visible") is False
+
 
 class TestLegacyDeserialization:
     def test_legacy_amplitudebar_components_trigger_refresh(self, fresh_audiowave_tl):

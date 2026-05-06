@@ -70,7 +70,18 @@ YT_DLP_NOT_INSTALLED = Error(
 )
 YT_DLP_DOWNLOAD_FAILED = Error(
     "YouTube download failed",
-    "Could not extract audio from YouTube URL '{}': {}",
+    "Could not extract audio from YouTube: {}",
+)
+YT_VIDEO_UNAVAILABLE = Error(
+    "YouTube video unavailable",
+    "This YouTube video can't be downloaded. It may be private, "
+    "age-restricted, removed, geo-blocked, or members-only. Audio "
+    "waveform display is disabled for this video.",
+)
+YT_NETWORK_ERROR = Error(
+    "YouTube download failed",
+    "Could not reach YouTube. Check your internet connection and "
+    "try reloading the file.",
 )
 BEAT_DISTRIBUTION_ERROR = Error(
     "Distribute measure", "Cannot distribute beats on last measure."

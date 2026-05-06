@@ -25,6 +25,9 @@ from tilia.timelines.audiowave.peaks import (
     estimate_pyramid_bytes,
 )
 from tilia.timelines.audiowave.youtube import (
+    YTDownloadError,
+    YTNetworkError,
+    YTUnavailableError,
     acknowledge_terms_or_cancel,
     extract_peaks_via_yt_dlp,
     get_video_id,
@@ -275,7 +278,16 @@ class AudioWaveTimeline(Timeline):
     def _on_peaks_error(self, exc: Exception | None = None) -> None:
         if exc is not None:
             logger.warning("audiowave peaks extraction failed: %s", exc)
-        tilia.errors.display(tilia.errors.AUDIOWAVE_INVALID_FILE)
+        if isinstance(exc, YTUnavailableError):
+            tilia.errors.display(tilia.errors.YT_VIDEO_UNAVAILABLE)
+        elif isinstance(exc, YTNetworkError):
+            tilia.errors.display(tilia.errors.YT_NETWORK_ERROR)
+        elif isinstance(exc, YTDownloadError):
+            tilia.errors.display(
+                tilia.errors.YT_DLP_DOWNLOAD_FAILED, str(exc)
+            )
+        else:
+            tilia.errors.display(tilia.errors.AUDIOWAVE_INVALID_FILE)
         self._update_visibility(False)
 
     def _cancel_pending_computation(self) -> None:

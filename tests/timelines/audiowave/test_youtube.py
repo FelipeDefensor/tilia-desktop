@@ -222,6 +222,51 @@ class TestExtractGuards:
         assert download_calls == ["https://yt.com/x"]
 
 
+class TestStderrClassification:
+    @pytest.mark.parametrize(
+        "stderr",
+        [
+            "ERROR: [youtube] xxx: Private video. Sign in...",
+            "ERROR: [youtube] xxx: Video unavailable",
+            "ERROR: [youtube] xxx: This video is not available in your country.",
+            "ERROR: Sign in to confirm your age. This video may be inappropriate.",
+            "ERROR: This video is members-only content.",
+            "ERROR: Video has been removed by the uploader.",
+        ],
+    )
+    def test_unavailable_patterns(self, stderr):
+        assert (
+            youtube.classify_yt_stderr(stderr)
+            is youtube.YTUnavailableError
+        )
+
+    @pytest.mark.parametrize(
+        "stderr",
+        [
+            "ERROR: [Errno 8] nodename nor servname provided",
+            "ERROR: Could not resolve host: youtube.com",
+            "ERROR: <urlopen error [Errno -2] Name or service not known>",
+            "ERROR: Network is unreachable",
+            "ERROR: Connection refused",
+            "ERROR: Unable to download webpage: HTTPSConnectionPool",
+        ],
+    )
+    def test_network_patterns(self, stderr):
+        assert (
+            youtube.classify_yt_stderr(stderr)
+            is youtube.YTNetworkError
+        )
+
+    def test_unknown_falls_back_to_generic(self):
+        assert (
+            youtube.classify_yt_stderr("ERROR: something completely new")
+            is youtube.YTDownloadError
+        )
+
+    def test_empty_stderr_is_generic(self):
+        assert youtube.classify_yt_stderr("") is youtube.YTDownloadError
+
+
 class _FakePopen:
     """Minimal subprocess.Popen stand-in for download tests.
 
@@ -333,8 +378,27 @@ class TestDownloadCancellation:
         ), patch(
             "tilia.timelines.audiowave.youtube.time.sleep"
         ):
-            with pytest.raises(RuntimeError, match="boom"):
+            with pytest.raises(youtube.YTDownloadError, match="boom"):
                 youtube.download_audio_to_tempfile("https://yt.com/x")
 
         # Failure path should not terminate (process exited on its own).
         assert fake.terminate_calls == 0
+
+    def test_nonzero_exit_routes_to_typed_error(self):
+        # Private-video stderr should bubble out as YTUnavailableError,
+        # not the generic base, so the timeline can show the right
+        # user-facing message.
+        fake = _FakePopen(
+            [None, 1], stderr_text="ERROR: Private video. Sign in to view."
+        )
+        with patch(
+            "tilia.timelines.audiowave.youtube.yt_dlp_command",
+            return_value=["/usr/bin/yt-dlp"],
+        ), patch(
+            "tilia.timelines.audiowave.youtube.subprocess.Popen",
+            return_value=fake,
+        ), patch(
+            "tilia.timelines.audiowave.youtube.time.sleep"
+        ):
+            with pytest.raises(youtube.YTUnavailableError):
+                youtube.download_audio_to_tempfile("https://yt.com/x")
