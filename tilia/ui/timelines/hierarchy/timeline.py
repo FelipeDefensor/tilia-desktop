@@ -54,6 +54,12 @@ class HierarchyTimelineUI(TimelineUI):
                 "c",
                 "hierarchy-create-child",
             ),
+            # decrease_level / increase_level: shortcut field is empty
+            # because Ctrl+Up / Ctrl+Down are dispatched via
+            # Post.TIMELINE_KEY_PRESS_CTRL_UP/DOWN (see TimelineView and
+            # TimelineUIs.on_ctrl_arrow_press) instead of being attached
+            # to the QAction. Registering the same shortcut here as well
+            # would produce a Qt "Ambiguous shortcut" warning.
             (
                 "decrease_level",
                 "Move down a level",

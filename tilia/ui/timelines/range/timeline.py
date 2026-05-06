@@ -198,6 +198,12 @@ class RangeTimelineUI(TimelineUI):
             ("merge_ranges", "Merge ranges", "e", "range-merge"),
             ("split_range", "Split range", "s", "range-split"),
             ("set_range_color", "Set color", "", ""),
+            # move_to_row_above / move_to_row_below: shortcut field is empty
+            # because Ctrl+Up / Ctrl+Down are dispatched via
+            # Post.TIMELINE_KEY_PRESS_CTRL_UP/DOWN (see TimelineView and
+            # TimelineUIs.on_ctrl_arrow_press) instead of being attached
+            # to the QAction. Registering the same shortcut here as well
+            # would produce a Qt "Ambiguous shortcut" warning.
             ("move_to_row_above", "Move to row above", "", ""),
             ("move_to_row_below", "Move to row below", "", ""),
             ("set_row_height", "Set default row height", "", ""),
