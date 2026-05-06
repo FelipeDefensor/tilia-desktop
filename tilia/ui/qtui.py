@@ -84,13 +84,24 @@ class TiliaMainWindow(QMainWindow):
 
         return super().changeEvent(event)
 
+    # Qt warnings emitted on every paint while the SVG score viewer is open.
+    # They are harmless rendering-engine noise but flood the log loudly enough
+    # to make the app unresponsive (see issue #513).
+    QT_LOG_NOISE_PATTERNS = (
+        "QFont::setPixelSize: Pixel size <= 0",
+        "QWindowsFontEngineDirectWrite::addGlyphsToPath: GetGlyphRunOutline failed",
+    )
+
     @staticmethod
     def handle_qt_log_message(type, context, msg):
         f_msg = f"[{type.name}] {context.file}:{context.line} - {msg}"
         if type == QtMsgType.QtFatalMsg:
             raise Exception(f_msg)
-        else:
-            logger.error(f_msg)
+        if type == QtMsgType.QtWarningMsg and any(
+            p in msg for p in TiliaMainWindow.QT_LOG_NOISE_PATTERNS
+        ):
+            return
+        logger.error(f_msg)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         if event is None:
