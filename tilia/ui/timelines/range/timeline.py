@@ -78,7 +78,7 @@ class RangeTimelineUI(TimelineUI):
         )
         self.row_labels: dict[str, LevelLabel] = {}
         self.row_highlight: SelectedRowHighlight | None = SelectedRowHighlight(
-            self.row_height
+            self.default_row_height
         )
         self.scene.addItem(self.row_highlight)
         self.update_height()
@@ -105,7 +105,7 @@ class RangeTimelineUI(TimelineUI):
         return self.timeline.rows
 
     def _create_row_highlight(self) -> None:
-        self.row_highlight = SelectedRowHighlight(self.row_height)
+        self.row_highlight = SelectedRowHighlight(self.default_row_height)
         self.scene.addItem(self.row_highlight)
         self.update_highlight_position()
 
@@ -145,7 +145,7 @@ class RangeTimelineUI(TimelineUI):
             return super().get_data(attr)
 
     @property
-    def row_height(self) -> int:
+    def default_row_height(self) -> int:
         return self.timeline.row_height or settings.get(
             "range_timeline", "default_row_height"
         )
@@ -214,7 +214,7 @@ class RangeTimelineUI(TimelineUI):
     def on_settings_updated(self, updated_settings: list[str]) -> None:
         if "range_timeline" in updated_settings:
             if self.row_highlight is not None:
-                self.row_highlight.set_height(self.row_height)
+                self.row_highlight.set_height(self.default_row_height)
                 self.update_highlight_position()
             self.update_height()
             self.update_row_labels()
@@ -267,7 +267,7 @@ class RangeTimelineUI(TimelineUI):
 
     def update_row_height(self) -> None:
         if self.row_highlight is not None:
-            self.row_highlight.set_height(self.row_height)
+            self.row_highlight.set_height(self.default_row_height)
             self.update_highlight_position()
         for element in self:
             element.update_position()
@@ -678,7 +678,7 @@ class RangeTimelineUI(TimelineUI):
                 Get.FROM_USER_INT,
                 "Set default row height",
                 "Insert new default row height",
-                value=self.row_height,
+                value=self.default_row_height,
                 minValue=10,
             )
             if not success:
@@ -894,7 +894,7 @@ class RangeTimelineUI(TimelineUI):
 
     def row_height_for(self, row: RangeTimeline.Row | None) -> int:
         if row is None or row.height is None:
-            return self.row_height
+            return self.default_row_height
         return row.height
 
     def update_height(self) -> None:

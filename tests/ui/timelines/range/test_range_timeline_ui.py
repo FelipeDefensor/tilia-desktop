@@ -45,7 +45,7 @@ from tilia.ui.windows.kinds import WindowKind
 
 
 def get_timeline_context_menu_for_row(range_tlui, row_index=0):
-    y = int(range_tlui.row_height * (row_index + 1) / 2)
+    y = int(range_tlui.default_row_height * (row_index + 1) / 2)
     with patch.object(
         range_tlui, "get_row_by_y", return_value=range_tlui.rows[row_index]
     ):
@@ -1249,7 +1249,7 @@ class TestRowHighlight:
         highlight_y1 = range_tlui.row_highlight.rect().y()
         highlight_y2 = highlight_y1 + range_tlui.row_highlight.rect().height()
         row_y1 = range_tlui.row_y(row_index)
-        row_y2 = row_y1 + range_tlui.row_height
+        row_y2 = row_y1 + range_tlui.default_row_height
         assert highlight_y1 == row_y1
         assert highlight_y2 == row_y2
 
@@ -1407,7 +1407,7 @@ class TestTimelineContextMenu:
         with Serve(Get.FROM_USER_INT, (True, 60)):
             action.trigger()
         assert range_tlui.timeline.row_height == 60
-        assert range_tlui.row_height == 60
+        assert range_tlui.default_row_height == 60
 
     def test_set_row_height_cancel_keeps_value(self, range_tlui):
         menu = self._menu(range_tlui)
@@ -1545,14 +1545,14 @@ class TestResetRowColor:
 class TestRowHeight:
     def test_default_falls_back_to_settings(self, range_tlui):
         assert range_tlui.timeline.row_height is None
-        assert range_tlui.row_height == settings.get(
+        assert range_tlui.default_row_height == settings.get(
             "range_timeline", "default_row_height"
         )
 
     def test_set_row_height_command(self, range_tlui):
         with Serve(Get.FROM_USER_INT, (True, 60)):
             commands.execute("timeline.range.set_row_height")
-        assert range_tlui.row_height == 60
+        assert range_tlui.default_row_height == 60
 
     def test_set_row_height_updates_element_position(self, range_tlui):
         # Pin the starting height explicitly so the assertion below holds
@@ -1586,7 +1586,7 @@ class TestRowHeight:
         assert range_tlui.row_highlight is None
         with Serve(Get.FROM_USER_INT, (True, 80)):
             commands.execute("timeline.range.set_row_height")
-        assert range_tlui.row_height == 80
+        assert range_tlui.default_row_height == 80
 
     def test_set_row_height_resizes_range_body(self, range_tlui):
         commands.execute("timeline.range.add_range", start=0, end=10)
@@ -1597,10 +1597,10 @@ class TestRowHeight:
     def test_set_row_height_to_same_value_does_not_error(
         self, range_tlui, tilia_errors
     ):
-        original = range_tlui.row_height
+        original = range_tlui.default_row_height
         with Serve(Get.FROM_USER_INT, (True, original)):
             commands.execute("timeline.range.set_row_height")
-        assert range_tlui.row_height == original
+        assert range_tlui.default_row_height == original
         tilia_errors.assert_no_error()
 
     def test_save_load_preserves_row_height(self, tilia, tluis, tilia_state, tmp_path):
@@ -1611,7 +1611,7 @@ class TestRowHeight:
         save_and_reopen(tmp_path)
 
         assert tluis[0].timeline.row_height == 75
-        assert tluis[0].row_height == 75
+        assert tluis[0].default_row_height == 75
         post(Post.TIMELINE_VIEW_LEFT_BUTTON_RELEASE)
 
     def test_label_font_uses_default_size_when_row_height_is_large(self, range_tlui):
@@ -1852,14 +1852,16 @@ class TestSettings:
     # not needed — each test sets the values it relies on explicitly.
 
     def test_row_height_setting_changes_row_height(self, range_tlui):
-        original = range_tlui.row_height
+        original = range_tlui.default_row_height
         settings.set("range_timeline", "default_row_height", original + 50)
         post(Post.SETTINGS_UPDATED, ["range_timeline"])
-        assert range_tlui.row_height == original + 50
+        assert range_tlui.default_row_height == original + 50
 
     def test_row_height_setting_updates_timeline_height(self, range_tlui):
         original_total = range_tlui.height
-        settings.set("range_timeline", "default_row_height", range_tlui.row_height + 30)
+        settings.set(
+            "range_timeline", "default_row_height", range_tlui.default_row_height + 30
+        )
         post(Post.SETTINGS_UPDATED, ["range_timeline"])
         assert range_tlui.height == original_total + 30
 
@@ -1873,7 +1875,7 @@ class TestSettings:
         settings.set("range_timeline", "default_row_height", 50)
         post(Post.SETTINGS_UPDATED, ["range_timeline"])
         # Per-timeline override wins.
-        assert range_tlui.row_height == 120
+        assert range_tlui.default_row_height == 120
 
     def test_default_range_color_setting_updates_element_color(self, range_tlui):
         # New rows store color=None and fall back to the default-range-color
@@ -1926,7 +1928,7 @@ class TestVerticalBodyDrag:
         # First drag captures click offset.
         drag_mouse_in_timeline_view(center_x, 0, release=False)
         # Drag straight down into row_b.
-        target_y = range_tlui.row_y(1) + range_tlui.row_height // 2
+        target_y = range_tlui.row_y(1) + range_tlui.default_row_height // 2
         drag_mouse_in_timeline_view(center_x, target_y)
         assert r.get_data("row_id") == row_b.id
 
@@ -1939,7 +1941,7 @@ class TestVerticalBodyDrag:
         click_range_ui(r)
         center_x = time_x_converter.get_x_by_time(30)
         drag_mouse_in_timeline_view(center_x, 0, release=False)
-        target_y = range_tlui.row_y(0) + range_tlui.row_height // 2
+        target_y = range_tlui.row_y(0) + range_tlui.default_row_height // 2
         drag_mouse_in_timeline_view(center_x, target_y)
         assert r.get_data("row_id") == row_a.id
 
@@ -1982,7 +1984,7 @@ class TestVerticalBodyDrag:
         click_range_ui(r)
         center_x = time_x_converter.get_x_by_time(30)
         drag_mouse_in_timeline_view(center_x, 0, release=False)
-        target_y = range_tlui.row_y(1) + range_tlui.row_height // 2
+        target_y = range_tlui.row_y(1) + range_tlui.default_row_height // 2
         drag_mouse_in_timeline_view(center_x, target_y)
         assert r.get_data("row_id") == row_b.id
         commands.execute("edit.undo")
@@ -1998,7 +2000,7 @@ class TestVerticalBodyDrag:
         click_range_ui(r1)
         center_x = time_x_converter.get_x_by_time(15)
         drag_mouse_in_timeline_view(center_x, 0, release=False)
-        target_y = range_tlui.row_y(1) + range_tlui.row_height // 2
+        target_y = range_tlui.row_y(1) + range_tlui.default_row_height // 2
         drag_mouse_in_timeline_view(center_x, target_y)
         assert r1.get_data("row_id") == row_b.id
         assert r2.get_data("row_id") == row_b.id
@@ -2250,14 +2252,14 @@ class TestRowDeletionGuard:
         assert len(range_tlui.rows) == 1
 
     def test_remove_row_action_hidden_when_only_one_row(self, range_tlui):
-        y = int(range_tlui.row_height / 2)
+        y = int(range_tlui.default_row_height / 2)
         with patch.object(range_tlui, "get_row_by_y", return_value=range_tlui.rows[0]):
             menu = get_context_menu(range_tlui, 0, y)
         assert get_action_by_object_name(menu, "remove row") is None
 
     def test_remove_row_action_present_when_multiple_rows(self, range_tlui):
         commands.execute("timeline.range.add_row")
-        y = int(range_tlui.row_height / 2)
+        y = int(range_tlui.default_row_height / 2)
         with patch.object(range_tlui, "get_row_by_y", return_value=range_tlui.rows[0]):
             menu = get_context_menu(range_tlui, 0, y)
         assert get_action_by_object_name(menu, "remove row") is not None
@@ -2399,7 +2401,7 @@ class TestVerticalDragLive:
         drag_mouse_in_timeline_view(center_x, 0, release=False)
         assert r.get_data("row_id") == row_a.id
 
-        target_y = range_tlui.row_y(1) + range_tlui.row_height // 2
+        target_y = range_tlui.row_y(1) + range_tlui.default_row_height // 2
         # Mid-drag (no release): row_id should already update to row_b.
         drag_mouse_in_timeline_view(center_x, target_y, release=False)
         assert r.get_data("row_id") == row_b.id
@@ -3201,7 +3203,7 @@ class TestPerRowHeight:
     def test_row_height_for_falls_back_to_timeline(self, range_tlui):
         # No explicit per-row height -> uses timeline's row_height.
         row = range_tlui.rows[0]
-        assert range_tlui.row_height_for(row) == range_tlui.row_height
+        assert range_tlui.row_height_for(row) == range_tlui.default_row_height
 
     def test_set_row_height_for_row_command(self, range_tlui):
         row = range_tlui.rows[0]
@@ -3226,7 +3228,7 @@ class TestPerRowHeight:
                 "timeline.range.set_row_height_for_row", row=range_tlui.rows[1]
             )
 
-        default = range_tlui.row_height
+        default = range_tlui.default_row_height
         assert range_tlui.row_y(0) == 0
         assert range_tlui.row_y(1) == default
         assert range_tlui.row_y(2) == default + 80
@@ -3238,7 +3240,7 @@ class TestPerRowHeight:
                 "timeline.range.set_row_height_for_row", row=range_tlui.rows[1]
             )
 
-        default = range_tlui.row_height
+        default = range_tlui.default_row_height
         assert range_tlui.height == default + 80 + 20
 
     def test_get_row_by_y_handles_per_row_heights(self, range_tlui):
