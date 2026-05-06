@@ -161,9 +161,15 @@ class SvgViewer(ViewDockWidget):
                 self.beat_x_position = {
                     float(beat): float(x) for beat, x in beat_x_pos.items()
                 }
-            self.timeline.save_svg_data(str(etree.tostring(self.score_root), "utf-8"))
         else:
+            # `_get_beat_x_pos` strips data-marker elements as a side effect.
+            # When viewer_beat_x is already cached we skip it, so the markers
+            # can survive into the rendered SVG. Qt emits a font warning per
+            # marker per paint (issue #513), which both floods the log and
+            # tanks frame rate — strip them here too.
+            self._strip_beat_x_markers(self.score_root)
             self.beat_x_position = {float(beat): float(x) for beat, x in x_pos.items()}
+        self.timeline.save_svg_data(str(etree.tostring(self.score_root), "utf-8"))
 
         self.setParent(get(Get.MAIN_WINDOW))
         self.score_renderer.load(bytearray(etree.tostring(self.score_root)))
@@ -186,6 +192,29 @@ class SvgViewer(ViewDockWidget):
             self.show()
 
         self.view.check_scale()
+
+    @staticmethod
+    def _strip_beat_x_markers(root: etree._Element) -> None:
+        """Remove the near-zero font-size data-marker text elements that
+        `_get_beat_x_pos` strips on first load.
+
+        Markers that lack the expected ␟-separated payload (3 parts) get
+        their font-size bumped to 15px instead of being removed, matching
+        the behavior of `_get_beat_x_pos`.
+        """
+        for e in root.findall(".//g[@class='vf-text']", None):
+            if not len(e):
+                continue
+            try:
+                if float(e[0].attrib["font-size"].strip("px")) > 1:
+                    continue
+            except (KeyError, ValueError):
+                continue
+            text = e[0].text or ""
+            if len(text.split("␟")) != 3:
+                e[0].attrib["font-size"] = "15px"
+                continue
+            e.getparent().remove(e)
 
     def _get_beat_x_pos(self, root: etree._Element) -> dict[float, float]:
         texts = root.findall(".//g[@class='vf-text']", None)
