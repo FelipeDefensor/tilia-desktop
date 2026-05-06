@@ -39,6 +39,26 @@ class TestClickToSeek:
             )
         mock.assert_not_called()
 
+    def test_single_click_is_gated_on_not_playing(
+        self, audiowave_tlui, waveform_element
+    ):
+        with patch(
+            "tilia.ui.timelines.audiowave.timeline.commands.execute"
+        ) as mock:
+            click_at_time(audiowave_tlui, 5.0)
+        kwargs = mock.call_args.kwargs
+        assert kwargs.get("if_playing") is False
+
+    def test_double_click_seeks_unconditionally(
+        self, audiowave_tlui, waveform_element
+    ):
+        with patch(
+            "tilia.ui.timelines.audiowave.timeline.commands.execute"
+        ) as mock:
+            click_at_time(audiowave_tlui, 5.0, double=True)
+        kwargs = mock.call_args.kwargs
+        assert "if_playing" not in kwargs
+
 
 class TestSettings:
     # use_test_settings (auto-applied via the qtui fixture) routes settings

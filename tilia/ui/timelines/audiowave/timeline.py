@@ -40,8 +40,13 @@ class AudioWaveTimelineUI(TimelineUI):
     ) -> None:
         # Audacity-style: clicking anywhere on the waveform seeks playback
         # to that time.  No selection, no inspector — the waveform is read-only.
+        # Single click is gated on if_playing=False (so a stray click during
+        # playback doesn't disrupt it); double click is an explicit gesture and
+        # always seeks. Mirrors slider/timeline.py.
         if not self.get_item_owner(item):
             return
-        commands.execute(
-            "media.seek", time_x_converter.get_time_by_x(x), if_playing=False
-        )
+        time = time_x_converter.get_time_by_x(x)
+        if double:
+            commands.execute("media.seek", time)
+        else:
+            commands.execute("media.seek", time, if_playing=False)
