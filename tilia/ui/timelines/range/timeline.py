@@ -682,6 +682,9 @@ class RangeTimelineUI(TimelineUI):
             )
             if not success:
                 return False
+        # Route through the collection (rather than `self.timeline.set_data`)
+        # so `Post.TIMELINE_SET_DATA_DONE` is posted on success — that's
+        # what triggers the UI refresh when the default row height changes.
         return get(Get.TIMELINE_COLLECTION).set_timeline_data(
             self.id, "row_height", height
         )
