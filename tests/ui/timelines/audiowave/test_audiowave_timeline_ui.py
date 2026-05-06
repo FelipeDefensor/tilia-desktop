@@ -9,6 +9,7 @@ from tilia.requests import Post, post
 from tilia.settings import settings
 from tilia.timelines.audiowave.constants import FRAMES_PER_PEAK_OPTIONS
 from tilia.ui import commands
+from tilia.ui.windows.kinds import WindowKind
 
 
 class TestWaveformElement:
@@ -145,6 +146,17 @@ class TestSpinnerLifecycle:
         # A signal for a different component id should NOT stop our spinner.
         post(Post.AUDIOWAVE_PEAKS_READY, audiowave_tlui.id, "other-component-id")
         assert element.body._spinner_timer.isActive()
+
+
+class TestInspect:
+    def test_open_inspect_with_waveform_selected_does_not_raise(
+        self, audiowave_tlui, waveform_element
+    ):
+        # WaveformElement has no INSPECTOR_FIELDS — opening the inspect
+        # window while one is in selected_elements used to raise. The
+        # base timeline must skip non-inspectable selected elements.
+        audiowave_tlui.element_manager.select_element(waveform_element)
+        audiowave_tlui.on_window_open_done(WindowKind.INSPECT)
 
 
 class TestUndoableState:
