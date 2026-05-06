@@ -47,3 +47,30 @@ class TestCLI:
             with pytest.raises(SystemExit):
                 cli.launch()
         assert not cli._is_running
+
+
+class TestYTDLPAcknowledgement:
+    """The CLI must serve Get.FROM_USER_YT_DLP_ACKNOWLEDGEMENT so users
+    running headless / via the CLI also get a chance to opt in or out
+    of yt-dlp downloads (instead of getting silent "no waveform")."""
+
+    def test_yes_yes_persists_dont_show_again(self, cli):
+        from tilia.requests import Get, get
+
+        with mock.patch("tilia.ui.cli.ui.ask_yes_or_no", side_effect=[True, True]):
+            assert get(Get.FROM_USER_YT_DLP_ACKNOWLEDGEMENT) == (True, True)
+
+    def test_yes_no_does_not_persist(self, cli):
+        from tilia.requests import Get, get
+
+        with mock.patch("tilia.ui.cli.ui.ask_yes_or_no", side_effect=[True, False]):
+            assert get(Get.FROM_USER_YT_DLP_ACKNOWLEDGEMENT) == (True, False)
+
+    def test_no_returns_false(self, cli):
+        from tilia.requests import Get, get
+
+        # ``ask_yes_or_no`` only fires once — we never reach the second
+        # prompt when the user declines the disclaimer.
+        with mock.patch("tilia.ui.cli.ui.ask_yes_or_no", return_value=False) as m:
+            assert get(Get.FROM_USER_YT_DLP_ACKNOWLEDGEMENT) == (False, False)
+        assert m.call_count == 1
