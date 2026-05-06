@@ -277,7 +277,12 @@ class AudioWaveTimeline(Timeline):
             cap_mb = int(
                 settings.get("audiowave_timeline", "pyramid_cache_max_mb")
             )
-            pyramid_cache.evict_to_cap(cap_mb * 1024 * 1024)
+            payload_bytes = estimate_pyramid_bytes(
+                component.total_frames, component.frames_per_peak
+            )
+            pyramid_cache.maybe_evict_to_cap(
+                cap_mb * 1024 * 1024, payload_size_hint=payload_bytes
+            )
         except Exception:
             logger.exception("audiowave: failed to persist pyramid cache")
 

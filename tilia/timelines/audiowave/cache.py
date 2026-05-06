@@ -137,6 +137,52 @@ def save(key: str, payload: PyramidPayload) -> None:
                 pass
 
 
+# Throttle for maybe_evict_to_cap. Reset whenever an actual sweep runs.
+_bytes_added_since_eviction = 0
+_saves_since_eviction = 0
+# Trigger a sweep at most this often by save count, even if the
+# accumulator hasn't crossed the size-based threshold. Catches
+# slow drift without making every save pay for a full directory scan.
+_EVICTION_SAVE_INTERVAL = 50
+# Size-based trigger: how much fresh data we tolerate adding before we
+# bother running a sweep. 25% of the cap means worst case we overshoot
+# by 25% between sweeps — fine, since the cap is itself an opportunistic
+# limit, not a hard one.
+_EVICTION_SIZE_FRACTION = 0.25
+
+
+def maybe_evict_to_cap(max_bytes: int, payload_size_hint: int = 0) -> int:
+    """Throttled wrapper around ``evict_to_cap``.
+
+    Avoids running a full directory scan after every save. Sweeps when
+    accumulated additions could have pushed the cache meaningfully over
+    cap, or after a generous save-count interval (so caches that grew
+    through other means catch up too).  Returns bytes freed (0 when no
+    sweep ran)."""
+    global _bytes_added_since_eviction, _saves_since_eviction
+    if max_bytes <= 0:
+        return 0
+    _bytes_added_since_eviction += max(0, payload_size_hint)
+    _saves_since_eviction += 1
+
+    size_threshold = max(int(max_bytes * _EVICTION_SIZE_FRACTION), 1)
+    accumulated_overshoot = _bytes_added_since_eviction >= size_threshold
+    save_interval_hit = _saves_since_eviction >= _EVICTION_SAVE_INTERVAL
+    if not (accumulated_overshoot or save_interval_hit):
+        return 0
+    freed = evict_to_cap(max_bytes)
+    _bytes_added_since_eviction = 0
+    _saves_since_eviction = 0
+    return freed
+
+
+def reset_eviction_throttle() -> None:
+    """Reset the maybe_evict_to_cap throttle. Test-only convenience."""
+    global _bytes_added_since_eviction, _saves_since_eviction
+    _bytes_added_since_eviction = 0
+    _saves_since_eviction = 0
+
+
 def evict_to_cap(max_bytes: int) -> int:
     """LRU eviction by mtime. Returns bytes freed.
 

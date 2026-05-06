@@ -114,6 +114,55 @@ class TestEviction:
         assert (tmp_cache_dir / "k.npz").exists()
 
 
+class TestEvictionThrottle:
+    @pytest.fixture(autouse=True)
+    def _reset_throttle(self):
+        cache.reset_eviction_throttle()
+        yield
+        cache.reset_eviction_throttle()
+
+    def test_small_save_within_threshold_skips_scan(self, monkeypatch):
+        # A single small save with a generous cap should not scan.
+        scans = {"count": 0}
+        monkeypatch.setattr(
+            cache, "evict_to_cap", lambda *_: scans.update(count=scans["count"] + 1)
+        )
+        cache.maybe_evict_to_cap(100 * 1024 * 1024, payload_size_hint=1024)
+        assert scans["count"] == 0
+
+    def test_size_overshoot_triggers_scan(self, monkeypatch):
+        scans = {"count": 0}
+        monkeypatch.setattr(
+            cache, "evict_to_cap", lambda *_: scans.update(count=scans["count"] + 1)
+        )
+        cap = 100 * 1024 * 1024  # 100 MB cap
+        # 30 MB > 25% of 100 MB → fire on first save.
+        cache.maybe_evict_to_cap(cap, payload_size_hint=30 * 1024 * 1024)
+        assert scans["count"] == 1
+
+    def test_save_count_interval_triggers_scan(self, monkeypatch):
+        scans = {"count": 0}
+        monkeypatch.setattr(
+            cache, "evict_to_cap", lambda *_: scans.update(count=scans["count"] + 1)
+        )
+        cap = 100 * 1024 * 1024
+        for _ in range(50):  # _EVICTION_SAVE_INTERVAL
+            cache.maybe_evict_to_cap(cap, payload_size_hint=0)
+        assert scans["count"] == 1
+
+    def test_throttle_resets_after_scan(self, monkeypatch):
+        # After a scan fires, the next small save should NOT scan again.
+        scans = {"count": 0}
+        monkeypatch.setattr(
+            cache, "evict_to_cap", lambda *_: scans.update(count=scans["count"] + 1)
+        )
+        cap = 100 * 1024 * 1024
+        cache.maybe_evict_to_cap(cap, payload_size_hint=30 * 1024 * 1024)
+        assert scans["count"] == 1
+        cache.maybe_evict_to_cap(cap, payload_size_hint=1024)
+        assert scans["count"] == 1
+
+
 class TestCorruption:
     def test_corrupt_file_returns_none_and_removes(self, tmp_cache_dir):
         bad = tmp_cache_dir / "bad.npz"
