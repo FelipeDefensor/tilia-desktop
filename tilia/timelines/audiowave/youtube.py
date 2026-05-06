@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 import numpy as np
 
@@ -24,6 +25,22 @@ from tilia.requests import Get, get
 from tilia.settings import settings
 from tilia.timelines.audiowave.extract import extract_peaks_via_ffmpeg
 from tilia.timelines.audiowave.peaks import CancelToken
+
+
+# Generous total wall-clock cap. yt-dlp is bandwidth-bound, so even
+# multi-hour audio streams typically finish well inside this. The
+# timeout guards against a stalled connection hanging the worker
+# forever; the user-visible cancel path is faster (poll interval below).
+YT_DLP_TOTAL_TIMEOUT_SECONDS = 600
+YT_DLP_POLL_INTERVAL = 0.2
+YT_DLP_TERMINATE_GRACE_SECONDS = 2.0
+
+
+class YTDownloadCancelled(Exception):
+    """Raised when the user cancels an in-flight yt-dlp download.
+
+    Suppressed by the worker (it checks ``CancelToken.cancelled`` before
+    emitting errors) — this exists for clarity in logs and tests."""
 
 
 def get_video_id(url: str) -> str | None:
@@ -80,14 +97,56 @@ def acknowledge_terms_or_cancel() -> bool:
     return accepted
 
 
-def download_audio_to_tempfile(url: str) -> str:
+def _terminate_proc(proc: subprocess.Popen) -> None:
+    """Best-effort terminate-then-kill, swallowing OSError."""
+    if proc.poll() is not None:
+        return
+    try:
+        proc.terminate()
+    except OSError:
+        return
+    try:
+        proc.wait(timeout=YT_DLP_TERMINATE_GRACE_SECONDS)
+        return
+    except subprocess.TimeoutExpired:
+        pass
+    try:
+        proc.kill()
+    except OSError:
+        return
+    try:
+        proc.wait(timeout=YT_DLP_TERMINATE_GRACE_SECONDS)
+    except subprocess.TimeoutExpired:
+        pass
+
+
+def _cleanup_tmp(tmp_path: str) -> None:
+    """Remove tmp_path and any sibling that yt-dlp suffixed."""
+    parent = os.path.dirname(tmp_path)
+    base = os.path.basename(tmp_path)
+    try:
+        entries = os.listdir(parent)
+    except OSError:
+        return
+    for entry in entries:
+        if entry == base or entry.startswith(base):
+            try:
+                os.unlink(os.path.join(parent, entry))
+            except OSError:
+                pass
+
+
+def download_audio_to_tempfile(
+    url: str,
+    cancel: CancelToken | None = None,
+    timeout_seconds: float = YT_DLP_TOTAL_TIMEOUT_SECONDS,
+) -> str:
     """Download YT audio to a temp file. Caller deletes when done.
 
     Implemented as a subprocess of `python -m yt_dlp` rather than the
     in-process API — yt-dlp's Python API has rough edges around
     cancellation and stderr capture; the subprocess gives us a clean
-    Popen handle and an easy `terminate()` path if we ever wire
-    cancellation to YT extraction.
+    Popen handle for ``terminate()`` on user-cancel.
     """
     fd, tmp_path = tempfile.mkstemp(suffix=".m4a", prefix="tilia_yt_")
     os.close(fd)
@@ -111,19 +170,42 @@ def download_audio_to_tempfile(url: str) -> str:
         "--no-warnings",
         url,
     ]
-    result = subprocess.run(
-        cmd, capture_output=True, text=True, check=False
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
     )
-    if result.returncode != 0:
-        for stale in (tmp_path,):
-            if os.path.exists(stale):
-                try:
-                    os.unlink(stale)
-                except OSError:
-                    pass
+    start = time.monotonic()
+    try:
+        while True:
+            if proc.poll() is not None:
+                break
+            if cancel is not None and cancel.cancelled:
+                _terminate_proc(proc)
+                _cleanup_tmp(tmp_path)
+                raise YTDownloadCancelled("yt-dlp download cancelled")
+            if time.monotonic() - start > timeout_seconds:
+                _terminate_proc(proc)
+                _cleanup_tmp(tmp_path)
+                raise RuntimeError(
+                    f"yt-dlp download exceeded {timeout_seconds:.0f}s timeout"
+                )
+            time.sleep(YT_DLP_POLL_INTERVAL)
+    except BaseException:
+        _terminate_proc(proc)
+        raise
+
+    if proc.returncode != 0:
+        stderr = ""
+        if proc.stderr is not None:
+            try:
+                stderr = proc.stderr.read() or ""
+            except OSError:
+                pass
+        _cleanup_tmp(tmp_path)
         raise RuntimeError(
-            f"yt-dlp exited with code {result.returncode}: "
-            f"{(result.stderr or '').strip()}"
+            f"yt-dlp exited with code {proc.returncode}: {stderr.strip()}"
         )
     # yt-dlp may add an extension if the source format differs. Find
     # the actual file by scanning the parent dir.
@@ -160,7 +242,7 @@ def extract_peaks_via_yt_dlp(
     # leaves the setting False, and re-checking would spuriously fail
     # in that legitimate case.
 
-    tmp_path = download_audio_to_tempfile(url)
+    tmp_path = download_audio_to_tempfile(url, cancel=cancel)
     try:
         return extract_peaks_via_ffmpeg(tmp_path, frames_per_peak, cancel)
     finally:
