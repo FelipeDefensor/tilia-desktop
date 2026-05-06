@@ -8,6 +8,7 @@ from PySide6.QtGui import QColor, QFont, QPen
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsRectItem
 
 import tilia.errors
+from tilia.log import logger
 from tilia.requests import Get, Post, get, listen, post
 from tilia.settings import settings
 from tilia.timelines.component_kinds import ComponentKind
@@ -904,7 +905,8 @@ class RangeTimelineUI(TimelineUI):
         if not self.has_selected_elements:
             return
         if arrow not in ("right", "left"):
-            raise ValueError(f"Invalid arrow '{arrow}'.")
+            logger.error("RangeTimelineUI: invalid horizontal arrow %r.", arrow)
+            return
 
         if arrow == "right":
             self._deselect_all_but_last()
@@ -930,7 +932,8 @@ class RangeTimelineUI(TimelineUI):
 
     def on_vertical_arrow_press(self, arrow: str) -> None:
         if arrow not in ("up", "down"):
-            raise ValueError(f"Invalid arrow '{arrow}'.")
+            logger.error("RangeTimelineUI: invalid vertical arrow %r.", arrow)
+            return
         self._handle_arrow_navigation(arrow)
 
     def on_ctrl_vertical_arrow_press(self, direction: str) -> None:
