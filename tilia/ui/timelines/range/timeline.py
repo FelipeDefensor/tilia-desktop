@@ -152,7 +152,8 @@ class RangeTimelineUI(TimelineUI):
 
     @property
     def height(self) -> int:
-        return int(sum(self.row_height_for(r) for r in self.rows)) + 20
+        bottom_margin = settings.get("range_timeline", "bottom_margin")
+        return int(sum(self.row_height_for(r) for r in self.rows)) + bottom_margin
 
     @classmethod
     def register_commands(cls, collection: TimelineUIs) -> None:

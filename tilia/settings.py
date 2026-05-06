@@ -84,6 +84,7 @@ class SettingsManager(QObject):
         },
         "range_timeline": {
             "default_row_height": 30,
+            "bottom_margin": 20,
             "default_range_color": "#A0A0A0",
             "range_alpha": 125,
             "handle_color": "#000000",
