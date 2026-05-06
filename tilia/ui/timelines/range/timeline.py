@@ -318,9 +318,15 @@ class RangeTimelineUI(TimelineUI):
         font.setPixelSize(target)
         label.setFont(font)
 
-    def _get_row_argument(
+    def _resolve_row(
         self, row: RangeTimeline.Row | None = None
     ) -> RangeTimeline.Row | None:
+        """Return the explicit row when given, else the selected row.
+
+        Lets callbacks accept an optional ``row`` argument (e.g. from a
+        context menu invocation that knows which row was clicked) and
+        fall back to the user's current selection otherwise.
+        """
         return row or self.selected_row
 
     def on_add_row(
@@ -353,7 +359,7 @@ class RangeTimelineUI(TimelineUI):
         if self.timeline.row_count <= 1:
             return False
 
-        row = self._get_row_argument(row)
+        row = self._resolve_row(row)
         if not row:
             return False
 
@@ -474,7 +480,7 @@ class RangeTimelineUI(TimelineUI):
         if end > media_duration:
             end = media_duration
 
-        row = self._get_row_argument(row)
+        row = self._resolve_row(row)
         if not row:
             return False
 
@@ -515,7 +521,7 @@ class RangeTimelineUI(TimelineUI):
         if row is None and settings.get("range_timeline", "split_all_rows"):
             target_rows = list(self.timeline.rows)
         else:
-            row = self._get_row_argument(row)
+            row = self._resolve_row(row)
             if row is None:
                 return False
             target_rows = [row]
@@ -751,7 +757,7 @@ class RangeTimelineUI(TimelineUI):
         return self.timeline.reorder_row(row, new_index)
 
     def on_move_row_up(self, row: RangeTimeline.Row | None = None) -> bool:
-        row = self._get_row_argument(row)
+        row = self._resolve_row(row)
         if row is None:
             return False
         idx = self.timeline.row_index(row)
@@ -760,7 +766,7 @@ class RangeTimelineUI(TimelineUI):
         return self.timeline.reorder_row(row, idx - 1)
 
     def on_move_row_down(self, row: RangeTimeline.Row | None = None) -> bool:
-        row = self._get_row_argument(row)
+        row = self._resolve_row(row)
         if row is None:
             return False
         idx = self.timeline.row_index(row)
