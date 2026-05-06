@@ -913,8 +913,7 @@ class RangeTimelineUI(TimelineUI):
 
         selected = self.element_manager.get_selected_elements()[0]
         same_row = sorted(
-            (e for e in self if e.get_data("row_id") == selected.get_data("row_id")),
-            key=lambda e: e.get_data("start"),
+            e for e in self if e.get_data("row_id") == selected.get_data("row_id")
         )
         idx = same_row.index(selected)
         if arrow == "right":
