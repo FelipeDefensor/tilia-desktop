@@ -6,7 +6,9 @@ import numpy as np
 import pytest
 
 import tilia.errors
+from tilia import dirs
 from tilia.requests import Post, listen, stop_listening
+from tilia.timelines.audiowave import cache as pyramid_cache
 from tilia.timelines.audiowave.peaks import CancelToken
 from tilia.timelines.audiowave.timeline import AudioWaveTimeline
 from tilia.timelines.base.timeline import TimelineFlag
@@ -96,7 +98,7 @@ class TestCancellation:
 
         captured_tokens: list[CancelToken] = []
 
-        def fake_async(path, fpp, on_done, on_error=None):
+        def fake_async(path, fpp, on_done, on_error=None, **_):
             tok = CancelToken()
             captured_tokens.append(tok)
             return tok, object()
@@ -124,7 +126,7 @@ class TestWorkerError:
         # it synchronously to simulate the worker raising.
         captured_on_error = []
 
-        def fake_async(path, fpp, on_done, on_error=None):
+        def fake_async(path, fpp, on_done, on_error=None, **_):
             captured_on_error.append(on_error)
             return CancelToken(), object()
 
@@ -158,6 +160,167 @@ class TestLegacyDeserialization:
         assert len(fresh_audiowave_tl.components) == 0
 
 
+class TestPyramidCache:
+    @pytest.fixture
+    def tmp_cache(self, tmp_path, monkeypatch):
+        cache_dir = tmp_path / "pyramid_cache"
+        cache_dir.mkdir()
+        monkeypatch.setattr(dirs, "audiowave_pyramid_cache_path", cache_dir)
+        return cache_dir
+
+    def test_cache_hit_skips_worker(
+        self, fresh_audiowave_tl, tilia_state, tmp_path, tmp_cache
+    ):
+        audio_path = os.fspath(tmp_path / "a.wav")
+        _write_silent_wav(audio_path)
+        tilia_state.media_path = audio_path
+
+        # Pre-populate the cache for this exact (path, fpp).
+        fpp = fresh_audiowave_tl.frames_per_peak
+        key = pyramid_cache.key_for_local_file(audio_path, fpp)
+        pyramid_cache.save(
+            key,
+            pyramid_cache.PyramidPayload(
+                lod_min=[np.array([-0.3], dtype=np.float32)],
+                lod_max=[np.array([0.3], dtype=np.float32)],
+                samplerate=44100,
+                total_frames=44100,
+                frames_per_peak=fpp,
+            ),
+        )
+
+        async_calls = []
+
+        def fake_async(*args, **kwargs):
+            async_calls.append((args, kwargs))
+            return CancelToken(), object()
+
+        with patch(
+            "tilia.timelines.audiowave.timeline.compute_peaks_async", fake_async
+        ):
+            fresh_audiowave_tl.refresh()
+
+        assert async_calls == []
+        component = fresh_audiowave_tl.components[0]
+        assert component.is_ready is True
+        np.testing.assert_array_equal(
+            component.lod_min[0], np.array([-0.3], dtype=np.float32)
+        )
+
+    def test_worker_done_persists_to_cache(
+        self, fresh_audiowave_tl, tilia_state, tmp_path, tmp_cache
+    ):
+        audio_path = os.fspath(tmp_path / "a.wav")
+        _write_silent_wav(audio_path, duration_sec=0.1)
+        tilia_state.media_path = audio_path
+
+        captured_on_done = []
+
+        def fake_async(path, fpp, on_done, on_error=None, **_):
+            captured_on_done.append(on_done)
+            return CancelToken(), object()
+
+        with patch(
+            "tilia.timelines.audiowave.timeline.compute_peaks_async", fake_async
+        ):
+            fresh_audiowave_tl.refresh()
+
+        captured_on_done[0](
+            np.array([-0.5], dtype=np.float32),
+            np.array([0.5], dtype=np.float32),
+            44100,
+            4410,
+        )
+
+        # The cache file should exist now.
+        files = list(tmp_cache.iterdir())
+        assert len(files) == 1
+        assert files[0].suffix == ".npz"
+
+
+class TestClassification:
+    def test_youtube_path_dispatches_yt_extractor(
+        self, fresh_audiowave_tl, tilia_state
+    ):
+        tilia_state.media_path = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        captured = []
+
+        def fake_async(path, fpp, on_done, on_error=None, extractor=None, **_):
+            captured.append(extractor)
+            return CancelToken(), object()
+
+        with patch(
+            "tilia.timelines.audiowave.timeline.is_yt_dlp_available",
+            return_value=True,
+        ), patch(
+            "tilia.timelines.audiowave.timeline.is_ffmpeg_available",
+            return_value=True,
+        ), patch(
+            "tilia.timelines.audiowave.timeline.compute_peaks_async", fake_async
+        ):
+            fresh_audiowave_tl.refresh()
+
+        from tilia.timelines.audiowave.youtube import extract_peaks_via_yt_dlp
+
+        assert captured == [extract_peaks_via_yt_dlp]
+
+    def test_yt_url_without_yt_dlp_hides_timeline(
+        self, fresh_audiowave_tl, tilia_state
+    ):
+        tilia_state.media_path = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        with patch(
+            "tilia.timelines.audiowave.timeline.is_yt_dlp_available",
+            return_value=False,
+        ):
+            fresh_audiowave_tl.refresh()
+        assert fresh_audiowave_tl.get_data("is_visible") is False
+
+    def test_unknown_extension_with_ffmpeg_dispatches_video_extractor(
+        self, fresh_audiowave_tl, tilia_state, tmp_path
+    ):
+        # An mp4 file ffmpeg can't actually open will fail in the worker;
+        # we only verify the dispatch chose the right extractor.
+        path = tmp_path / "x.mp4"
+        path.write_bytes(b"not actual mp4")
+        tilia_state.media_path = str(path)
+
+        captured = []
+
+        def fake_async(path, fpp, on_done, on_error=None, extractor=None, **_):
+            captured.append(extractor)
+            return CancelToken(), object()
+
+        with patch(
+            "tilia.timelines.audiowave.timeline.is_ffmpeg_available",
+            return_value=True,
+        ), patch(
+            "tilia.timelines.audiowave.timeline.compute_peaks_async", fake_async
+        ):
+            fresh_audiowave_tl.refresh()
+
+        from tilia.timelines.audiowave.extract import extract_peaks_via_ffmpeg
+
+        assert captured == [extract_peaks_via_ffmpeg]
+
+    def test_audio_extension_with_corrupt_data_does_not_dispatch_video(
+        self, fresh_audiowave_tl, tilia_state, tmp_path
+    ):
+        # A .wav that soundfile can't open shouldn't fall back to ffmpeg —
+        # it's just a corrupt audio file.
+        path = tmp_path / "x.wav"
+        path.write_bytes(b"not a wav")
+        tilia_state.media_path = str(path)
+
+        with patch(
+            "tilia.timelines.audiowave.timeline.is_ffmpeg_available",
+            return_value=True,
+        ), patch.object(tilia.errors, "display") as mock_display:
+            fresh_audiowave_tl.refresh()
+
+        mock_display.assert_called_once_with(tilia.errors.AUDIOWAVE_INVALID_FILE)
+        assert fresh_audiowave_tl.get_data("is_visible") is False
+
+
 class TestPeaksReadyEmission:
     def test_peaks_ready_post_after_compute_done(
         self, fresh_audiowave_tl, tilia_state, tmp_path
@@ -168,7 +331,7 @@ class TestPeaksReadyEmission:
 
         captured_on_done = []
 
-        def fake_async(path, fpp, on_done, on_error=None):
+        def fake_async(path, fpp, on_done, on_error=None, **_):
             captured_on_done.append(on_done)
             return CancelToken(), object()
 

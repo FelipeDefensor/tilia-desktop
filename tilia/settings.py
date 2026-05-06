@@ -48,6 +48,7 @@ class SettingsManager(QObject):
             "default_color": "#3399FF",
             "frames_per_peak": 128,
             "acknowledged_yt_dlp_terms": "false",
+            "pyramid_cache_max_mb": 500,
         },
         "beat_timeline": {"display_measure_periodicity": 4, "default_height": 35},
         "hierarchy_timeline": {

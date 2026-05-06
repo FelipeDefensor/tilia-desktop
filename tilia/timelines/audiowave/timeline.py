@@ -1,20 +1,33 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import soundfile
 
+import tilia.constants
 import tilia.errors
 from tilia.log import logger
 from tilia.requests import Get, Post, get, post
 from tilia.settings import settings
+from tilia.timelines.audiowave import cache as pyramid_cache
+from tilia.timelines.audiowave.extract import (
+    extract_peaks_via_ffmpeg,
+    is_ffmpeg_available,
+)
 from tilia.timelines.audiowave.peaks import (
     CancelToken,
     adapt_frames_per_peak,
     build_lod_pyramid,
     compute_peaks_async,
+    compute_peaks_sync,
     estimate_pyramid_bytes,
+)
+from tilia.timelines.audiowave.youtube import (
+    extract_peaks_via_yt_dlp,
+    get_video_id,
+    is_yt_dlp_available,
 )
 from tilia.timelines.base.timeline import (
     Timeline,
@@ -25,6 +38,13 @@ from tilia.timelines.component_kinds import ComponentKind
 
 if TYPE_CHECKING:
     from tilia.timelines.audiowave.components import Waveform
+
+
+_AUDIO_ONLY_EXTENSIONS = {"wav", "ogg", "mp3", "flac", "aac"}
+
+
+def _is_youtube(path: str) -> bool:
+    return bool(re.match(tilia.constants.YOUTUBE_URL_REGEX, path))
 
 
 class AudioWaveTLComponentManager(TimelineComponentManager):
@@ -70,29 +90,46 @@ class AudioWaveTimeline(Timeline):
             self._update_visibility(False)
             return
 
-        try:
-            with soundfile.SoundFile(path) as af:
-                samplerate = af.samplerate
-                total_frames = af.frames
-        except Exception:
-            tilia.errors.display(tilia.errors.AUDIOWAVE_INVALID_FILE)
+        kind, classify_error = self._classify_path(path)
+        if kind is None:
+            if classify_error is not None:
+                tilia.errors.display(classify_error)
             self._update_visibility(False)
             return
 
+        # Up-front probe: for soundfile-readable audio we get exact
+        # samplerate/total_frames before doing the heavy lift; for video
+        # / YT we provisionally use placeholders and fill them in from
+        # the worker's reported values.
+        if kind == "audio":
+            try:
+                with soundfile.SoundFile(path) as af:
+                    samplerate = af.samplerate
+                    total_frames = af.frames
+            except Exception:
+                tilia.errors.display(tilia.errors.AUDIOWAVE_INVALID_FILE)
+                self._update_visibility(False)
+                return
+        else:
+            samplerate = 0
+            total_frames = 0
+
         self._update_visibility(True)
-        fpp = adapt_frames_per_peak(total_frames, self.frames_per_peak)
-        if fpp != self.frames_per_peak:
-            mb = estimate_pyramid_bytes(total_frames, self.frames_per_peak) / (
-                1024 * 1024
-            )
-            logger.warning(
-                "audiowave pyramid for %s would need ~%.0f MB at "
-                "frames_per_peak=%d; bumping to %d to fit memory budget.",
-                path,
-                mb,
-                self.frames_per_peak,
-                fpp,
-            )
+        fpp = self.frames_per_peak
+        if total_frames > 0:
+            fpp = adapt_frames_per_peak(total_frames, self.frames_per_peak)
+            if fpp != self.frames_per_peak:
+                mb = estimate_pyramid_bytes(total_frames, self.frames_per_peak) / (
+                    1024 * 1024
+                )
+                logger.warning(
+                    "audiowave pyramid for %s would need ~%.0f MB at "
+                    "frames_per_peak=%d; bumping to %d to fit memory budget.",
+                    path,
+                    mb,
+                    self.frames_per_peak,
+                    fpp,
+                )
         component, _ = self.create_component(
             ComponentKind.AUDIOWAVE,
             samplerate=samplerate,
@@ -101,16 +138,88 @@ class AudioWaveTimeline(Timeline):
         )
         if component is None:
             return
-        self._launch_peak_computation(path, component)
 
-    def _launch_peak_computation(self, path: str, component: "Waveform") -> None:
+        cache_key = self._cache_key(kind, path, fpp)
+        if cache_key is not None:
+            cached = pyramid_cache.load(cache_key)
+            if cached is not None:
+                self._apply_cached_pyramid(component, cached)
+                return
+
+        self._launch_peak_computation(kind, path, component, cache_key)
+
+    @staticmethod
+    def _classify_path(
+        path: str,
+    ) -> tuple[str | None, "tilia.errors.Error | None"]:
+        """Return ``(kind, error_to_display)``.  ``kind`` is one of
+        ``"audio"``, ``"video"``, ``"youtube"`` or ``None``; when None,
+        the optional error is what the caller should surface to the user
+        (or None for "silently hide")."""
+        if _is_youtube(path):
+            if not is_yt_dlp_available():
+                return None, tilia.errors.YT_DLP_NOT_INSTALLED
+            if not is_ffmpeg_available():
+                return None, tilia.errors.FFMPEG_NOT_INSTALLED
+            return "youtube", None
+        # Try the cheap path first: soundfile probes the header.
+        try:
+            with soundfile.SoundFile(path):
+                return "audio", None
+        except Exception:
+            pass
+        # Audio extensions that soundfile rejected are corrupt — don't
+        # fall back to ffmpeg for them (they aren't video).
+        suffix = path.rsplit(".", 1)[-1].lower() if "." in path else ""
+        if suffix in _AUDIO_ONLY_EXTENSIONS:
+            return None, tilia.errors.AUDIOWAVE_INVALID_FILE
+        if is_ffmpeg_available():
+            return "video", None
+        return None, tilia.errors.FFMPEG_NOT_INSTALLED
+
+    @staticmethod
+    def _cache_key(kind: str, path: str, frames_per_peak: int) -> str | None:
+        if kind == "youtube":
+            video_id = get_video_id(path)
+            if video_id is None:
+                return None
+            return pyramid_cache.key_for_youtube(video_id, frames_per_peak)
+        try:
+            return pyramid_cache.key_for_local_file(path, frames_per_peak)
+        except OSError:
+            return None
+
+    def _apply_cached_pyramid(
+        self, component: "Waveform", payload: pyramid_cache.PyramidPayload
+    ) -> None:
+        component.samplerate = payload.samplerate
+        component.total_frames = payload.total_frames
+        component.lod_min = list(payload.lod_min)
+        component.lod_max = list(payload.lod_max)
+        component.is_ready = True
+        post(Post.AUDIOWAVE_PEAKS_READY, self.id, component.id)
+
+    def _launch_peak_computation(
+        self,
+        kind: str,
+        path: str,
+        component: "Waveform",
+        cache_key: str | None,
+    ) -> None:
+        if kind == "youtube":
+            extractor = extract_peaks_via_yt_dlp
+        elif kind == "video":
+            extractor = extract_peaks_via_ffmpeg
+        else:
+            extractor = compute_peaks_sync
         cancel, signals = compute_peaks_async(
             path,
             component.frames_per_peak,
             on_done=lambda mins, maxs, sr, tf: self._on_peaks_ready(
-                component, mins, maxs, sr, tf
+                component, mins, maxs, sr, tf, cache_key
             ),
-            on_error=lambda exc: self._on_peaks_error(),
+            on_error=lambda exc: self._on_peaks_error(exc),
+            extractor=extractor,
         )
         self._pending_cancel = cancel
         self._pending_signals = signals
@@ -122,6 +231,7 @@ class AudioWaveTimeline(Timeline):
         peaks_max: np.ndarray,
         samplerate: int,
         total_frames: int,
+        cache_key: str | None = None,
     ) -> None:
         if component not in self.components:
             return
@@ -132,8 +242,31 @@ class AudioWaveTimeline(Timeline):
         )
         component.is_ready = True
         post(Post.AUDIOWAVE_PEAKS_READY, self.id, component.id)
+        if cache_key is not None:
+            self._persist_to_cache(component, cache_key)
 
-    def _on_peaks_error(self) -> None:
+    def _persist_to_cache(self, component: "Waveform", cache_key: str) -> None:
+        try:
+            pyramid_cache.save(
+                cache_key,
+                pyramid_cache.PyramidPayload(
+                    lod_min=component.lod_min,
+                    lod_max=component.lod_max,
+                    samplerate=component.samplerate,
+                    total_frames=component.total_frames,
+                    frames_per_peak=component.frames_per_peak,
+                ),
+            )
+            cap_mb = int(
+                settings.get("audiowave_timeline", "pyramid_cache_max_mb")
+            )
+            pyramid_cache.evict_to_cap(cap_mb * 1024 * 1024)
+        except Exception:
+            logger.exception("audiowave: failed to persist pyramid cache")
+
+    def _on_peaks_error(self, exc: Exception | None = None) -> None:
+        if exc is not None:
+            logger.warning("audiowave peaks extraction failed: %s", exc)
         tilia.errors.display(tilia.errors.AUDIOWAVE_INVALID_FILE)
         self._update_visibility(False)
 
@@ -152,10 +285,11 @@ class AudioWaveTimeline(Timeline):
             self.refresh()
             return
         super().deserialize_components(components)
-        path = get(Get.MEDIA_PATH)
-        component = self.waveform_component
-        if component is not None and path:
-            self._launch_peak_computation(path, component)
+        # Re-running refresh() rebuilds the waveform from the (now-known)
+        # media path; it will also short-circuit through the cache when
+        # we've seen this media before.
+        if get(Get.MEDIA_PATH):
+            self.refresh()
 
     def _update_visibility(self, is_visible: bool) -> None:
         if self.get_data("is_visible") != is_visible:

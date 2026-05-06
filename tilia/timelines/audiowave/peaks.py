@@ -117,6 +117,12 @@ class _PeaksWorkerSignals(QObject):
     error = Signal(object)
 
 
+PeaksExtractor = Callable[
+    [str, int, "CancelToken | None"],
+    tuple[np.ndarray, np.ndarray, int, int],
+]
+
+
 class _PeaksRunnable(QRunnable):
     def __init__(
         self,
@@ -124,16 +130,18 @@ class _PeaksRunnable(QRunnable):
         frames_per_peak: int,
         signals: _PeaksWorkerSignals,
         cancel: CancelToken,
+        extractor: PeaksExtractor,
     ) -> None:
         super().__init__()
         self.path = path
         self.frames_per_peak = frames_per_peak
         self.signals = signals
         self.cancel = cancel
+        self.extractor = extractor
 
     def run(self) -> None:
         try:
-            mins, maxs, samplerate, total_frames = compute_peaks_sync(
+            mins, maxs, samplerate, total_frames = self.extractor(
                 self.path, self.frames_per_peak, self.cancel
             )
         except Exception as exc:
@@ -150,13 +158,16 @@ def compute_peaks_async(
     frames_per_peak: int,
     on_done: Callable[[np.ndarray, np.ndarray, int, int], None],
     on_error: Callable[[Exception], None] | None = None,
+    extractor: PeaksExtractor | None = None,
 ) -> tuple[CancelToken, _PeaksWorkerSignals]:
     """Submit a peak-computation runnable to the global QThreadPool.
 
     Returns ``(cancel_token, signals)``. The caller should keep the
     ``signals`` reference alive (it owns the slot connection); setting
     ``cancel_token.cancelled = True`` causes the worker to exit early
-    without firing callbacks.
+    without firing callbacks. ``extractor`` defaults to
+    ``compute_peaks_sync`` (soundfile), but can be swapped for the
+    ffmpeg or yt-dlp variants in extract.py / youtube.py.
     """
     cancel = CancelToken()
     signals = _PeaksWorkerSignals()
@@ -176,7 +187,13 @@ def compute_peaks_async(
     signals.error.connect(_on_error)
 
     QThreadPool.globalInstance().start(
-        _PeaksRunnable(path, frames_per_peak, signals, cancel)
+        _PeaksRunnable(
+            path,
+            frames_per_peak,
+            signals,
+            cancel,
+            extractor or compute_peaks_sync,
+        )
     )
 
     return cancel, signals
