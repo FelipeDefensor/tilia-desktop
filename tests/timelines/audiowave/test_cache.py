@@ -10,7 +10,9 @@ from tilia.timelines.audiowave import cache
 @pytest.fixture
 def tmp_cache_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(dirs, "audiowave_pyramid_cache_path", tmp_path)
-    return tmp_path
+    versioned = tmp_path / f"v{cache.SCHEMA_VERSION}"
+    versioned.mkdir(exist_ok=True)
+    return versioned
 
 
 def _payload(samplerate=44100, total_frames=4410, fpp=128):

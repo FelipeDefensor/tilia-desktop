@@ -32,8 +32,18 @@ class PyramidPayload:
     frames_per_peak: int
 
 
-def cache_dir() -> Path:
+def _base_cache_dir() -> Path:
     return Path(dirs.audiowave_pyramid_cache_path)
+
+
+def cache_dir() -> Path:
+    """Versioned cache root.
+
+    The version subdir is a cheap invalidation knob: when SCHEMA_VERSION
+    bumps (e.g. we change the LOD layout or the npz contents) old caches
+    just stop matching, and ``evict_to_cap`` will sweep them away over
+    time as new entries land in the new directory."""
+    return _base_cache_dir() / f"v{SCHEMA_VERSION}"
 
 
 def _cache_dir_initialized() -> bool:
@@ -41,7 +51,7 @@ def _cache_dir_initialized() -> bool:
     that don't bootstrap the data dir) it's an empty Path() that resolves
     to the cwd. Using cwd as a cache dir would scatter .npz files in the
     project root, so we treat unset as "no cache available"."""
-    return Path(dirs.audiowave_pyramid_cache_path) != Path()
+    return _base_cache_dir() != Path()
 
 
 def key_for_local_file(path: str | os.PathLike, frames_per_peak: int) -> str:

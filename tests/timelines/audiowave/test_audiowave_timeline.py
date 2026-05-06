@@ -223,7 +223,11 @@ class TestPyramidCache:
         cache_dir = tmp_path / "pyramid_cache"
         cache_dir.mkdir()
         monkeypatch.setattr(dirs, "audiowave_pyramid_cache_path", cache_dir)
-        return cache_dir
+        # cache.cache_dir() now resolves to ``cache_dir / vN`` — return
+        # that to the test so iterdir() lands on the actual files.
+        versioned = cache_dir / f"v{pyramid_cache.SCHEMA_VERSION}"
+        versioned.mkdir(exist_ok=True)
+        return versioned
 
     def test_cache_hit_skips_worker(
         self, fresh_audiowave_tl, tilia_state, tmp_path, tmp_cache
