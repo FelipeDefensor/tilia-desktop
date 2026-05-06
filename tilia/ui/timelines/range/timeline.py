@@ -302,7 +302,7 @@ class RangeTimelineUI(TimelineUI):
 
     def _apply_label_font(self, label: LevelLabel, row_height: int) -> None:
         # Shrinks the row label so it fits when the user picks a small row
-        # height. Without this clamp the default Arial 9pt overflows into
+        # height. Without this clamp the default font size overflows into
         # the next row and gets clipped.
         target = max(
             self.MIN_LABEL_PIXEL_SIZE,
