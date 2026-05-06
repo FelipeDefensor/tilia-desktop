@@ -223,3 +223,44 @@ class TestHandleQtLogMessage:
             TiliaMainWindow.handle_qt_log_message(
                 QtMsgType.QtWarningMsg, self._ctx(file=None, line=-1), "msg"
             )
+
+    @pytest.mark.parametrize(
+        "noisy_msg",
+        [
+            "QFont::setPixelSize: Pixel size <= 0 (0)",
+            "QWindowsFontEngineDirectWrite::addGlyphsToPath: GetGlyphRunOutline failed (Der Vorgang wurde erfolgreich beendet.)",
+        ],
+    )
+    def test_known_noise_warning_is_suppressed(self, noisy_msg):
+        with patch("tilia.ui.qtui.logger") as mock_logger:
+            TiliaMainWindow.handle_qt_log_message(
+                QtMsgType.QtWarningMsg, self._ctx(), noisy_msg
+            )
+        mock_logger.error.assert_not_called()
+
+    def test_noise_pattern_match_is_substring(self):
+        with patch("tilia.ui.qtui.logger") as mock_logger:
+            TiliaMainWindow.handle_qt_log_message(
+                QtMsgType.QtWarningMsg,
+                self._ctx(),
+                "prefix QFont::setPixelSize: Pixel size <= 0 (0) suffix",
+            )
+        mock_logger.error.assert_not_called()
+
+    def test_unrelated_warning_is_still_logged(self):
+        with patch("tilia.ui.qtui.logger") as mock_logger:
+            TiliaMainWindow.handle_qt_log_message(
+                QtMsgType.QtWarningMsg,
+                self._ctx(),
+                "some other warning",
+            )
+        mock_logger.error.assert_called_once()
+
+    def test_noise_pattern_in_critical_message_is_still_logged(self):
+        with patch("tilia.ui.qtui.logger") as mock_logger:
+            TiliaMainWindow.handle_qt_log_message(
+                QtMsgType.QtCriticalMsg,
+                self._ctx(),
+                "QFont::setPixelSize: Pixel size <= 0 (0)",
+            )
+        mock_logger.error.assert_called_once()
