@@ -12,6 +12,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 
 import numpy as np
@@ -30,16 +31,37 @@ def get_video_id(url: str) -> str | None:
     return match[6] if match else None
 
 
-def is_yt_dlp_available() -> bool:
-    """yt-dlp is callable iff the Python package is importable. We
-    deliberately don't fall back on the yt-dlp CLI binary — keeping the
-    detection consistent with how we invoke it (subprocess of `python -m
-    yt_dlp`) makes the failure mode predictable."""
+def _yt_dlp_binary() -> str | None:
+    return shutil.which("yt-dlp")
+
+
+def _yt_dlp_module_importable() -> bool:
     try:
         import yt_dlp  # noqa: F401
         return True
     except ImportError:
         return False
+
+
+def yt_dlp_command() -> list[str] | None:
+    """Return the argv prefix that invokes yt-dlp, or None if unavailable.
+
+    Prefer the standalone binary on PATH (works even when our embedded
+    interpreter doesn't have the Python package installed). Fall back to
+    ``<sys.executable> -m yt_dlp`` when only the Python module is
+    importable. Using ``sys.executable`` (not bare ``python``) matters
+    for venv installs where ``python`` may resolve to a different
+    interpreter than ours."""
+    binary = _yt_dlp_binary()
+    if binary is not None:
+        return [binary]
+    if _yt_dlp_module_importable():
+        return [sys.executable, "-m", "yt_dlp"]
+    return None
+
+
+def is_yt_dlp_available() -> bool:
+    return yt_dlp_command() is not None
 
 
 def acknowledge_terms_or_cancel() -> bool:
@@ -75,10 +97,11 @@ def download_audio_to_tempfile(url: str) -> str:
         os.unlink(tmp_path)
     except OSError:
         pass
+    invocation = yt_dlp_command()
+    if invocation is None:
+        raise RuntimeError("yt-dlp is not installed")
     cmd = [
-        "python",
-        "-m",
-        "yt_dlp",
+        *invocation,
         "-f",
         "bestaudio",
         "-o",

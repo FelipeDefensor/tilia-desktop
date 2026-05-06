@@ -49,6 +49,47 @@ class TestAvailability:
     def test_returns_bool(self):
         assert isinstance(youtube.is_yt_dlp_available(), bool)
 
+    def test_binary_on_path_is_sufficient(self):
+        # When yt-dlp ships as a standalone binary (e.g. system pipx
+        # install), the embedded venv may not have the Python module
+        # importable. Detection must still report available.
+        with patch(
+            "tilia.timelines.audiowave.youtube._yt_dlp_binary",
+            return_value="/usr/local/bin/yt-dlp",
+        ), patch(
+            "tilia.timelines.audiowave.youtube._yt_dlp_module_importable",
+            return_value=False,
+        ):
+            assert youtube.is_yt_dlp_available() is True
+            assert youtube.yt_dlp_command() == ["/usr/local/bin/yt-dlp"]
+
+    def test_module_only_falls_back_to_python_m(self):
+        with patch(
+            "tilia.timelines.audiowave.youtube._yt_dlp_binary",
+            return_value=None,
+        ), patch(
+            "tilia.timelines.audiowave.youtube._yt_dlp_module_importable",
+            return_value=True,
+        ):
+            cmd = youtube.yt_dlp_command()
+            assert cmd is not None
+            assert cmd[1:] == ["-m", "yt_dlp"]
+            # First element is the running interpreter, not bare "python".
+            import sys
+
+            assert cmd[0] == sys.executable
+
+    def test_neither_returns_none(self):
+        with patch(
+            "tilia.timelines.audiowave.youtube._yt_dlp_binary",
+            return_value=None,
+        ), patch(
+            "tilia.timelines.audiowave.youtube._yt_dlp_module_importable",
+            return_value=False,
+        ):
+            assert youtube.yt_dlp_command() is None
+            assert youtube.is_yt_dlp_available() is False
+
 
 class TestAcknowledgement:
     def test_acknowledged_setting_skips_dialog(self):
