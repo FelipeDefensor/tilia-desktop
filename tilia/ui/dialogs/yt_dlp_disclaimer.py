@@ -7,7 +7,6 @@ in settings so subsequent opens skip the prompt entirely.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QCheckBox, QMessageBox
 
 from tilia.requests import Get, get
@@ -32,6 +31,10 @@ def ask_yt_dlp_acknowledgement() -> tuple[bool, bool]:
     the user clicked OK. ``dont_show_again`` is True iff they also
     ticked the checkbox.
     """
+    # No WA_DeleteOnClose: the box destroys its child QCheckBox the
+    # instant exec() returns, so reading checkbox.isChecked() afterward
+    # would hit a deleted C++ object. Letting Python's refcount drop the
+    # local at function exit cleans it up safely.
     box = QMessageBox(
         QMessageBox.Icon.Information,
         DISCLAIMER_TITLE,
@@ -39,7 +42,6 @@ def ask_yt_dlp_acknowledgement() -> tuple[bool, bool]:
         QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
         get(Get.MAIN_WINDOW),
     )
-    box.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
     checkbox = QCheckBox("Don't show this again")
     box.setCheckBox(checkbox)
     accepted = box.exec() == QMessageBox.StandardButton.Ok
