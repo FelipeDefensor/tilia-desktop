@@ -57,6 +57,12 @@ AUDIOWAVE_INVALID_FILE = Error(
     "Invalid file type",
     "Cannot show AudioWave on selected file. Hiding AudioWave Timeline...",
 )
+FFMPEG_NOT_INSTALLED = Error(
+    "ffmpeg not found",
+    "ffmpeg is not installed on this system. Audio waveform display "
+    "for video files requires ffmpeg. Install it from "
+    "https://ffmpeg.org/download.html and reload the file.",
+)
 BEAT_DISTRIBUTION_ERROR = Error(
     "Distribute measure", "Cannot distribute beats on last measure."
 )
