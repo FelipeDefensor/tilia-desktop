@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import copy
-from typing import Any
+import functools
+from typing import Any, Callable
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QPen
@@ -25,6 +26,27 @@ from tilia.ui.timelines.range.context_menu import RangeTimelineContextMenu
 from tilia.ui.timelines.range.drag import MIN_DRAG_GAP
 from tilia.ui.timelines.range.element import RangeUI
 from tilia.ui.timelines.range.toolbar import RangeTimelineToolbar
+
+
+def with_row(func: Callable) -> Callable:
+    """Mirror of `with_elements` but for `selected_row`.
+
+    If the wrapped callback receives no `row` argument (or `None`), fall
+    back to `self.selected_row`. Return ``False`` when neither is
+    available so the wrapped body always sees a concrete row.
+    """
+
+    @functools.wraps(func)
+    def wrapper(
+        self, row: RangeTimeline.Row | None = None, *args: Any, **kwargs: Any
+    ) -> Any:
+        if row is None:
+            row = self.selected_row
+        if row is None:
+            return False
+        return func(self, row, *args, **kwargs)
+
+    return wrapper
 
 
 class SelectedRowHighlight(QGraphicsRectItem):
@@ -319,17 +341,6 @@ class RangeTimelineUI(TimelineUI):
         font.setPixelSize(target)
         label.setFont(font)
 
-    def _resolve_row(
-        self, row: RangeTimeline.Row | None = None
-    ) -> RangeTimeline.Row | None:
-        """Return the explicit row when given, else the selected row.
-
-        Lets callbacks accept an optional ``row`` argument (e.g. from a
-        context menu invocation that knows which row was clicked) and
-        fall back to the user's current selection otherwise.
-        """
-        return row or self.selected_row
-
     def on_add_row(
         self,
         idx: int | None = None,
@@ -356,12 +367,9 @@ class RangeTimelineUI(TimelineUI):
         )
         return self.on_add_row(idx=idx)
 
-    def on_remove_row(self, row: RangeTimeline.Row | None = None) -> bool:
+    @with_row
+    def on_remove_row(self, row: RangeTimeline.Row) -> bool:
         if self.timeline.row_count <= 1:
-            return False
-
-        row = self._resolve_row(row)
-        if not row:
             return False
 
         success = self.timeline.remove_row(row)
@@ -461,9 +469,10 @@ class RangeTimelineUI(TimelineUI):
             if new_partner_id is not None:
                 self.timeline.set_component_data(new_id, "joined_right", new_partner_id)
 
+    @with_row
     def on_add_range(
         self,
-        row: RangeTimeline.Row | None = None,
+        row: RangeTimeline.Row,
         start: float | None = None,
         end: float | None = None,
     ) -> bool:
@@ -480,10 +489,6 @@ class RangeTimelineUI(TimelineUI):
 
         if end > media_duration:
             end = media_duration
-
-        row = self._resolve_row(row)
-        if not row:
-            return False
 
         component, _ = self.timeline.create_component(
             kind=ComponentKind.RANGE, start=start, end=end, row_id=row.id
@@ -522,7 +527,8 @@ class RangeTimelineUI(TimelineUI):
         if row is None and settings.get("range_timeline", "split_all_rows"):
             target_rows = list(self.timeline.rows)
         else:
-            row = self._resolve_row(row)
+            if row is None:
+                row = self.selected_row
             if row is None:
                 return False
             target_rows = [row]
@@ -651,14 +657,10 @@ class RangeTimelineUI(TimelineUI):
                     stack.append(other.id)
         return seen
 
+    @with_row
     def on_rename_row(
-        self, row: RangeTimeline.Row | None = None, new_name: str | None = None
+        self, row: RangeTimeline.Row, new_name: str | None = None
     ) -> bool:
-        if row is None:
-            row = self.selected_row
-        if not row:
-            return False
-
         if not new_name:
             success, new_name = get(
                 Get.FROM_USER_STRING,
@@ -690,15 +692,12 @@ class RangeTimelineUI(TimelineUI):
             self.id, "row_height", height
         )
 
+    @with_row
     def on_set_row_height_for_row(
         self,
-        row: RangeTimeline.Row | None = None,
+        row: RangeTimeline.Row,
         height: int | None = None,
     ) -> bool:
-        if row is None:
-            row = self.selected_row
-        if row is None:
-            return False
         current = self.row_height_for(row)
         if height is None:
             success, height = get(
@@ -716,21 +715,16 @@ class RangeTimelineUI(TimelineUI):
         self.update_height()
         return True
 
-    def on_reset_row_height_for_row(self, row: RangeTimeline.Row | None = None) -> bool:
-        if row is None:
-            row = self.selected_row
-        if row is None or row.height is None:
+    @with_row
+    def on_reset_row_height_for_row(self, row: RangeTimeline.Row) -> bool:
+        if row.height is None:
             return False
         self.timeline.set_row_height(row, None)
         self.update_height()
         return True
 
-    def on_set_row_color(
-        self, row: RangeTimeline.Row | None, color: str | None
-    ) -> bool:
-        if row is None:
-            row = self.selected_row
-
+    @with_row
+    def on_set_row_color(self, row: RangeTimeline.Row, color: str | None) -> bool:
         if color:
             self.timeline.set_row_color(row, color)
             return True
@@ -741,11 +735,8 @@ class RangeTimelineUI(TimelineUI):
             return True
         return False
 
-    def on_reset_row_color(self, row: RangeTimeline.Row | None = None) -> bool:
-        if row is None:
-            row = self.selected_row
-        if row is None:
-            return False
+    @with_row
+    def on_reset_row_color(self, row: RangeTimeline.Row) -> bool:
         if row.color is None:
             return False
         self.timeline.reset_row_color(row)
@@ -756,23 +747,21 @@ class RangeTimelineUI(TimelineUI):
         row: RangeTimeline.Row | None = None,
         new_index: int | None = None,
     ) -> bool:
+        # Not @with_row: reordering needs an explicit target row, no
+        # selected-row fallback.
         if row is None or new_index is None:
             return False
         return self.timeline.reorder_row(row, new_index)
 
-    def on_move_row_up(self, row: RangeTimeline.Row | None = None) -> bool:
-        row = self._resolve_row(row)
-        if row is None:
-            return False
+    @with_row
+    def on_move_row_up(self, row: RangeTimeline.Row) -> bool:
         idx = self.timeline.row_index(row)
         if idx is None or idx == 0:
             return False
         return self.timeline.reorder_row(row, idx - 1)
 
-    def on_move_row_down(self, row: RangeTimeline.Row | None = None) -> bool:
-        row = self._resolve_row(row)
-        if row is None:
-            return False
+    @with_row
+    def on_move_row_down(self, row: RangeTimeline.Row) -> bool:
         idx = self.timeline.row_index(row)
         if idx is None or idx >= self.timeline.row_count - 1:
             return False
