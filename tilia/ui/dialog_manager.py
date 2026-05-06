@@ -21,6 +21,7 @@ from tilia.ui.dialogs.file import (
 )
 from tilia.ui.dialogs.harmony_params import ask_for_harmony_params
 from tilia.ui.dialogs.mode_params import ask_for_mode_params
+from tilia.ui.dialogs.yt_dlp_disclaimer import ask_yt_dlp_acknowledgement
 from tilia.ui.timelines.beat.dialogs import (
     ask_beat_timeline_fill_method,
     ask_for_beat_pattern,
@@ -50,6 +51,7 @@ class DialogManager:
             (Get.FROM_USER_RETRY_PDF_PATH, ask_retry_pdf_file),
             (Get.FROM_USER_ADD_TIMELINE_WITHOUT_MEDIA, ask_add_timeline_without_media),
             (Get.FROM_USER_BEAT_TIMELINE_FILL_METHOD, ask_beat_timeline_fill_method),
+            (Get.FROM_USER_YT_DLP_ACKNOWLEDGEMENT, ask_yt_dlp_acknowledgement),
         }
 
         for request, callback in SERVES:

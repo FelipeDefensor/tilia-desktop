@@ -63,6 +63,15 @@ FFMPEG_NOT_INSTALLED = Error(
     "for video files requires ffmpeg. Install it from "
     "https://ffmpeg.org/download.html and reload the file.",
 )
+YT_DLP_NOT_INSTALLED = Error(
+    "yt-dlp not found",
+    "yt-dlp is not installed. Audio waveform display for YouTube videos "
+    "requires the optional yt-dlp package. Install with `pip install yt-dlp`.",
+)
+YT_DLP_DOWNLOAD_FAILED = Error(
+    "YouTube download failed",
+    "Could not extract audio from YouTube URL '{}': {}",
+)
 BEAT_DISTRIBUTION_ERROR = Error(
     "Distribute measure", "Cannot distribute beats on last measure."
 )

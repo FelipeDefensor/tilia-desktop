@@ -1,0 +1,125 @@
+from unittest.mock import patch
+
+import pytest
+
+from tilia.requests import Get
+from tilia.requests.get import _requests_to_callbacks
+from tilia.settings import settings
+from tilia.timelines.audiowave import youtube
+
+
+def serve_yt_dlp_acknowledgement(reply):
+    """Context-manager helper to short-circuit the modal."""
+
+    class _Serve:
+        def __enter__(self):
+            self.previous = _requests_to_callbacks.get(
+                Get.FROM_USER_YT_DLP_ACKNOWLEDGEMENT
+            )
+            _requests_to_callbacks[Get.FROM_USER_YT_DLP_ACKNOWLEDGEMENT] = (
+                lambda: reply
+            )
+            return self
+
+        def __exit__(self, *_):
+            if self.previous is None:
+                _requests_to_callbacks.pop(
+                    Get.FROM_USER_YT_DLP_ACKNOWLEDGEMENT, None
+                )
+            else:
+                _requests_to_callbacks[
+                    Get.FROM_USER_YT_DLP_ACKNOWLEDGEMENT
+                ] = self.previous
+
+    return _Serve()
+
+
+class TestVideoIdParse:
+    def test_extracts_id_from_canonical_url(self):
+        assert (
+            youtube.get_video_id("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+            == "dQw4w9WgXcQ"
+        )
+
+    def test_returns_none_for_non_youtube(self):
+        assert youtube.get_video_id("https://example.com/foo") is None
+
+
+class TestAvailability:
+    def test_returns_bool(self):
+        assert isinstance(youtube.is_yt_dlp_available(), bool)
+
+
+class TestAcknowledgement:
+    def test_acknowledged_setting_skips_dialog(self):
+        settings.set("audiowave_timeline", "acknowledged_yt_dlp_terms", True)
+        try:
+            # Even with no Serve handler, this should return True without
+            # ever invoking the dialog.
+            assert youtube.acknowledge_terms_or_cancel() is True
+        finally:
+            settings.set("audiowave_timeline", "acknowledged_yt_dlp_terms", False)
+
+    def test_dialog_accept_with_dont_show_again_persists(self):
+        settings.set("audiowave_timeline", "acknowledged_yt_dlp_terms", False)
+        with serve_yt_dlp_acknowledgement((True, True)):
+            assert youtube.acknowledge_terms_or_cancel() is True
+        try:
+            assert (
+                settings.get("audiowave_timeline", "acknowledged_yt_dlp_terms")
+                is True
+            )
+        finally:
+            settings.set("audiowave_timeline", "acknowledged_yt_dlp_terms", False)
+
+    def test_dialog_accept_without_dont_show_again_does_not_persist(self):
+        settings.set("audiowave_timeline", "acknowledged_yt_dlp_terms", False)
+        with serve_yt_dlp_acknowledgement((True, False)):
+            assert youtube.acknowledge_terms_or_cancel() is True
+        # Setting was not flipped — next time we'd ask again.
+        assert (
+            settings.get("audiowave_timeline", "acknowledged_yt_dlp_terms")
+            is False
+        )
+
+    def test_dialog_cancel_returns_false(self):
+        settings.set("audiowave_timeline", "acknowledged_yt_dlp_terms", False)
+        with serve_yt_dlp_acknowledgement((False, False)):
+            assert youtube.acknowledge_terms_or_cancel() is False
+
+    def test_no_dialog_handler_returns_false(self):
+        settings.set("audiowave_timeline", "acknowledged_yt_dlp_terms", False)
+        # Ensure no handler is registered.
+        _requests_to_callbacks.pop(Get.FROM_USER_YT_DLP_ACKNOWLEDGEMENT, None)
+        assert youtube.acknowledge_terms_or_cancel() is False
+
+
+class TestExtractGuards:
+    def test_missing_yt_dlp_raises(self):
+        with patch(
+            "tilia.timelines.audiowave.youtube.is_yt_dlp_available",
+            return_value=False,
+        ):
+            with pytest.raises(RuntimeError, match="yt-dlp"):
+                youtube.extract_peaks_via_yt_dlp("https://yt.com/x", 128)
+
+    def test_missing_ffmpeg_raises(self):
+        with patch(
+            "tilia.timelines.audiowave.youtube.is_yt_dlp_available",
+            return_value=True,
+        ), patch(
+            "tilia.timelines.audiowave.youtube.shutil.which", return_value=None
+        ):
+            with pytest.raises(RuntimeError, match="ffmpeg"):
+                youtube.extract_peaks_via_yt_dlp("https://yt.com/x", 128)
+
+    def test_user_declined_raises(self):
+        settings.set("audiowave_timeline", "acknowledged_yt_dlp_terms", False)
+        with patch(
+            "tilia.timelines.audiowave.youtube.is_yt_dlp_available",
+            return_value=True,
+        ), patch(
+            "tilia.timelines.audiowave.youtube.shutil.which", return_value="/x"
+        ), serve_yt_dlp_acknowledgement((False, False)):
+            with pytest.raises(RuntimeError, match="acknowledge"):
+                youtube.extract_peaks_via_yt_dlp("https://yt.com/x", 128)
