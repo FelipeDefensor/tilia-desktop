@@ -88,8 +88,11 @@ class RangeTimelineUI(TimelineUI):
         listen(self, Post.RANGE_TIMELINE_CLICKED, self._delete_row_highlight)
 
         post(Post.RANGE_TIMELINE_CREATED)
-        # Highlight is recreated after the created event so existing
-        # highlights on other range timelines have already been removed.
+        # The post above runs every range timeline's `_delete_row_highlight`
+        # listener — including this one's, since we just registered. That
+        # collapses the "only one timeline shows the highlight" invariant
+        # to "no timeline shows it"; recreate ours to make this timeline
+        # the one that does.
         self._create_row_highlight()
 
     @property
