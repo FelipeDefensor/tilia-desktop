@@ -481,7 +481,7 @@ class SvgViewer(ViewDockWidget):
             Get.TIMELINE_COLLECTION
         ).get_beat_timeline_for_measure_calculation()
 
-        if not beat_tl:
+        if not beat_tl or not beat_tl.measure_count:
             return {}
 
         for key, beat in beat_pos.items():
