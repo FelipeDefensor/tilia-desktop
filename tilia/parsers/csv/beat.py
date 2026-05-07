@@ -84,7 +84,7 @@ def beats_from_csv(
                     current_time = float(row[params_to_indices.get("time")])
 
                 if (
-                    params_to_indices.get("is_first_in_measure")
+                    "is_first_in_measure" in params_to_indices
                     and row[params_to_indices["is_first_in_measure"]].lower() == "true"
                     and current_beat != 0
                 ) or (
@@ -105,12 +105,12 @@ def beats_from_csv(
                     current_beat += 1
 
                 if (
-                    params_to_indices.get("measure")
+                    "measure" in params_to_indices
                     and row[params_to_indices["measure"]] != ""
                     and (
                         # measure numbers are considered if is_first_in_measure is true
                         # or if is_first_in_measure is not present
-                        not params_to_indices.get("is_first_in_measure")
+                        "is_first_in_measure" not in params_to_indices
                         or row[params_to_indices["is_first_in_measure"]].lower()
                         == "true"
                     )
