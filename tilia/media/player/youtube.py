@@ -219,7 +219,10 @@ class YouTubePlayer(Player):
         self._engine_seek(0)
 
     def _engine_unload_media(self):
+        if self.is_web_page_loaded:
+            self.view.page().runJavaScript("stop()")
         self.view.hide()
+        self.video_id = None
         self.shared_object.player_toolbar_enabled = False
 
     def _engine_get_media_duration(self):
