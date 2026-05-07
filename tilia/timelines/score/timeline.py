@@ -76,6 +76,7 @@ class ScoreTimeline(Timeline):
     NOT_EXPORTABLE_ATTRS = ["svg_data", "viewer_beat_x"]
     COMPONENT_MANAGER_CLASS = ScoreTLComponentManager
     FLAGS = [
+        TimelineFlag.COMPONENTS_COLORED,
         TimelineFlag.COMPONENTS_NOT_DELETABLE,
         TimelineFlag.COMPONENTS_IMPORTABLE,
     ]
