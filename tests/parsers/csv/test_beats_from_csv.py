@@ -112,3 +112,25 @@ def test_with_invalid_is_first_in_measure(beat_tl):
     _import_with_patch(beat_tl, data)
 
     assert beat_tl.beats_in_measure == [5, 3]
+
+
+def test_with_measure_number_in_first_column(beat_tl):
+    # Regression for #433: when `measure` (or `is_first_in_measure`)
+    # is at column index 0, the parser used `params_to_indices.get(...)`
+    # truthiness for "is this column present?", which treated index 0
+    # as falsy and silently dropped the custom measure numbers.
+    data = "measure,time\n1,5\n,10\n,15\n,20\n,25\n8,30"
+    _import_with_patch(beat_tl, data)
+
+    assert beat_tl[3].metric_position == MetricPosition(1, 4, 1)
+    assert beat_tl[4].metric_position == MetricPosition(8, 1, 1)
+
+
+def test_with_is_first_in_measure_in_first_column(beat_tl):
+    data = "is_first_in_measure,time\nTrue,0\n,5\n,10\n,15\n,20\nTrue,25\n,30\nTrue,35"
+    _import_with_patch(beat_tl, data)
+
+    assert beat_tl[4].metric_position == MetricPosition(1, 5, 1)
+    assert beat_tl[5].metric_position == MetricPosition(2, 1, 1)
+    assert beat_tl[6].metric_position == MetricPosition(2, 2, 1)
+    assert beat_tl[7].metric_position == MetricPosition(3, 1, 1)
