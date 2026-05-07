@@ -580,6 +580,17 @@ class TestFileNew:
         assert get(Get.MEDIA_DURATION) == 0
         assert not tilia.player.media_path
 
+    def test_player_toolbar_is_disabled(self, tilia, qtui):
+        with Serve(Get.FROM_USER_MEDIA_PATH, (True, EXAMPLE_MEDIA_PATH)):
+            commands.execute("media.load.local")
+
+        assert qtui.player_toolbar.isEnabled()
+
+        with Serve(Get.FROM_USER_SHOULD_SAVE_CHANGES, (True, False)):
+            commands.execute("file.new")
+
+        assert not qtui.player_toolbar.isEnabled()
+
     def test_all_windows_are_closed(self, tilia, qtui):
         for kind in WindowKind:
             post(Post.WINDOW_OPEN, kind)
