@@ -135,6 +135,21 @@ class TestTimelineUICreation:
 
         assert tluis._select_order[0] == tlui2
 
+    def test_scene_height_updates_when_timeline_added_after_zoom(self, tls, tluis):
+        # Regression: after a zoom (which calls setSceneRect explicitly),
+        # adding a timeline used to leave the scene rect height frozen,
+        # so the vertical scrollbar would not reflect the new content.
+        tls.create_timeline(TlKind.HIERARCHY_TIMELINE, name="test1")
+        commands.execute("view.zoom.out")
+
+        height_after_first = tluis.scene.sceneRect().height()
+        assert height_after_first == tluis.get_scene_height()
+
+        tls.create_timeline(TlKind.HIERARCHY_TIMELINE, name="test2")
+
+        assert tluis.scene.sceneRect().height() == tluis.get_scene_height()
+        assert tluis.scene.sceneRect().height() > height_after_first
+
 
 class TestServe:
     def test_serve_timeline_elements_selected_empty_case(self, tluis):
