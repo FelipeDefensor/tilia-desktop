@@ -58,3 +58,17 @@ class TestGetSetupParser:
 
         with pytest.raises(argparse.ArgumentError):
             setup_parser()
+
+    def test_setup_parser_positional_file(self):
+        sys.argv = ["main.py", "input.tla"]
+
+        args = setup_parser()
+
+        assert args.file == "input.tla"
+
+    def test_setup_parser_flag_takes_precedence_over_positional(self):
+        sys.argv = ["main.py", "positional.tla", "--file", "flag.tla"]
+
+        args = setup_parser()
+
+        assert args.file == "flag.tla"

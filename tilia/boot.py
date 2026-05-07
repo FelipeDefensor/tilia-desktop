@@ -5,6 +5,7 @@ import traceback
 
 from PySide6.QtWidgets import QApplication
 
+import tilia.errors
 import tilia.utils  # noqa: F401
 from tilia.app import App
 from tilia.clipboard import Clipboard
@@ -66,9 +67,14 @@ def boot():
 
 def setup_parser():
     parser = argparse.ArgumentParser(exit_on_error=False)
-    parser.add_argument("--file", nargs="?", default="")
+    # `file` is positional so the OS can pass a .tla path (e.g. via Windows'
+    # "Open with"), and `--file` is kept for backwards compatibility.
+    parser.add_argument("file_pos", nargs="?", default="")
+    parser.add_argument("--file", dest="file_flag", default="")
     parser.add_argument("--user-interface", "-i", choices=["qt", "cli"], default="qt")
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.file = args.file_flag or args.file_pos
+    return args
 
 
 def setup_logic(autosaver=True):
@@ -107,8 +113,20 @@ def get_initial_file(file: str):
     """
     Checks if a file path was passed as an argument to process.
     If it was, returns its path. Else, returns the empty string.
+    Errors are displayed to the user via `OPEN_FILE_*`; the actual
+    "is this a valid .tla?" check is delegated to `open_tla`.
     """
-    if file and os.path.isfile(file) and file.endswith(".tla"):
-        return file
-    else:
+    if not file:
         return ""
+
+    if not os.path.isfile(file):
+        tilia.errors.display(tilia.errors.OPEN_FILE_NOT_FOUND, file)
+        return ""
+
+    if not file.endswith(".tla"):
+        tilia.errors.display(
+            tilia.errors.OPEN_FILE_INVALID_TLA, file, "Expected a .tla file."
+        )
+        return ""
+
+    return file
