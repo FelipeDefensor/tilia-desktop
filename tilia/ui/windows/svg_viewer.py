@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from bisect import bisect
-from typing import Callable
+from typing import Callable, Iterator
 
 from lxml import etree
 from PySide6.QtCore import (
@@ -194,13 +194,15 @@ class SvgViewer(ViewDockWidget):
         self.view.check_scale()
 
     @staticmethod
-    def _strip_beat_x_markers(root: etree._Element) -> None:
-        """Remove the near-zero font-size data-marker text elements that
-        `_get_beat_x_pos` strips on first load.
+    def _extract_beat_position_markers(
+        root: etree._Element,
+    ) -> Iterator[tuple[etree._Element, list[str]]]:
+        """Yield ``(element, ␟-parts)`` for each near-zero-font-size
+        ``<g class='vf-text'>`` data marker carrying a 3-part payload.
 
-        Markers that lack the expected ␟-separated payload (3 parts) get
-        their font-size bumped to 15px instead of being removed, matching
-        the behavior of `_get_beat_x_pos`.
+        Markers that lack the expected payload have their font-size bumped
+        to ``15px`` (so they render visibly) and are skipped. Callers are
+        responsible for removing the yielded elements.
         """
         for e in root.findall(".//g[@class='vf-text']", None):
             if not len(e):
@@ -210,26 +212,27 @@ class SvgViewer(ViewDockWidget):
                     continue
             except (KeyError, ValueError):
                 continue
-            text = e[0].text or ""
-            if len(text.split("␟")) != 3:
+            parts = (e[0].text or "").split("␟")
+            if len(parts) != 3:
                 e[0].attrib["font-size"] = "15px"
                 continue
+            yield e, parts
+
+    @staticmethod
+    def _strip_beat_x_markers(root: etree._Element) -> None:
+        """Remove the data-marker text elements that `_get_beat_x_pos`
+        strips on first load. Used when reloading an already-processed SVG.
+        """
+        for e, _ in SvgViewer._extract_beat_position_markers(root):
             e.getparent().remove(e)
 
     def _get_beat_x_pos(self, root: etree._Element) -> dict[float, float]:
-        texts = root.findall(".//g[@class='vf-text']", None)
         x_stamps = {}
         measure_divs = {}
-        for e in texts:
-            if float(e[0].attrib["font-size"].strip("px")) > 1:
-                continue
-            if len(x_stamp := e[0].text.split("␟")) != 3:
-                e[0].attrib["font-size"] = "15px"
-                continue
-
+        for e, parts in self._extract_beat_position_markers(root):
             e.getparent().remove(e)
 
-            measure, beat_div, max_div = map(int, x_stamp)
+            measure, beat_div, max_div = map(int, parts)
             if x_stamps.get(measure):
                 if cur_x := x_stamps[measure].get(beat_div):
                     if cur_x > (x := float(e[0].attrib["x"])):
