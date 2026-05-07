@@ -419,6 +419,25 @@ class TestLoop:
         commands.execute("edit.undo")
         assert get(Get.LOOP_TIME) == (0, 0)
 
+    def test_player_cancel_loop_clears_full_state(self, tluis, tilia_state):
+        # Regression test for #438: PLAYER_CANCEL_LOOP (posted by
+        # app.load_media after a successful media swap, among other
+        # paths) used to leave loop_elements populated and the player
+        # still in is_looping=True, so playback would keep seeking
+        # back over the new media.
+        self.tlui.create_hierarchy(10, 20, 1)
+        self.tlui.select_all_elements()
+        post(Post.PLAYER_TOGGLE_LOOP, True)
+        assert get(Get.LOOP_TIME) == (10, 20)
+        assert tluis.loop_elements
+        assert tilia_state.player.is_looping
+
+        post(Post.PLAYER_CANCEL_LOOP)
+
+        assert get(Get.LOOP_TIME) == (0, 0)
+        assert not tluis.loop_elements
+        assert not tilia_state.player.is_looping
+
 
 class TestClearAllTimelines:
     def test_none(self, tilia, tluis):
