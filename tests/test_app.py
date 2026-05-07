@@ -192,6 +192,32 @@ class TestFileLoad:
         assert tilia_state.media_path == media_path
         assert tilia_state.duration == 101
 
+    def test_async_duration_after_open_does_not_prompt_for_scale(
+        self, tilia, tilia_state, qtui, tmp_path, tls
+    ):
+        # Regression for #453: when opening a .tla, the file's stored
+        # media length and the actual player-reported duration may
+        # differ slightly (typical of YouTube's async load). The user
+        # should not be prompted to scale timelines in that case.
+        file_data = tests.utils.get_blank_file_data()
+        media_path = "https://www.youtube.com/watch?v=wBfVsucRe1w"
+        file_data["media_path"] = media_path
+        file_data["media_metadata"]["media length"] = 101
+        file_data["timelines"] = tests.utils.get_dummy_timeline_data()
+        tmp_file = tmp_path / "test.tla"
+        tmp_file.write_text(json.dumps(file_data))
+
+        with (
+            Serve(Get.FROM_USER_TILIA_FILE_PATH, (True, tmp_file)),
+            Serve(Get.PLAYER_CLASS, YouTubePlayer),
+        ):
+            commands.execute("file.open")
+
+        with Serve(Get.FROM_USER_YES_OR_NO, True) as scale_prompt:
+            tilia.set_file_media_duration(101.123)
+
+        assert not scale_prompt.called
+
 
 class TestMediaLoad:
     @staticmethod
