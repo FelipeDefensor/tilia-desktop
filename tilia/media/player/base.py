@@ -20,6 +20,7 @@ from tilia.requests import (
     stop_serving_all,
 )
 from tilia.ui import commands
+from tilia.ui.player import PlayerStatus
 from tilia.utils import get_tilia_class_string
 
 
@@ -141,6 +142,7 @@ class Player(ABC):
         self.is_playing = False
         self.is_looping = False
         post(Post.PLAYER_CANCEL_LOOP)
+        post(Post.PLAYER_UPDATE_CONTROLS, PlayerStatus.NO_MEDIA)
 
     def toggle_play(self, toggle_is_playing: bool):
         if toggle_is_playing:
