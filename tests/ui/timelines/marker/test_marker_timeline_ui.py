@@ -431,6 +431,26 @@ class TestTimelineUIContextMenu:
 
         assert marker_tlui.is_empty
 
+    def test_clear_action_is_disabled_when_timeline_is_empty(
+        self, marker_tlui, tluis
+    ):
+        # #435: clearing an empty timeline is a no-op; the menu action
+        # should be disabled to make that clear to the user.
+        context_menu = self.get_context_menu(tluis)
+        clear_action = get_command_action(context_menu, "timeline.clear")
+
+        assert not clear_action.isEnabled()
+
+    def test_clear_action_is_enabled_when_timeline_has_components(
+        self, marker_tlui, tluis
+    ):
+        commands.execute("timeline.marker.add")
+
+        context_menu = self.get_context_menu(tluis)
+        clear_action = get_command_action(context_menu, "timeline.clear")
+
+        assert clear_action.isEnabled()
+
 
 class TestInspect:
     def test_open_inspect_menu(self, marker_tlui, tluis, qtui):

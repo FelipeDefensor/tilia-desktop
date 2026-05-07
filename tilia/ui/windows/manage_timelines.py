@@ -32,9 +32,23 @@ class ManageTimelines(QDialog):
         self.setWindowTitle("Manage Timelines")
         self._setup_widgets()
         self._setup_checkbox()
+        self._setup_requests()
         self.show()
 
         post(Post.WINDOW_OPEN_DONE, WindowKind.MANAGE_TIMELINES)
+
+    def _setup_requests(self):
+        # Refresh the per-timeline action buttons when the selected
+        # timeline's emptiness can change underneath us (#435).
+        for post_ in (
+            Post.TIMELINE_COMPONENT_CREATED,
+            Post.TIMELINE_COMPONENT_DELETED,
+            Post.APP_STATE_RESTORE,
+        ):
+            listen(self, post_, self._refresh_buttons)
+
+    def _refresh_buttons(self, *_):
+        self.on_list_current_item_changed(self.list_widget.currentItem())
 
     def _setup_widgets(self):
         layout = QHBoxLayout()
@@ -85,7 +99,9 @@ class ManageTimelines(QDialog):
             else Qt.CheckState.Unchecked
         )
         self.delete_button.setEnabled(TimelineFlag.NOT_DELETABLE not in timeline.FLAGS)
-        self.clear_button.setEnabled(TimelineFlag.NOT_CLEARABLE not in timeline.FLAGS)
+        self.clear_button.setEnabled(
+            TimelineFlag.NOT_CLEARABLE not in timeline.FLAGS and not timeline.is_empty
+        )
 
     def on_checkbox_state_changed(self, state):
         item = self.list_widget.currentItem()

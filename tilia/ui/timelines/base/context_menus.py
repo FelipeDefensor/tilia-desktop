@@ -83,6 +83,7 @@ class TimelineUIContextMenu(TiliaMenu):
 
         clear_timeline = CommandQAction("timeline.clear", self)
         clear_timeline.setText("Clear")
+        clear_timeline.setEnabled(not self.timeline_ui.is_empty)
         clear_timeline.triggered.connect(on_clear_timeline)
         self.addAction(clear_timeline)
 
