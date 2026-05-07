@@ -392,7 +392,11 @@ class App:
             post(Post.PLAYER_URL_CHANGED, "")
             return
 
-        self.load_media(new_path, initial_duration=duration)
+        # Loading media that belongs to a file we just opened: timelines
+        # already match this media, so don't ask the user to rescale (the
+        # YouTube duration in particular comes back asynchronously and
+        # often differs from the stored value by a few ms).
+        self.load_media(new_path, initial_duration=duration, scale_timelines="no")
 
     def on_file_load(self, file: TiliaFile) -> bool:
         media_path = file.media_path
