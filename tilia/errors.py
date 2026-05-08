@@ -57,6 +57,32 @@ AUDIOWAVE_INVALID_FILE = Error(
     "Invalid file type",
     "Cannot show AudioWave on selected file. Hiding AudioWave Timeline...",
 )
+FFMPEG_NOT_INSTALLED = Error(
+    "ffmpeg not found",
+    "ffmpeg is not installed on this system. Audio waveform display "
+    "for video files requires ffmpeg. Install it from "
+    "https://ffmpeg.org/download.html and reload the file.",
+)
+YT_DLP_NOT_INSTALLED = Error(
+    "yt-dlp not found",
+    "yt-dlp is not installed. Audio waveform display for YouTube videos "
+    "requires the optional yt-dlp package. Install with `pip install yt-dlp`.",
+)
+YT_DLP_DOWNLOAD_FAILED = Error(
+    "YouTube download failed",
+    "Could not extract audio from YouTube: {}",
+)
+YT_VIDEO_UNAVAILABLE = Error(
+    "YouTube video unavailable",
+    "This YouTube video can't be downloaded. It may be private, "
+    "age-restricted, removed, geo-blocked, or members-only. Audio "
+    "waveform display is disabled for this video.",
+)
+YT_NETWORK_ERROR = Error(
+    "YouTube download failed",
+    "Could not reach YouTube. Check your internet connection and "
+    "try reloading the file.",
+)
 BEAT_DISTRIBUTION_ERROR = Error(
     "Distribute measure", "Cannot distribute beats on last measure."
 )

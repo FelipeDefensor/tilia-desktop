@@ -30,6 +30,7 @@ class Get(Enum):
     FROM_USER_STRING = auto()
     FROM_USER_TILIA_FILE_PATH = auto()
     FROM_USER_YES_OR_NO = auto()
+    FROM_USER_YT_DLP_ACKNOWLEDGEMENT = auto()
     ID = auto()
     IS_FILE_MODIFIED = auto()
     LEFT_MARGIN_X = auto()

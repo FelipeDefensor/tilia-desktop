@@ -8,6 +8,7 @@ from tilia.utils import open_with_os
 
 autosaves_path = Path()
 logs_path = Path()
+audiowave_pyramid_cache_path = Path()
 _SITE_DATA_DIR = Path(platformdirs.site_data_dir(tilia.constants.APP_NAME))
 _USER_DATA_DIR = Path(
     platformdirs.user_data_dir(tilia.constants.APP_NAME, roaming=True)
@@ -35,6 +36,10 @@ def setup_logs_path(data_dir):
         create_logs_dir(data_dir)
 
 
+def setup_audiowave_pyramid_cache_path(data_dir):
+    os.makedirs(Path(data_dir, "audiowave_pyramids"), exist_ok=True)
+
+
 def setup_dirs() -> None:
     # if not in prod, set directory to root of tilia
     if os.environ.get("ENVIRONMENT") != "prod":
@@ -42,13 +47,16 @@ def setup_dirs() -> None:
 
     data_dir = setup_data_dir()
 
-    global autosaves_path, logs_path
+    global autosaves_path, logs_path, audiowave_pyramid_cache_path
 
     autosaves_path = Path(data_dir, "autosaves")
     setup_autosaves_path(data_dir)
 
     logs_path = Path(data_dir, "logs")
     setup_logs_path(data_dir)
+
+    audiowave_pyramid_cache_path = Path(data_dir, "audiowave_pyramids")
+    setup_audiowave_pyramid_cache_path(data_dir)
 
 
 def create_data_dir() -> Path:

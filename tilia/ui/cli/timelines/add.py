@@ -2,6 +2,7 @@ import argparse
 
 import tilia.errors
 from tilia.requests import Get, get
+from tilia.timelines.audiowave.timeline import AudioWaveTimeline
 from tilia.timelines.base.timeline import Timeline
 from tilia.timelines.beat.timeline import BeatTimeline
 from tilia.timelines.hierarchy.timeline import HierarchyTimeline
@@ -37,6 +38,8 @@ Examples:
             "sco",
             "range",
             "rng",
+            "audiowave",
+            "aud",
         ],
         help="Kind of timeline to add",
     )
@@ -71,6 +74,7 @@ TLKIND_TO_KWARGS_NAMES = {
     MarkerTimeline: ["name", "height"],
     RangeTimeline: ["name", "height", "default_row_height"],
     ScoreTimeline: ["name", "height"],
+    AudioWaveTimeline: ["name", "height"],
 }
 
 
@@ -93,6 +97,8 @@ def add(namespace: argparse.Namespace):
         "sco": ScoreTimeline,
         "range": RangeTimeline,
         "rng": RangeTimeline,
+        "audiowave": AudioWaveTimeline,
+        "aud": AudioWaveTimeline,
     }
 
     if not get(Get.MEDIA_DURATION):
