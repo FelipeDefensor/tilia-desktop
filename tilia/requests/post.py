@@ -58,6 +58,11 @@ class Post(Enum):
     SLIDER_DRAG = auto()
     SLIDER_DRAG_END = auto()
     SLIDER_DRAG_START = auto()
+    # Set/clear a long-running status message in the main window.
+    # Set payload: (text: str, fraction: float).  Pass -1 for fraction
+    # when progress is indeterminate.
+    STATUS_MESSAGE_CLEAR = auto()
+    STATUS_MESSAGE_SET = auto()
     TIMELINES_AUTO_SCROLL_UPDATE = auto()
     TIMELINES_CROP_DONE = auto()
     TIMELINE_COMPONENT_CREATED = auto()
