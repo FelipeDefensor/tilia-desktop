@@ -73,7 +73,7 @@ from .windows.settings import SettingsWindow
 class TiliaMainWindow(QMainWindow):
     def __init__(self):
         QIcon.setThemeSearchPaths([(Path(__file__).parent / "icons").as_posix()])
-        QIcon.setThemeName("tilia" + QApplication.styleHints().colorScheme().name)
+        QIcon.setThemeName(self._tilia_theme_name())
         super().__init__()
         self.setWindowTitle(tilia.constants.APP_NAME)
         self.setWindowIcon(QIcon.fromTheme("tilia"))
@@ -87,9 +87,18 @@ class TiliaMainWindow(QMainWindow):
 
     def changeEvent(self, event: QEvent) -> None:
         if event.type() == event.Type.ThemeChange:
-            QIcon.setThemeName("tilia" + QApplication.styleHints().colorScheme().name)
+            QIcon.setThemeName(self._tilia_theme_name())
 
         return super().changeEvent(event)
+
+    @staticmethod
+    def _tilia_theme_name() -> str:
+        # On Linux the platform may not advertise a colour preference,
+        # in which case styleHints().colorScheme() returns Unknown and
+        # we'd otherwise pick the non-existent "tiliaUnknown" theme,
+        # leaving every custom icon blank (#475).
+        scheme = QApplication.styleHints().colorScheme()
+        return "tiliaDark" if scheme == Qt.ColorScheme.Dark else "tiliaLight"
 
     # Qt warnings emitted on every paint while the SVG score viewer is open.
     # They are harmless rendering-engine noise but flood the log loudly enough
