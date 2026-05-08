@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from PySide6.QtGui import QColor
 
 from tests.constants import EXAMPLE_MULTISTAFF_MUSICXML_PATH
 from tests.mock import (
@@ -12,7 +13,7 @@ from tests.mock import (
 from tests.utils import get_blank_file_data, reloadable
 from tilia.errors import SCORE_STAFF_ID_ERROR
 from tilia.parsers.score.musicxml import notes_from_musicXML
-from tilia.requests import Get, get
+from tilia.requests import Get, Post, get, post
 from tilia.timelines.component_kinds import ComponentKind
 from tilia.timelines.score.components import Clef
 from tilia.timelines.timeline_kinds import TimelineKind
@@ -28,6 +29,30 @@ def test_create(tluis):
 
 def test_create_note(score_tlui, note):
     assert score_tlui[0]
+
+
+def test_set_note_color(score_tlui, note_ui):
+    # Note bodies are created lazily on this post; without it,
+    # set_color has no body to update and the test would crash.
+    post(Post.SCORE_TIMELINE_COMPONENTS_DESERIALIZED, score_tlui.id)
+    score_tlui.select_element(note_ui)
+
+    with Serve(Get.FROM_USER_COLOR, (True, QColor("#123456"))):
+        commands.execute("timeline.component.set_color")
+
+    assert note_ui.get_data("color") == "#123456"
+
+
+def test_reset_note_color(score_tlui, note_ui):
+    post(Post.SCORE_TIMELINE_COMPONENTS_DESERIALIZED, score_tlui.id)
+    score_tlui.select_element(note_ui)
+
+    with Serve(Get.FROM_USER_COLOR, (True, QColor("#123456"))):
+        commands.execute("timeline.component.set_color")
+
+    commands.execute("timeline.component.reset_color")
+
+    assert note_ui.get_data("color") is None
 
 
 def test_create_staff(score_tlui, staff):
