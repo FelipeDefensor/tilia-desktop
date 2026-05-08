@@ -304,6 +304,30 @@ class TestScaleCropTimeline:
         assert len(marker_tlui) == 1
         assert marker_tlui[0].get_data("time") == 10
 
+    def test_crop_repositions_hierarchy_against_new_duration(
+        self, hierarchy_tlui, tilia_state
+    ):
+        # Regression test for #496: when on_media_duration_changed
+        # cropped components, FILE_MEDIA_DURATION_CHANGED was posted
+        # afterwards, so update_position used the *old* media_duration
+        # in time_x_converter. A hierarchy cropped to fill the new
+        # (shorter) timeline ended up drawn against the old end-time
+        # and stopped halfway across the visible area.
+        from tilia.ui.coords import time_x_converter
+        from tilia.ui.timelines.hierarchy.element import HierarchyUI
+
+        tilia_state.set_duration(100)
+        hierarchy_tlui.create_hierarchy(0, 100, 1)
+        tilia_state.set_duration(50, scale_timelines="no")  # falls back to crop
+
+        # After crop the component spans [0, 50]; the new media is 50s
+        # long so the body's right edge must align with x(50) — minus
+        # the small X_OFFSET the body adds — i.e. the timeline's right
+        # margin under the *new* converter.
+        body_right = hierarchy_tlui[0].body.rect().right()
+        expected_right = time_x_converter.get_x_by_time(50) - HierarchyUI.X_OFFSET
+        assert body_right == pytest.approx(expected_right)
+
 
 class TestFileSetup:
     def test_slider_timeline_is_created_when_loaded_file_does_not_have_one(
