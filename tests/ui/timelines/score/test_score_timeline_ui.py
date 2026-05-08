@@ -32,6 +32,8 @@ def test_create_note(score_tlui, note):
 
 
 def test_set_note_color(score_tlui, note_ui):
+    # Note bodies are created lazily on this post; without it,
+    # set_color has no body to update and the test would crash.
     post(Post.SCORE_TIMELINE_COMPONENTS_DESERIALIZED, score_tlui.id)
     score_tlui.select_element(note_ui)
 
