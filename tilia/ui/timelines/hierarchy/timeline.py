@@ -1,3 +1,4 @@
+import tilia.errors
 import tilia.ui.strings
 import tilia.ui.timelines.copy_paste
 from tilia.requests import Get, Post, get, listen, post
@@ -351,6 +352,15 @@ class HierarchyTimelineUI(TimelineUI):
         if not accept:
             return False
 
+        # The earliest start in the selection bounds how far back the
+        # pre-start can extend; anything larger pushes pre_start before
+        # the media start, which validate_time would reject silently
+        # (#495).
+        earliest_start = min(elm.get_data("start") for elm in elements)
+        if not 0 <= value <= earliest_start:
+            tilia.errors.display(tilia.errors.HIERARCHY_PRE_START_INVALID, earliest_start)
+            return False
+
         self._on_add_frame(elements, value, HierarchyUI.Extremity.PRE_START)
         return True
 
@@ -358,6 +368,14 @@ class HierarchyTimelineUI(TimelineUI):
     def on_add_post_end(self, elements: list[HierarchyUI]):
         accept, value = get(Get.FROM_USER_FLOAT, "Add post-end", "Post-end length")
         if not accept:
+            return False
+
+        # The latest end in the selection caps the post-end; pushing
+        # past media_duration leaves a phantom region (#495).
+        latest_end = max(elm.get_data("end") for elm in elements)
+        max_value = get(Get.MEDIA_DURATION) - latest_end
+        if not 0 <= value <= max_value:
+            tilia.errors.display(tilia.errors.HIERARCHY_POST_END_INVALID, max_value)
             return False
 
         self._on_add_frame(elements, value, HierarchyUI.Extremity.POST_END)

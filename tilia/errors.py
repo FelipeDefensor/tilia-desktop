@@ -72,6 +72,14 @@ HIERARCHY_CHANGE_LEVEL_FAILED = Error(
 HIERARCHY_GROUP_FAILED = Error("Group hierarchies", "Grouping failed: {}")
 HIERARCHY_MERGE_FAILED = Error("Merge hierarchies", "Merge failed: {}")
 HIERARCHY_SPLIT_FAILED = Error("Split hierarchy", "Split failed: {}")
+HIERARCHY_PRE_START_INVALID = Error(
+    "Add pre-start",
+    "Pre-start length must be between 0 and {} seconds (the hierarchy's start time).",
+)
+HIERARCHY_POST_END_INVALID = Error(
+    "Add post-end",
+    "Post-end length must be between 0 and {} seconds (media duration minus the hierarchy's end time).",
+)
 COMPONENTS_COPY_ERROR = Error("Copy components error", "{}")
 COMPONENTS_LOAD_ERROR = Error(
     "Load components error",

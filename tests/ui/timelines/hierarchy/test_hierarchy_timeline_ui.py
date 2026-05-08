@@ -131,6 +131,58 @@ class TestActions:
         assert tlui[0].get_data("post_end") != tlui[0].get_data("end")
         assert tlui[0].post_end_handle
 
+    def test_add_pre_start_negative_value_rejected(self, tlui, tilia_errors):
+        # #495: a negative pre-start length pushed pre_start past start,
+        # which validate_time accepts because it only checks >= 0.
+        tlui.create_hierarchy(0.1, 1, 1)
+        tlui.select_element(tlui[0])
+
+        with Serve(Get.FROM_USER_FLOAT, (True, -0.1)):
+            commands.execute("timeline.hierarchy.add_pre_start")
+
+        assert tlui[0].get_data("pre_start") == tlui[0].get_data("start")
+        tilia_errors.assert_in_error_title("Add pre-start")
+
+    def test_add_pre_start_value_exceeding_start_rejected(self, tlui, tilia_errors):
+        # #495: a pre-start length larger than the hierarchy's start
+        # pushed pre_start below the media start (validate_time rejected
+        # silently, leaving pre_start unset with no user feedback).
+        tlui.create_hierarchy(0.1, 1, 1)
+        tlui.select_element(tlui[0])
+
+        with Serve(Get.FROM_USER_FLOAT, (True, 0.5)):
+            commands.execute("timeline.hierarchy.add_pre_start")
+
+        assert tlui[0].get_data("pre_start") == tlui[0].get_data("start")
+        tilia_errors.assert_in_error_title("Add pre-start")
+
+    def test_add_post_end_negative_value_rejected(self, tlui, tilia_errors):
+        # #495: a negative post-end length silently shrank the hierarchy
+        # because post_end = end + value falls below end.
+        tlui.create_hierarchy(0, 0.5, 1)
+        tlui.select_element(tlui[0])
+
+        with Serve(Get.FROM_USER_FLOAT, (True, -0.1)):
+            commands.execute("timeline.hierarchy.add_post_end")
+
+        assert tlui[0].get_data("post_end") == tlui[0].get_data("end")
+        tilia_errors.assert_in_error_title("Add post-end")
+
+    def test_add_post_end_value_exceeding_media_duration_rejected(
+        self, tlui, tilia_state, tilia_errors
+    ):
+        # #495: a post-end pushed beyond media_duration was silently
+        # accepted (validate_time only checks >= 0).
+        tilia_state.duration = 100
+        tlui.create_hierarchy(0, 50, 1)
+        tlui.select_element(tlui[0])
+
+        with Serve(Get.FROM_USER_FLOAT, (True, 60)):  # 50 + 60 > 100
+            commands.execute("timeline.hierarchy.add_post_end")
+
+        assert tlui[0].get_data("post_end") == tlui[0].get_data("end")
+        tilia_errors.assert_in_error_title("Add post-end")
+
     def test_split(self, tlui, tilia_state):
         tlui.create_hierarchy(0, 1, 1)
         assert len(tlui) == 1
