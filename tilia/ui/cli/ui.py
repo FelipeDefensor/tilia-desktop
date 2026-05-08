@@ -50,6 +50,7 @@ class CLI:
             (Get.FROM_USER_RETRY_MEDIA_PATH, on_ask_retry_media_file),
             (Get.FROM_USER_RETRY_PDF_PATH, on_ask_retry_pdf_file),
             (Get.FROM_USER_MEDIA_PATH, on_ask_media_path),
+            (Get.FROM_USER_YT_DLP_ACKNOWLEDGEMENT, on_ask_yt_dlp_acknowledgement),
         }
         for request, callback in SERVES:
             serve(self, request, callback)
@@ -220,3 +221,25 @@ def on_ask_media_path() -> tuple[bool, str]:
         if os.path.exists(ans):
             return True, ans
         error(f"Path not found: {ans}")
+
+
+def on_ask_yt_dlp_acknowledgement() -> tuple[bool, bool]:
+    """CLI counterpart to the GUI yt-dlp disclaimer modal.
+
+    Returns ``(accepted, dont_show_again)`` so the worker can persist
+    the user's choice when they explicitly opt out of future prompts.
+    """
+    print(
+        "TiLiA can use yt-dlp to extract audio from YouTube for waveform "
+        "display.\n"
+        "Downloading from YouTube is subject to its Terms of Service and "
+        "the content's copyright; only use this for content you have the "
+        "right to access."
+    )
+    accepted = ask_yes_or_no("Continue?", default=False)
+    if not accepted:
+        return False, False
+    dont_show_again = ask_yes_or_no(
+        "Don't show this prompt again?", default=False
+    )
+    return True, dont_show_again

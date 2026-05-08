@@ -1,69 +1,65 @@
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QGraphicsItem
+
 from tilia.requests import Get, Post, get, listen
 from tilia.timelines.audiowave.timeline import AudioWaveTimeline
-from tilia.ui.timelines.audiowave.element import AmplitudeBarUI
+from tilia.ui import commands
+from tilia.ui.coords import time_x_converter
+from tilia.ui.timelines.audiowave.element import WaveformElement
 from tilia.ui.timelines.base.timeline import TimelineUI
-
-from ...format import format_media_time
 
 
 class AudioWaveTimelineUI(TimelineUI):
-    ELEMENT_CLASS = AmplitudeBarUI
-    ACCEPTS_HORIZONTAL_ARROWS = True
+    ELEMENT_CLASS = WaveformElement
     timeline_class = AudioWaveTimeline
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Track frames_per_peak so we can detect *that specific* setting
+        # changing — only it invalidates the cached LOD pyramid and warrants
+        # a full re-extraction. Color/height changes just need a repaint.
+        self._last_frames_per_peak = self.timeline.frames_per_peak
         self._setup_requests()
 
     def _setup_requests(self):
         listen(self, Post.PLAYER_URL_CHANGED, lambda _: self.timeline.refresh())
-        listen(
-            self,
-            Post.SETTINGS_UPDATED,
-            self.on_settings_updated,
-        )
+        listen(self, Post.SETTINGS_UPDATED, self.on_settings_updated)
 
     def on_settings_updated(self, updated_settings):
-        if "audiowave_timeline" in updated_settings:
-            get(Get.TIMELINE_COLLECTION).set_timeline_data(
-                self.id, "height", self.timeline.default_height
-            )
-            self.timeline.refresh()
-
-    def on_horizontal_arrow_press(self, arrow: str):
-        if not self.has_selected_elements:
+        if "audiowave_timeline" not in updated_settings:
             return
-
-        if arrow not in ["right", "left"]:
-            raise ValueError(f"Invalid arrow '{arrow}'.")
-
-        if arrow == "right":
-            self._deselect_all_but_last()
+        get(Get.TIMELINE_COLLECTION).set_timeline_data(
+            self.id, "height", self.timeline.default_height
+        )
+        current_fpp = self.timeline.frames_per_peak
+        if current_fpp != self._last_frames_per_peak:
+            self._last_frames_per_peak = current_fpp
+            self.timeline.refresh()
         else:
-            self._deselect_all_but_first()
+            # paint() reads default_color from settings on every call, so a
+            # repaint is enough — no need to redo the heavy extraction.
+            for element in self.elements:
+                element.body.update()
 
-        selected_element = self.element_manager.get_selected_elements()[0]
-        if arrow == "right":
-            element_to_select = self.element_manager.get_next_element(selected_element)
+    def on_left_click(
+        self,
+        item: QGraphicsItem,
+        modifier: Qt.KeyboardModifier,
+        double: bool,
+        x: int,
+        y: int,
+    ) -> None:
+        # Audacity-style: clicking anywhere on the waveform seeks playback
+        # to that time.  No selection, no inspector — the waveform is read-only.
+        # Single click is gated on if_playing=False (so a stray click during
+        # playback doesn't disrupt it); double click is an explicit gesture and
+        # always seeks. Mirrors slider/timeline.py.
+        if not self.get_item_owner(item):
+            return
+        time = time_x_converter.get_time_by_x(x)
+        if double:
+            commands.execute("media.seek", time)
         else:
-            element_to_select = self.element_manager.get_previous_element(
-                selected_element
-            )
-
-        if element_to_select:
-            self.deselect_element(selected_element)
-            self.select_element(element_to_select)
-
-    def get_inspector_dict(self):
-        start_time = self.selected_elements[0].get_data("start")
-        end_time = self.selected_elements[-1].get_data("end")
-        a_sum = sum([e.get_data("amplitude") for e in self.selected_elements])
-        amplitude = f"{a_sum / len(self.selected_elements): .3f} (rms)"
-
-        return {
-            "Start / End": f"{format_media_time(start_time)} /"
-            + f"{format_media_time(end_time)}",
-            "Amplitude": amplitude,
-        }
+            commands.execute("media.seek", time, if_playing=False)
