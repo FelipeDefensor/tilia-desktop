@@ -489,6 +489,7 @@ class TimelineUIs:
             (Post.TIMELINE_VIEW_DOUBLE_LEFT_CLICK, self._on_timeline_ui_left_click),
             (Post.TIMELINE_VIEW_LEFT_BUTTON_DRAG, self._on_timeline_ui_left_drag),
             (Post.TIMELINE_VIEW_LEFT_BUTTON_RELEASE, self.on_timeline_ui_left_released),
+            (Post.TIMELINE_VIEW_HOVER, self._on_timeline_view_hover),
             (Post.TIMELINE_VIEW_RIGHT_CLICK, self._on_timeline_ui_right_click),
             (Post.SHARED_SHORTCUT_FIRED, self.on_shared_shortcut_fired),
             (Post.TIMELINES_AUTO_SCROLL_UPDATE, self.set_auto_scroll),
@@ -916,6 +917,13 @@ class TimelineUIs:
 
     def on_timeline_ui_left_released(self):
         self.clear_selection_boxes()
+
+    def _on_timeline_view_hover(self, x: float | None) -> None:
+        # Off either by setting or by mouse-leave (x is None): clear every
+        # scene's hover line and bail.
+        enabled = settings.get("general", "show_hover_guideline") and x is not None
+        for tl_ui in self._timeline_uis:
+            tl_ui.scene.set_hover_line_pos(x if enabled else None)
 
     def clear_selection_boxes(self):
         for sb in self.selection_boxes.copy():

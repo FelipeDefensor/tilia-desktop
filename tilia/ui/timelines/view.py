@@ -36,6 +36,8 @@ class TimelineView(QGraphicsView):
         self.setBackgroundBrush(
             QBrush(QColor(settings.get("general", "timeline_background_color")))
         )
+        # Hover-guideline needs move events without any button held.
+        self.setMouseTracking(True)
         listen(
             self,
             Post.SETTINGS_UPDATED,
@@ -108,8 +110,13 @@ class TimelineView(QGraphicsView):
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         post(Post.TIMELINE_VIEW_LEFT_BUTTON_DRAG, event.pos().x(), event.pos().y())
+        post(Post.TIMELINE_VIEW_HOVER, event.pos().x())
 
         super().mouseMoveEvent(event)
+
+    def leaveEvent(self, event) -> None:
+        post(Post.TIMELINE_VIEW_HOVER, None)
+        super().leaveEvent(event)
 
     def set_height(self, value):
         self.setFixedHeight(value)
