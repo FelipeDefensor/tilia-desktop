@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import math
 import traceback
 from enum import Enum, auto
 from typing import Any, Callable, cast
@@ -25,7 +26,9 @@ from tilia.timelines.beat.timeline import BeatTimeline
 from tilia.timelines.component_kinds import ComponentKind
 from tilia.timelines.harmony.timeline import HarmonyTimeline
 from tilia.timelines.hierarchy.timeline import HierarchyTimeline
+from tilia.timelines.marker.timeline import MarkerTimeline
 from tilia.timelines.pdf.timeline import PdfTimeline
+from tilia.timelines.range.timeline import RangeTimeline
 from tilia.timelines.score.timeline import ScoreTimeline
 from tilia.timelines.slider.timeline import SliderTimeline
 from tilia.ui import commands
@@ -282,6 +285,18 @@ class TimelineUIs:
             "Reset color",
             "",
             "",
+        )
+
+        commands.register(
+            "timeline.component.snap_to_downbeat",
+            functools.partial(self.on_timeline_snap, target="downbeat"),
+            "Snap to downbeat",
+        )
+
+        commands.register(
+            "timeline.component.snap_to_measure",
+            functools.partial(self.on_timeline_snap, target="measure"),
+            "Snap to measure",
         )
 
         # Commands for all timelines
@@ -1318,6 +1333,81 @@ class TimelineUIs:
         self.on_timeline_command(
             Timeline.get_kinds_by_flag(TimelineFlag.COMPONENTS_COLORED),
             reset_components_color,
+            TimelineSelector.SELECTED,
+        )
+
+    def on_timeline_snap(self, target: str) -> None:
+        # target: "downbeat" snaps to the nearest beat (any beat);
+        # "measure" snaps to the nearest measure start (a downbeat in the
+        # strict sense).
+        #
+        # On segment-like timelines (hierarchy, range) we snap the
+        # selected element's `start` and pull along every other component
+        # on the same timeline whose `start` or `end` matched the old
+        # time. That keeps adjacent siblings, parents, and joined ranges
+        # aligned — the equivalent of dragging a frame handle, where
+        # connected extremities move together.
+        beat_tl: BeatTimeline | None = get(
+            Get.TIMELINE_COLLECTION
+        ).get_beat_timeline_for_measure_calculation()
+        if beat_tl is None or not beat_tl.components:
+            tilia.errors.display(tilia.errors.SNAP_NO_BEAT_TIMELINE)
+            return
+
+        if target == "downbeat":
+            snap_fn = beat_tl.get_closest_beat_time
+        else:
+            snap_fn = beat_tl.get_closest_measure_start_time
+
+        def snap_segment_attr(attr: str):
+            @with_elements
+            def _snap(tlui: TimelineUI, elements: list[TimelineUIElement]) -> bool:
+                old_to_new: dict[float, float] = {}
+                for el in elements:
+                    current = el.get_data(attr)
+                    new = snap_fn(current)
+                    if new is None or math.isclose(new, current):
+                        continue
+                    old_to_new[current] = new
+                if not old_to_new:
+                    return False
+
+                changed = False
+                for cmp in list(tlui.timeline.components):
+                    for old, new in old_to_new.items():
+                        if math.isclose(cmp.get_data("start"), old):
+                            cmp.set_data("start", new)
+                            changed = True
+                        if math.isclose(cmp.get_data("end"), old):
+                            cmp.set_data("end", new)
+                            changed = True
+                return changed
+
+            return _snap
+
+        def snap_point_attr(attr: str):
+            @with_elements
+            def _snap(tlui: TimelineUI, elements: list[TimelineUIElement]) -> bool:
+                changed = False
+                for el in elements:
+                    current = el.get_data(attr)
+                    new = snap_fn(current)
+                    if new is None or math.isclose(new, current):
+                        continue
+                    el.set_data(attr, new)
+                    changed = True
+                return changed
+
+            return _snap
+
+        self.on_timeline_command(
+            [HierarchyTimeline, RangeTimeline],
+            snap_segment_attr("start"),
+            TimelineSelector.SELECTED,
+        )
+        self.on_timeline_command(
+            [MarkerTimeline, PdfTimeline],
+            snap_point_attr("time"),
             TimelineSelector.SELECTED,
         )
 

@@ -6,6 +6,9 @@ from tilia.ui.timelines.base.context_menus import TimelineUIElementContextMenu
 DEFAULT_ITEMS = [
     (MenuItemKind.COMMAND, "timeline.element.inspect"),
     (MenuItemKind.SEPARATOR, None),
+    (MenuItemKind.COMMAND, "timeline.component.snap_to_downbeat"),
+    (MenuItemKind.COMMAND, "timeline.component.snap_to_measure"),
+    (MenuItemKind.SEPARATOR, None),
     (MenuItemKind.COMMAND, "timeline.hierarchy.increase_level"),
     (MenuItemKind.COMMAND, "timeline.hierarchy.decrease_level"),
     (MenuItemKind.COMMAND, "timeline.component.set_color"),
