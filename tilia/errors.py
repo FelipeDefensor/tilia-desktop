@@ -161,6 +161,10 @@ SNAP_NO_BEAT_TIMELINE = Error(
     "Snap requires beat timeline",
     "There is no beat timeline (with beats) to snap to.",
 )
+SEEK_NO_BEAT_TIMELINE = Error(
+    "Seek requires beat timeline",
+    "There is no beat timeline available for measure lookup.",
+)
 AMBIGUOUS_SHORTCUT = Error(
     "Ambiguous keyboard shortcut",
     "Two or more commands are bound to the same key combination. "
