@@ -48,6 +48,7 @@ class HierarchyUI(TimelineUIElement):
         ("Start / end (metric)", InspectRowKind.LABEL, None),
         ("Pre-start / post-end", InspectRowKind.LABEL, None),
         ("Length", InspectRowKind.LABEL, None),
+        ("Length (measures)", InspectRowKind.LABEL, None),
         ("Formal type", InspectRowKind.SINGLE_LINE_EDIT, None),
         ("Formal function", InspectRowKind.SINGLE_LINE_EDIT, None),
         ("Comments", InspectRowKind.MULTI_LINE_EDIT, None),
@@ -626,11 +627,20 @@ class HierarchyUI(TimelineUIElement):
         return f"{start_metric_position.measure}.{start_metric_position.beat} / {end_metric_position.measure}.{end_metric_position.beat}"
 
     def get_inspector_dict(self) -> dict:
+        from tilia.ui.format import format_length_in_measures
+        from tilia.ui.windows.inspect import HIDE_FIELD
+
+        length_in_measures = self.tl_component.length_in_measures
         data = {
             "Label": self.get_data("label"),
             "Start / end": self.start_and_end_formatted,
             "Pre-start / post-end": self.frame_times_for_inspector,
             "Length": self.length_formatted,
+            "Length (measures)": (
+                format_length_in_measures(length_in_measures)
+                if length_in_measures is not None
+                else HIDE_FIELD
+            ),
             "Formal type": self.get_data("formal_type"),
             "Formal function": self.get_data("formal_function"),
             "Comments": self.get_data("comments"),

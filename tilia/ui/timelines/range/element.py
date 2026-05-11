@@ -31,6 +31,7 @@ class RangeUI(TimelineUIElement):
         ("Label", InspectRowKind.SINGLE_LINE_EDIT, None),
         ("Start / end", InspectRowKind.LABEL, None),
         ("Length", InspectRowKind.LABEL, None),
+        ("Length (measures)", InspectRowKind.LABEL, None),
         ("Pre-start / post-end", InspectRowKind.LABEL, None),
         ("Comments", InspectRowKind.MULTI_LINE_EDIT, None),
     ]
@@ -452,6 +453,7 @@ class RangeUI(TimelineUIElement):
 
     def get_inspector_dict(self) -> dict[str, Any]:
         import tilia.ui.format
+        from tilia.ui.windows.inspect import HIDE_FIELD
 
         if not self.has_pre_start and not self.has_post_end:
             pre_post_value = "-"
@@ -468,11 +470,18 @@ class RangeUI(TimelineUIElement):
             )
             pre_post_value = f"{pre_str} / {post_str}"
 
+        length_in_measures = self.tl_component.length_in_measures
+
         return {
             "Label": self.get_data("label"),
             "Start / end": f"{tilia.ui.format.format_media_time(self.get_data('start'))} / {tilia.ui.format.format_media_time(self.get_data('end'))}",
             "Length": tilia.ui.format.format_media_time(
                 self.get_data("end") - self.get_data("start")
+            ),
+            "Length (measures)": (
+                tilia.ui.format.format_length_in_measures(length_in_measures)
+                if length_in_measures is not None
+                else HIDE_FIELD
             ),
             "Pre-start / post-end": pre_post_value,
             "Comments": self.get_data("comments"),
