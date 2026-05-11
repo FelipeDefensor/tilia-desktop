@@ -163,7 +163,12 @@ SNAP_NO_BEAT_TIMELINE = Error(
 )
 SEEK_NO_BEAT_TIMELINE = Error(
     "Seek requires beat timeline",
-    "There is no beat timeline available for measure lookup.",
+    "There is no beat timeline available for beat or measure seek.",
+)
+SEEK_INVALID_INPUT = Error(
+    "Seek",
+    "Could not parse '{}'. Enter a number (measure), or N s/b/m with an "
+    "optional + or - prefix for relative seek.",
 )
 AMBIGUOUS_SHORTCUT = Error(
     "Ambiguous keyboard shortcut",
