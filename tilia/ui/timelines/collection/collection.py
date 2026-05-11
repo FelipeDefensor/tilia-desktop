@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import bisect
 import functools
 import math
 import traceback
@@ -65,6 +66,67 @@ def command_callback(func, *args, **kwargs):
     return wrapper
 
 
+def _parse_seek_input(seek_str: str) -> tuple[bool, str, float] | None:
+    """Parse the seek dialog text into ``(is_relative, unit, signed_value)``.
+
+    Recognised forms:
+        ``12``      → absolute measure 12 (legacy default for bare numbers)
+        ``12m``     → absolute measure 12
+        ``30s``     → absolute time 30.0 seconds
+        ``5b``      → absolute beat 5 (1-indexed)
+        ``+4b``     → forward 4 beats
+        ``-2m``     → back 2 measures
+        ``+15s``    → forward 15 seconds
+        ``+1`` / ``-1``  → ±1 beat (legacy default for bare signed numbers)
+
+    Returns ``None`` if the string can't be parsed.
+    """
+    s = seek_str.strip()
+    if not s:
+        return None
+
+    is_relative = s[0] in "+-"
+    sign = s[0] if is_relative else "+"
+    if is_relative:
+        s = s[1:]
+    if not s:
+        return None
+
+    if s[-1] in "smb":
+        unit = s[-1]
+        s = s[:-1]
+    else:
+        # Bare numbers — keep legacy semantics:
+        #  - absolute "5" means measure 5 (this was the old behaviour)
+        #  - relative "+1" means +1 beat (likewise)
+        unit = "b" if is_relative else "m"
+    if not s:
+        return None
+
+    try:
+        value = float(s)
+    except ValueError:
+        return None
+
+    if sign == "-":
+        value = -value
+
+    return is_relative, unit, value
+
+
+def _clamp_to_media(time: float) -> float:
+    """Clamp a seek target to ``[0, MEDIA_DURATION]``.
+
+    Without this, `media.seek(-x)` silently wraps to ``duration - x``
+    and `media.seek(duration + x)` becomes a no-op — both confusing for
+    users who entered out-of-range relative or absolute values.
+    """
+    duration = get(Get.MEDIA_DURATION) or 0
+    if duration > 0:
+        return max(0.0, min(float(duration), time))
+    return max(0.0, time)
+
+
 class TimelineUIs:
     ZOOM_FACTOR = 1.1
     UPDATE_TRIGGERS = ["height", "level_count", "visible_level_count"]
@@ -102,48 +164,136 @@ class TimelineUIs:
         self.seek_to_measure_action = QShortcut("Ctrl+K", self.main_window)
         self.seek_to_measure_action.activated.connect(self.on_seek_to_measure)
 
+        self.seek_to_selected_action = QShortcut("Ctrl+J", self.main_window)
+        self.seek_to_selected_action.activated.connect(self.on_seek_to_selected_element)
+
     def on_seek_to_measure(self):
-        seek_str, success = QInputDialog.getText(None, "Seek", "Enter the seek value:")
+        # Dialog name kept as `on_seek_to_measure` for backwards-compat with
+        # the existing shortcut binding and tests; the dialog itself now
+        # accepts seconds / beats / measures, absolute or relative.
+        seek_str, success = QInputDialog.getText(
+            None,
+            "Seek",
+            (
+                "Enter a value to seek to.\n\n"
+                "Number alone → measure (e.g. 12).\n"
+                "Suffix s / b / m → seconds, beats or measures (e.g. 30s, 4b, 12m).\n"
+                "Prefix + / - → seek relative to the current position\n"
+                "(e.g. +4b forward 4 beats, -2m back 2 measures)."
+            ),
+        )
         if not success or not seek_str:
             return
+
+        parsed = _parse_seek_input(seek_str)
+        if parsed is None:
+            tilia.errors.display(tilia.errors.SEEK_INVALID_INPUT, seek_str)
+            return
+
+        is_relative, unit, value = parsed
+        seek_time = self._resolve_seek_target(is_relative, unit, value)
+        if seek_time is None:
+            return
+
+        commands.execute("media.seek", _clamp_to_media(seek_time))
+
+    def _resolve_seek_target(
+        self, is_relative: bool, unit: str, value: float
+    ) -> float | None:
+        """Translate a parsed seek request into a media-time target.
+
+        Returns None when the request can't be resolved (e.g. beat/measure
+        seek requested but no beat timeline exists). Beat/measure values
+        that fall outside the available grid are clamped to the first or
+        last available beat/measure — the dialog should "do the closest
+        sensible thing" rather than reject with a hard error.
+        """
+        if unit == "s":
+            if is_relative:
+                return get(Get.MEDIA_CURRENT_TIME) + value
+            return value
 
         beat_tl = get(
             Get.TIMELINE_COLLECTION
         ).get_beat_timeline_for_measure_calculation()
         beat_tl = cast(BeatTimeline, beat_tl)
-        if not beat_tl:
+        if beat_tl is None or not beat_tl.components:
             tilia.errors.display(tilia.errors.SEEK_NO_BEAT_TIMELINE)
+            return None
+
+        if unit == "b":
+            if is_relative:
+                curr_beat = beat_tl.get_closest_component_by_time(
+                    get(Get.MEDIA_CURRENT_TIME)
+                )
+                target_index = beat_tl.get_beat_index(curr_beat) + int(value)
+            else:
+                # Absolute beats are 1-indexed in the dialog.
+                target_index = int(value) - 1
+            target_index = max(0, min(len(beat_tl.components) - 1, target_index))
+            return beat_tl.components[target_index].time
+
+        if unit == "m":
+            if is_relative:
+                # Move by *measure index*, not displayed measure number —
+                # otherwise a piece with restarted numbering (e.g. a coda
+                # numbered from 1) would wrap or jump in surprising ways.
+                curr_beat = beat_tl.get_closest_component_by_time(
+                    get(Get.MEDIA_CURRENT_TIME)
+                )
+                curr_beat_index = beat_tl.get_beat_index(curr_beat)
+                curr_measure_index = (
+                    bisect.bisect_right(
+                        beat_tl.beats_that_start_measures, curr_beat_index
+                    )
+                    - 1
+                )
+                target_measure_index = curr_measure_index + int(value)
+                target_measure_index = max(
+                    0, min(beat_tl.measure_count - 1, target_measure_index)
+                )
+                target_beat_index = beat_tl.beats_that_start_measures[
+                    target_measure_index
+                ]
+                return beat_tl.components[target_beat_index].time
+
+            # Absolute measure lookup by displayed number; first instance wins.
+            times = beat_tl.get_time_by_measure(int(value))
+            if times:
+                return times[0]
+
+            numbers = beat_tl.measure_numbers
+            if not numbers:
+                return None
+            clamped = max(min(numbers), min(int(value), max(numbers)))
+            times = beat_tl.get_time_by_measure(clamped)
+            return times[0] if times else None
+
+        return None
+
+    def on_seek_to_selected_element(self):
+        """Seek to the start of the earliest selected element.
+
+        Useful during transcription to replay a passage: select the range,
+        Ctrl+J jumps the playhead back to its start. No-op when nothing
+        is selected — silent rather than erroring keeps the shortcut
+        unobtrusive.
+        """
+        times: list[float] = []
+        for tlui in self:
+            for el in tlui.selected_elements:
+                for attr in ("start", "time"):
+                    try:
+                        t = el.get_data(attr)
+                    except Exception:
+                        continue
+                    if t is not None:
+                        times.append(float(t))
+                        break
+        if not times:
             return
 
-        if seek_str.isnumeric():
-            seek_time = beat_tl.get_time_by_measure(int(seek_str))
-            if seek_time is None:
-                print(f"ERROR: Measure {seek_str} not found.")
-                return
-            seek_time = seek_time[0]
-        elif seek_str.startswith("+") or seek_str.startswith("-"):
-            curr_time = get(Get.MEDIA_CURRENT_TIME)
-            curr_beat = beat_tl.get_closest_component_by_time(curr_time)
-            curr_beat_index = beat_tl.get_beat_index(curr_beat)
-            try:
-                motion = int(seek_str[1:])
-                if seek_str.startswith("-"):
-                    motion = -motion
-            except (ValueError, IndexError):
-                print("ERROR: Motion must be an integer.")
-                return
-
-            try:
-                target_beat = beat_tl.components[curr_beat_index + motion]
-            except IndexError:
-                print(f"ERROR: Motion {motion} out of range.")
-                return
-            seek_time = target_beat.time
-        else:
-            print("ERROR: Invalid seek value.")
-            return
-
-        commands.execute("media.seek", seek_time)
+        commands.execute("media.seek", _clamp_to_media(min(times)))
 
     def __str__(self) -> str:
         return self.__class__.__name__ + "-" + str(id(self))
