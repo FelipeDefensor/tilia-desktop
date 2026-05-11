@@ -143,7 +143,7 @@ class TimelineUIs:
             print("ERROR: Invalid seek value.")
             return
 
-        post(Post.PLAYER_SEEK, seek_time)
+        commands.execute("media.seek", seek_time)
 
     def __str__(self) -> str:
         return self.__class__.__name__ + "-" + str(id(self))

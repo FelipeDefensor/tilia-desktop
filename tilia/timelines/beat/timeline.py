@@ -261,7 +261,18 @@ class BeatTimeline(Timeline):
         return beat.time if beat is not None else None
 
     def get_closest_measure_start_time(self, time: float) -> float | None:
-        downbeats = [b for b in self.components if b.is_first_in_measure]
+        # Use the timeline-level `beats_that_start_measures` indices
+        # rather than each beat's `is_first_in_measure` flag — the flag
+        # is not part of the serialized payload (Beat.SERIALIZABLE), so
+        # beats loaded from a .tla all come back as False until something
+        # updates them. The index list is rebuilt from `beats_in_measure`
+        # by `recalculate_measures()` and is reliable post-load.
+        components = self.components
+        if not components or not self.beats_that_start_measures:
+            return None
+        downbeats = [
+            components[i] for i in self.beats_that_start_measures if i < len(components)
+        ]
         if not downbeats:
             return None
         return min(downbeats, key=lambda b: abs(b.time - time)).time
