@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 
 import tilia.errors
+from tilia.exceptions import NoReplyToRequest
 from tilia.requests import Get, Post, get, listen, post, stop_listening_to_all
 from tilia.ui import commands
 from tilia.ui.format import format_media_time
@@ -25,6 +26,7 @@ class PlayerToolbar(QToolBar):
 
         self.current_time_string = format_media_time(0)
         self.duration_string = format_media_time(0)
+        self.current_measure_string = ""
         self.last_playback_rate = 1.0
 
         self._setup_controls()
@@ -65,10 +67,12 @@ class PlayerToolbar(QToolBar):
 
     def on_player_current_time_changed(self, audio_time: float, *_) -> None:
         self.current_time_string = format_media_time(audio_time)
+        self.current_measure_string = self._measure_string_at(audio_time)
         self.update_time_string()
 
     def on_stop(self) -> None:
         self.current_time_string = format_media_time(0)
+        self.current_measure_string = self._measure_string_at(0.0)
         self.update_time_string()
         self.on_ui_update_silent(PlayerToolbarElement.TOGGLE_PLAY_PAUSE, False)
 
@@ -76,8 +80,28 @@ class PlayerToolbar(QToolBar):
         self.duration_string = format_media_time(duration)
         self.update_time_string()
 
+    def _measure_string_at(self, time: float) -> str:
+        # Returns " · m. N" when a beat timeline with beats exists, else "".
+        # We use the most-recent beat at or before `time` so the measure number
+        # reflects the bar the playhead is *in*, not the bar it's about to
+        # enter at the next downbeat.
+        try:
+            timeline_collection = get(Get.TIMELINE_COLLECTION)
+        except NoReplyToRequest:
+            return ""
+        beat_tl = timeline_collection.get_beat_timeline_for_measure_calculation()
+        if beat_tl is None or not beat_tl.components:
+            return ""
+        beat = beat_tl.get_previous_component_by_time(time)
+        if beat is None:
+            beat = beat_tl.components[0]
+        return f" · m. {beat.metric_position.measure}"
+
     def update_time_string(self):
-        self.time_label.setText(f"{self.current_time_string}/{self.duration_string}")
+        self.time_label.setText(
+            f"{self.current_time_string}/{self.duration_string}"
+            f"{self.current_measure_string}"
+        )
 
     def on_update_controls(self, state):
         match state:
