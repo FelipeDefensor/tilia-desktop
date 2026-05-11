@@ -53,6 +53,23 @@ class TimelineView(QGraphicsView):
                 QBrush(QColor(settings.get("general", "timeline_background_color")))
             )
 
+    def _topmost_clickable_item(self, pos):
+        # Decorative scene items (hover guideline, row highlight, joined-
+        # range separator, row-divider HLines) set `ignore_right_click =
+        # True` so they fall through to the underlying element. The flag
+        # name is historical — we honour it for *all* click types now,
+        # because the live hover line revealed the same gap on the left-
+        # click path: when the hover line happened to be the topmost
+        # visible item (e.g. above a level-2+ hierarchy whose body sits
+        # at z=-2 vs. hover_line's z=-1, or over empty timeline space),
+        # `itemAt` returned the hover line and the click never reached
+        # the element underneath. Walk the items list in stacking order
+        # (front-to-back) and return the first one that wants the click.
+        for item in self.items(pos):
+            if not getattr(item, "ignore_right_click", False):
+                return item
+        return None
+
     def mousePressEvent(self, event: QMouseEvent) -> None:
         def handle_left_click():
             self.dragging = True
@@ -61,24 +78,18 @@ class TimelineView(QGraphicsView):
                 self,
                 event.pos().x(),
                 event.pos().y(),
-                self.itemAt(event.pos()),
+                self._topmost_clickable_item(event.pos()),
                 QGuiApplication.keyboardModifiers(),
                 double=False,
             )
 
         def handle_right_click():
-            items = [
-                item
-                for item in self.items(event.pos())
-                if not getattr(item, "ignore_right_click", False)
-            ]
-            item = items[0] if items else None
             post(
                 Post.TIMELINE_VIEW_RIGHT_CLICK,
                 self,
                 self.mapToGlobal(event.pos()).x(),
                 self.mapToGlobal(event.pos()).y(),
-                item,
+                self._topmost_clickable_item(event.pos()),
                 QGuiApplication.keyboardModifiers(),
                 double=False,
             )
@@ -97,7 +108,7 @@ class TimelineView(QGraphicsView):
                 self,
                 event.pos().x(),
                 event.pos().y(),
-                self.itemAt(event.pos()),
+                self._topmost_clickable_item(event.pos()),
                 QGuiApplication.keyboardModifiers(),
                 double=True,
             )
