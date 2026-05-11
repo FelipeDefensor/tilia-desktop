@@ -168,9 +168,12 @@ class App:
         self.file_manager.file = file
         self.update_recent_files()
 
-        timeline_height = get(Get.TIMELINES_HEIGHT)
-        main_window = get(Get.MAIN_WINDOW)
-        main_window.resize(main_window.width(), timeline_height + 100)
+        try:
+            timeline_height = get(Get.TIMELINES_HEIGHT)
+            main_window = get(Get.MAIN_WINDOW)
+            main_window.resize(main_window.width(), timeline_height + 100)
+        except NoReplyToRequest:
+            pass
 
         return True
 
@@ -239,7 +242,10 @@ class App:
             self.player, path, initial_duration=initial_duration
         )
 
-        get(Get.MAIN_WINDOW).activateWindow()
+        try:
+            get(Get.MAIN_WINDOW).activateWindow()
+        except NoReplyToRequest:
+            pass
 
         self.player = player
 
