@@ -23,6 +23,7 @@ class TimelineScene(QGraphicsScene):
         self._setup_text_bg(left_margin)
         self._setup_text(text)
         self._setup_playback_line(left_margin)
+        self._setup_hover_line(left_margin)
         self._setup_loop_box(left_margin, left_margin)
         listen(
             self,
@@ -58,6 +59,18 @@ class TimelineScene(QGraphicsScene):
         pen.setWidth(0)
         self.playback_line = self.addLine(x, 0, x, self.height(), pen)
 
+    def _setup_hover_line(self, x):
+        pen = QPen()
+        pen.setStyle(Qt.PenStyle.SolidLine)
+        pen.setColor(QColor(100, 100, 100, 120))
+        pen.setWidth(0)
+        self.hover_line = self.addLine(x, 0, x, self.height(), pen)
+        self.hover_line.setVisible(False)
+        # Hover lives just below the playback line; both above components.
+        self.hover_line.setZValue(self.playback_line.zValue() - 1)
+        self.hover_line.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+        self.hover_line.ignore_right_click = True
+
     def on_settings_updated(self, updated_settings):
         if "general" in updated_settings:
             self.text_bg.setBrush(
@@ -67,6 +80,13 @@ class TimelineScene(QGraphicsScene):
 
     def set_playback_line_pos(self, x):
         self.playback_line.setLine(x, 0, x, self.height())
+
+    def set_hover_line_pos(self, x: float | None):
+        if x is None:
+            self.hover_line.setVisible(False)
+            return
+        self.hover_line.setLine(x, 0, x, self.height())
+        self.hover_line.setVisible(True)
 
     def _setup_loop_box(self, x_start, x_end):
         self.loop_box = QGraphicsRectItem(x_start, 0, x_end - x_start, self.height())

@@ -209,6 +209,22 @@ class ViewMenu(QMenu):
     def add_default_items(self):
         self.addAction(get_qaction("view.zoom.in"))
         self.addAction(get_qaction("view.zoom.out"))
+        self.addSeparator()
+
+        self.hover_guideline_action = QAction("Show hover &guideline", self)
+        self.hover_guideline_action.setCheckable(True)
+        self.hover_guideline_action.setChecked(
+            bool(settings.get("general", "show_hover_guideline"))
+        )
+        self.hover_guideline_action.toggled.connect(self._on_hover_guideline_toggled)
+        self.addAction(self.hover_guideline_action)
+
+    @staticmethod
+    def _on_hover_guideline_toggled(checked: bool) -> None:
+        settings.set("general", "show_hover_guideline", checked)
+        if not checked:
+            # User just disabled it; clear any visible line right away.
+            post(Post.TIMELINE_VIEW_HOVER, None)
 
     def update_items(self, window_id: int, window_state: WindowState, window_title=""):
         if not self.windows:
