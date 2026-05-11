@@ -161,6 +161,11 @@ SNAP_NO_BEAT_TIMELINE = Error(
     "Snap requires beat timeline",
     "There is no beat timeline (with beats) to snap to.",
 )
+AMBIGUOUS_SHORTCUT = Error(
+    "Ambiguous keyboard shortcut",
+    "Two or more commands are bound to the same key combination. "
+    "Qt could not decide which to fire. Please report this:\n\n{}",
+)
 
 
 def display(error: Error, *args):
