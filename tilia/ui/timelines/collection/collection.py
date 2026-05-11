@@ -107,10 +107,12 @@ class TimelineUIs:
         if not success or not seek_str:
             return
 
-        beat_tl = get(Get.TIMELINE_COLLECTION).get_timeline_by_attr("name", "Measures")
+        beat_tl = get(
+            Get.TIMELINE_COLLECTION
+        ).get_beat_timeline_for_measure_calculation()
         beat_tl = cast(BeatTimeline, beat_tl)
         if not beat_tl:
-            print("ERROR: Beat timeline named 'Measures' not found.")
+            tilia.errors.display(tilia.errors.SEEK_NO_BEAT_TIMELINE)
             return
 
         if seek_str.isnumeric():
