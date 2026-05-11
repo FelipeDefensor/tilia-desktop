@@ -17,8 +17,8 @@ from tilia.ui.format import format_media_time
 
 
 class PlayerToolbar(QToolBar):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
 
         self.setObjectName("player_toolbar")
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.PreventContextMenu)

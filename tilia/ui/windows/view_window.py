@@ -1,6 +1,6 @@
 from typing import Generic, TypeVar
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QDialog, QDockWidget, QWidget
 
 from tilia.requests import Get, Post, get, listen, post, stop_listening_to_all
@@ -78,4 +78,8 @@ class ViewWindow(ViewWidget[QDialog]):
         )
 
         self.setWindowIcon(get(Get.MAIN_WINDOW).windowIcon())
-        self.show()
+        # Defer show to the next event-loop iteration so the window doesn't
+        # render as a top-level "orphan" if its parent main window hasn't
+        # been shown yet (e.g. ViewWindow subclasses constructed during
+        # `app.on_open` deserialization, before `QtUI.launch()` runs).
+        QTimer.singleShot(0, self.show)

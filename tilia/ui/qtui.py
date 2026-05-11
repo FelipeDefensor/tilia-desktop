@@ -20,7 +20,6 @@ from PySide6.QtWidgets import (
     QDockWidget,
     QGraphicsScene,
     QMainWindow,
-    QToolBar,
 )
 
 import tilia.constants
@@ -401,10 +400,12 @@ class QtUI:
         self.main_window.statusBar().clearMessage()
 
     def _setup_widgets(self):
-        self.timeline_toolbars = QToolBar()
+        # Toolbars without a parent are top-level QWidgets until they're
+        # parented via addToolBar — they can flash on screen during boot.
+        # Pass main_window up front so they're parented from the start.
         self.timeline_uis = TimelineUIs(self.main_window)
-        self.player_toolbar = PlayerToolbar()
-        self.options_toolbar = OptionsToolbar()
+        self.player_toolbar = PlayerToolbar(self.main_window)
+        self.options_toolbar = OptionsToolbar(self.main_window)
 
         self.main_window.addToolBar(self.player_toolbar)
         self.main_window.addToolBar(self.options_toolbar)

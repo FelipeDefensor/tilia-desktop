@@ -578,6 +578,12 @@ class TimelineUIs:
         h = get(Get.TIMELINE, id).get_data("height")
         scene = self.create_timeline_scene(id, w, h)
         view = self.create_timeline_view(scene)
+        # Embed the view in a QGraphicsProxyWidget before constructing
+        # the TimelineUI. The TimelineUI's `_setup_visibility()` calls
+        # `view.show()`; if the view is still a parentless top-level
+        # widget at that point, Qt flashes it on screen briefly before
+        # the proxy reparents it.
+        view.proxy = self.scene.addWidget(view)
 
         element_manager = ElementManager(timeline_class.ELEMENT_CLASS)
 
@@ -592,7 +598,7 @@ class TimelineUIs:
         self._add_to_timeline_uis_set(tl_ui)
         self._add_to_timeline_ui_select_order(tl_ui)
 
-        self.add_timeline_view_to_scene(view, tl_ui.get_data("ordinal"))
+        self.position_timeline_view(view, tl_ui.get_data("ordinal"))
         self.setup_toolbar(kind)
 
         return tl_ui
@@ -678,8 +684,7 @@ class TimelineUIs:
         self._select_order.insert(0, tl_ui)
         post(Post.TIMELINE_UI_SELECTED, tl_ui)
 
-    def add_timeline_view_to_scene(self, view: TimelineView, ordinal: int) -> None:
-        view.proxy = self.scene.addWidget(view)
+    def position_timeline_view(self, view: TimelineView, ordinal: int) -> None:
         y = sum(tlui.get_data("height") for tlui in sorted(self)[: ordinal - 1])
         view.move(0, y)
         self.update_height()

@@ -7,8 +7,8 @@ from tilia.ui.enums import ScrollType
 
 
 class OptionsToolbar(QToolBar):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.setObjectName("options_toolbar")
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.PreventContextMenu)
         self.addWidget(QLabel("Auto-scroll"))
