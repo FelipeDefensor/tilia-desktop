@@ -356,7 +356,7 @@ class Inspect(QDockWidget):
             )
 
             right_widget.setSizePolicy(
-                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum
+                QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Maximum
             )
             right_widget.setMinimumWidth(100)
             self.inspect_layout.addRow(left_widget, right_widget)
