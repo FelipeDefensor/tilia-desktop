@@ -84,8 +84,14 @@ class TiliaMainWindow(QMainWindow):
         f_msg = f"[{type.name}] {context.file}:{context.line} - {msg}"
         if type == QtMsgType.QtFatalMsg:
             raise Exception(f_msg)
-        else:
-            logger.error(f_msg)
+        # Qt's "Ambiguous shortcut overload" is logged at warning level and
+        # otherwise disappears silently — surface it to the user so we don't
+        # miss new collisions in production. Anything registered via
+        # commands.register goes through setup_shortcuts which preempts this
+        # warning; if we still see it, something is bypassing that system.
+        if "Ambiguous shortcut overload" in msg:
+            tilia.errors.display(tilia.errors.AMBIGUOUS_SHORTCUT, msg)
+        logger.error(f_msg)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         if event is None:
@@ -162,6 +168,11 @@ class QtUI:
         self._setup_dialog_manager()
         self._setup_menus()
         self._setup_windows()
+        # Must run after every register() call: parents all QActions to the
+        # main window so their shortcuts can fire from context menus, and
+        # resolves shared shortcuts (e.g. range + hierarchy both bind "e"
+        # and "s") into one application-level QShortcut per chord.
+        commands.setup_shortcuts(self.main_window)
 
         self.is_error = False
 
