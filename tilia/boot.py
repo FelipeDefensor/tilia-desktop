@@ -9,6 +9,7 @@ from PySide6.QtCore import QtMsgType, qInstallMessageHandler
 from PySide6.QtWidgets import QApplication
 
 import tilia.utils  # noqa: F401
+import tilia.errors
 from tilia.app import App
 from tilia.clipboard import Clipboard
 from tilia.constants import FILE_EXTENSION
@@ -53,6 +54,13 @@ def handle_qt_log_message(type, context, msg):
         raise Exception(f_msg)
     if type == QtMsgType.QtWarningMsg and any(p in msg for p in QT_LOG_NOISE_PATTERNS):
         return
+    # Qt's "Ambiguous shortcut overload" is logged at warning level and
+    # otherwise disappears silently — surface it to the user so we don't
+    # miss new collisions in production. Anything registered via
+    # commands.register goes through setup_shortcuts which preempts this
+    # warning; if we still see it, something is bypassing that system.
+    if "Ambiguous shortcut overload" in msg:
+        tilia.errors.display(tilia.errors.AMBIGUOUS_SHORTCUT, msg)
     logger.error(f_msg)
 
 
