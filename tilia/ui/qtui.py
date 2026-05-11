@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QDockWidget,
     QGraphicsScene,
+    QLabel,
     QMainWindow,
 )
 
@@ -38,6 +39,8 @@ from tilia.log import logger
 from tilia.requests import Get, Post, get, listen, post, serve
 from tilia.settings import settings
 from tilia.ui import commands
+from tilia.ui.coords import time_x_converter
+from tilia.ui.format import format_media_time
 from tilia.ui.timelines.collection.collection import TimelineUIs
 from tilia.utils import get_tilia_class_string
 
@@ -213,6 +216,7 @@ class QtUI:
             (Post.DISPLAY_ERROR, display_error),
             (Post.STATUS_MESSAGE_SET, self.on_status_message_set),
             (Post.STATUS_MESSAGE_CLEAR, self.on_status_message_clear),
+            (Post.TIMELINE_VIEW_HOVER, self.on_timeline_view_hover),
             (Post.UI_EXIT, self.exit),
         }
 
@@ -399,6 +403,25 @@ class QtUI:
     def on_status_message_clear(self) -> None:
         self.main_window.statusBar().clearMessage()
 
+    def on_timeline_view_hover(self, x: float | None) -> None:
+        if x is None:
+            self.hover_label.setText("")
+            return
+        time = time_x_converter.get_time_by_x(x)
+        if time < 0:
+            self.hover_label.setText("")
+            return
+        text = format_media_time(time)
+        beat_tl = get(
+            Get.TIMELINE_COLLECTION
+        ).get_beat_timeline_for_measure_calculation()
+        if beat_tl is not None and beat_tl.components:
+            beat = beat_tl.get_previous_component_by_time(time)
+            if beat is None:
+                beat = beat_tl.components[0]
+            text = f"{text} · m. {beat.metric_position.measure}"
+        self.hover_label.setText(text)
+
     def _setup_widgets(self):
         # Toolbars without a parent are top-level QWidgets until they're
         # parented via addToolBar — they can flash on screen during boot.
@@ -409,6 +432,12 @@ class QtUI:
 
         self.main_window.addToolBar(self.player_toolbar)
         self.main_window.addToolBar(self.options_toolbar)
+
+        # Permanent label on the right of the status bar. Lives alongside
+        # status messages set via Post.STATUS_MESSAGE_SET — those use the
+        # left-side temporary message slot.
+        self.hover_label = QLabel("")
+        self.main_window.statusBar().addPermanentWidget(self.hover_label)
 
     def on_window_open(self, kind: WindowKind):
         """Open a window of 'kind', if there is no window of that kind open.
