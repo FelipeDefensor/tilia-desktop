@@ -157,6 +157,10 @@ INVALID_ID = Error(
 RANGE_DRAG_INVALID_HANDLE = Error(
     "Range drag error", "Could not start drag: unrecognized handle item."
 )
+SNAP_NO_BEAT_TIMELINE = Error(
+    "Snap requires beat timeline",
+    "There is no beat timeline (with beats) to snap to.",
+)
 
 
 def display(error: Error, *args):

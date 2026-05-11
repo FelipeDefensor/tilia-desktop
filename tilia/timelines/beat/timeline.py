@@ -256,6 +256,16 @@ class BeatTimeline(Timeline):
     def measure_count(self):
         return len(self.beats_in_measure)
 
+    def get_closest_beat_time(self, time: float) -> float | None:
+        beat = self.get_closest_component_by_time(time)
+        return beat.time if beat is not None else None
+
+    def get_closest_measure_start_time(self, time: float) -> float | None:
+        downbeats = [b for b in self.components if b.is_first_in_measure]
+        if not downbeats:
+            return None
+        return min(downbeats, key=lambda b: abs(b.time - time)).time
+
     def get_time_by_measure(
         self, number: int, fraction: float = 0, is_segment_end: bool = False
     ) -> list[float]:
