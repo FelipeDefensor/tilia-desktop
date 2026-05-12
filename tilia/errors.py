@@ -170,6 +170,17 @@ SEEK_INVALID_INPUT = Error(
     "Could not parse '{}'. Enter a number (measure), or N s/b/m with an "
     "optional + or - prefix for relative seek.",
 )
+STRETCH_UNAVAILABLE = Error(
+    "Pitch-preserving playback rate",
+    "Neither 'rubberband' nor 'ffmpeg' is installed, so pitch-preserved "
+    "playback rate isn't available. Falling back to Qt's native rate, which "
+    "warps pitch. Install rubberband (recommended) or ffmpeg to fix.",
+)
+STRETCH_FAILED = Error(
+    "Pitch-preserving playback rate",
+    "Rendering the stretched audio failed:\n{}\n\nFalling back to Qt's "
+    "native (pitch-warping) rate change.",
+)
 AMBIGUOUS_SHORTCUT = Error(
     "Ambiguous keyboard shortcut",
     "Two or more commands are bound to the same key combination. "
