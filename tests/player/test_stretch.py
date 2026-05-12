@@ -300,13 +300,31 @@ class TestCachePrune:
         # janitor for these; without this sweep they'd linger until
         # the next successful render of the *same* (src, rate) cleans
         # them, which may never happen for a one-off rate the user tried.
-        stale = tmp_path / "deadbeefcafe1234.wav.partial"
+        stale = tmp_path / "deadbeefcafe1234.partial.wav"
         stale.write_bytes(b"interrupted render bytes")
 
         with patch.object(stretch, "_cache_dir", return_value=tmp_path):
             stretch._prune_cache_to_limit()
 
         assert not stale.exists()
+
+
+class TestPartialPathPreservesExtension:
+    """Both ffmpeg and rubberband (via libsndfile) infer output container
+    from filename extension. An earlier version of the atomic-rename
+    placed `.partial` as the trailing suffix, which made ffmpeg refuse
+    to muxer-init ('Unable to choose an output format'). The contract
+    is: the partial path must still end in `.wav`."""
+
+    def test_partial_path_ends_in_wav(self, tmp_path: Path):
+        dst = tmp_path / "abc123.wav"
+        partial = stretch._partial_path(dst)
+        assert partial.suffix == ".wav", (
+            f"Partial path {partial.name!r} doesn't end in .wav — "
+            "ffmpeg/rubberband will fail to pick a muxer."
+        )
+        assert partial != dst, "Partial must differ from final path."
+        assert ".partial" in partial.name, "Partial must be detectable for cleanup."
 
 
 class TestPartialRenderAtomicRename:
