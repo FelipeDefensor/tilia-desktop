@@ -1,7 +1,7 @@
-"""Tests for the Ctrl+J seek-to-selected-element shortcut.
+"""Tests for the "P" seek-to-selected-element shortcut.
 
 When the user has one or more elements selected across any timeline,
-Ctrl+J seeks the player to the start of the earliest one. This is
+pressing P seeks the player to the start of the earliest one. This is
 intended for transcription work where the user wants to replay a
 selected passage without manually scrubbing.
 
@@ -48,7 +48,7 @@ class TestSeekToSelectedElement:
     def test_seek_picks_earliest_among_multiple_selections(
         self, tluis, hierarchy_tlui, marker_tlui, with_duration
     ):
-        # A range at t=30 and a marker at t=5; Ctrl+J should jump back
+        # A range at t=30 and a marker at t=5; the "P" shortcut should jump back
         # to the earlier one — that's the transcription replay use-case.
         hierarchy_tlui.create_hierarchy(30, 40, 1)
         marker_tlui.create_marker(5)
