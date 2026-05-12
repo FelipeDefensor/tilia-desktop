@@ -164,7 +164,12 @@ class TimelineUIs:
         self.seek_to_measure_action = QShortcut("Ctrl+K", self.main_window)
         self.seek_to_measure_action.activated.connect(self.on_seek_to_measure)
 
-        self.seek_to_selected_action = QShortcut("Ctrl+J", self.main_window)
+        # "P" is a single-letter shortcut bound at the main window. Qt's
+        # default WindowShortcut context yields to focused text-input
+        # widgets (QLineEdit / QSpinBox / etc. consume printable keys
+        # before the shortcut fires), so typing "P" in the inspector or
+        # the rate spinbox still inserts the letter rather than seeking.
+        self.seek_to_selected_action = QShortcut("P", self.main_window)
         self.seek_to_selected_action.activated.connect(self.on_seek_to_selected_element)
 
     def on_seek_to_measure(self):
@@ -275,7 +280,7 @@ class TimelineUIs:
         """Seek to the start of the earliest selected element.
 
         Useful during transcription to replay a passage: select the range,
-        Ctrl+J jumps the playhead back to its start. No-op when nothing
+        "P" jumps the playhead back to its start. No-op when nothing
         is selected — silent rather than erroring keeps the shortcut
         unobtrusive.
         """
