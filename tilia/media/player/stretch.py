@@ -98,7 +98,7 @@ def _prune_cache_to_limit() -> None:
     ``_run_to_partial`` only publishes the final name on success), but
     they still occupy disk until cleaned."""
     cache = _cache_dir()
-    for p in cache.glob("*.partial"):
+    for p in cache.glob("*.partial.wav"):
         try:
             p.unlink()
         except OSError:
@@ -106,6 +106,10 @@ def _prune_cache_to_limit() -> None:
     entries: list[tuple[Path, int, float]] = []
     total = 0
     for p in cache.glob("*.wav"):
+        # Partials were already swept above; the LRU loop should only
+        # see real cache entries.
+        if ".partial." in p.name:
+            continue
         try:
             st = p.stat()
         except OSError:
@@ -151,7 +155,12 @@ def _chain_atempo(rate: float) -> str:
 
 
 def _partial_path(dst: Path) -> Path:
-    return dst.with_suffix(dst.suffix + ".partial")
+    # The marker goes in the *stem*, not the suffix: ffmpeg (and
+    # rubberband, via libsndfile) infer the output container from the
+    # filename extension. A ``.partial`` final suffix made ffmpeg refuse
+    # to init the WAV muxer ("Unable to choose an output format"). Keep
+    # ``.wav`` as the trailing extension so the engine writes a real WAV.
+    return dst.with_stem(dst.stem + ".partial")
 
 
 def _run_to_partial(cmd: list[str], dst: Path, what: str, src_for_error: str) -> None:
