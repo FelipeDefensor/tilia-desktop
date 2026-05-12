@@ -139,7 +139,16 @@ class Player(ABC):
 
     def toggle_play(self, toggle_is_playing: bool):
         if toggle_is_playing:
-            if self.is_looping:
+            # When looping, the player jumps to loop_start only if the
+            # current position has fallen outside the loop. If the user
+            # seeked into the loop range while paused (e.g. clicked a
+            # specific element to transcribe), they want playback to
+            # resume from *there*, not snap back to loop_start. The
+            # previous unconditional seek made setting up a whole-song
+            # loop (loop_start=0) effectively reset every press of play.
+            if self.is_looping and not (
+                self.loop_start - self.E <= self.current_time <= self.loop_end + self.E
+            ):
                 self.on_seek(self.loop_start)
             self._engine_play()
             self.is_playing = True
