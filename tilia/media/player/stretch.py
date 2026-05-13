@@ -29,6 +29,7 @@ same rate are instant after the first render.
 from __future__ import annotations
 
 import hashlib
+import secrets
 import shutil
 import subprocess
 import tempfile
@@ -154,23 +155,45 @@ def _chain_atempo(rate: float) -> str:
     return ",".join(parts)
 
 
-def _partial_path(dst: Path) -> Path:
-    # The marker goes in the *stem*, not the suffix: ffmpeg (and
-    # rubberband, via libsndfile) infer the output container from the
-    # filename extension. A ``.partial`` final suffix made ffmpeg refuse
-    # to init the WAV muxer ("Unable to choose an output format"). Keep
-    # ``.wav`` as the trailing extension so the engine writes a real WAV.
-    return dst.with_stem(dst.stem + ".partial")
+def _make_partial_path(dst: Path) -> Path:
+    """Return a fresh, unique scratch-output path beside ``dst``.
+
+    Each call generates a different name. This matters when multiple
+    threads concurrently target the same final ``dst`` — which happens
+    routinely in practice:
+
+    * All four preemptive rate renders decode the source to the same
+      WAV first, so their decode-step partials collide on a single
+      deterministic name.
+    * A rapid reload (e.g. opening a .tla that triggers an audiowave
+      timeline + the player's preemptive renders for the same source)
+      restarts work for keys that are still in flight.
+
+    With a deterministic partial name, the second attempt's defensive
+    ``unlink(missing_ok=True)`` crashes on Windows with PermissionError
+    because the first attempt's subprocess holds an exclusive write
+    lock on that exact path. A unique name keeps each attempt out of
+    every other's way; leftovers are reaped by ``_prune_cache_to_limit``.
+
+    Trailing ``.partial.wav`` is preserved so:
+    * the cache-sweep glob ``*.partial.wav`` still matches, and
+    * ffmpeg / rubberband (via libsndfile) still pick the WAV muxer
+      from the extension. An earlier version that put ``.partial`` as
+      the trailing suffix made ffmpeg fail with "Unable to choose an
+      output format".
+    """
+    unique = secrets.token_hex(4)
+    return dst.parent / f"{dst.stem}-{unique}.partial{dst.suffix}"
 
 
 def _run_to_partial(cmd: list[str], dst: Path, what: str, src_for_error: str) -> None:
-    """Run ``cmd`` writing to a ``.partial`` sibling of ``dst``, then atomic-rename
-    onto ``dst``. If the subprocess fails or is killed, the partial is removed and
-    ``dst`` is never created. This is what prevents an interrupted render from
-    poisoning the cache: the cache lookup only sees fully-written files.
+    """Run ``cmd`` writing to a unique ``.partial`` sibling of ``dst``, then
+    atomic-rename onto ``dst``. If the subprocess fails or is killed, the
+    partial is removed and ``dst`` is never created. This is what prevents
+    an interrupted render from poisoning the cache: the cache lookup only
+    sees fully-written files.
     """
-    tmp = _partial_path(dst)
-    tmp.unlink(missing_ok=True)
+    tmp = _make_partial_path(dst)
     cmd = list(cmd)
     cmd[-1] = str(tmp)
     try:
@@ -183,7 +206,19 @@ def _run_to_partial(cmd: list[str], dst: Path, what: str, src_for_error: str) ->
         raise StretchError(
             f"{what} failed for {src_for_error!r}: {result.stderr.strip()}"
         )
-    tmp.replace(dst)
+    # Publish to dst. If a concurrent attempt already wrote dst (and a
+    # downstream consumer like rubberband may have it open for reading),
+    # Windows refuses the rename with a sharing violation. Treat that as
+    # "another thread won the race" — our partial is redundant content,
+    # discard it. The decoded-WAV destination is shared by every rate's
+    # rubberband path, so this race is regular, not exceptional.
+    try:
+        tmp.replace(dst)
+    except OSError:
+        if dst.exists():
+            tmp.unlink(missing_ok=True)
+        else:
+            raise
 
 
 def _decode_to_wav(src: str) -> Path:

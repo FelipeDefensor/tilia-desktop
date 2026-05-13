@@ -50,9 +50,9 @@ class TestIsStretchAvailable:
         with patch.object(
             stretch.shutil,
             "which",
-            side_effect=lambda exe: "/usr/bin/rubberband"
-            if exe == "rubberband"
-            else None,
+            side_effect=lambda exe: (
+                "/usr/bin/rubberband" if exe == "rubberband" else None
+            ),
         ):
             assert is_stretch_available() is True
 
@@ -104,10 +104,10 @@ class TestRenderStretched:
         # invoked. (Recall the decode step also calls ffmpeg, so the
         # subprocess mock will see two calls.)
         run = _ok_subprocess()
-        with patch.object(
-            stretch.shutil, "which", _which_only("rubberband", "ffmpeg")
-        ), patch.object(stretch.subprocess, "run", run), patch.object(
-            stretch, "_cache_dir", return_value=tmp_path
+        with (
+            patch.object(stretch.shutil, "which", _which_only("rubberband", "ffmpeg")),
+            patch.object(stretch.subprocess, "run", run),
+            patch.object(stretch, "_cache_dir", return_value=tmp_path),
         ):
             # _render_with_rubberband decodes via ffmpeg then runs
             # rubberband; simulate the decoded WAV existing.
@@ -127,10 +127,10 @@ class TestRenderStretched:
         # makes the rendered file the wrong duration, which silently
         # breaks the seek conversion in QtAudioPlayer.
         run = _ok_subprocess()
-        with patch.object(
-            stretch.shutil, "which", _which_only("rubberband", "ffmpeg")
-        ), patch.object(stretch.subprocess, "run", run), patch.object(
-            stretch, "_cache_dir", return_value=tmp_path
+        with (
+            patch.object(stretch.shutil, "which", _which_only("rubberband", "ffmpeg")),
+            patch.object(stretch.subprocess, "run", run),
+            patch.object(stretch, "_cache_dir", return_value=tmp_path),
         ):
             render_stretched(str(fake_source), 2.0)
 
@@ -147,9 +147,11 @@ class TestRenderStretched:
         self, fake_source: Path, tmp_path: Path
     ):
         run = _ok_subprocess()
-        with patch.object(stretch.shutil, "which", _which_only("ffmpeg")), patch.object(
-            stretch.subprocess, "run", run
-        ), patch.object(stretch, "_cache_dir", return_value=tmp_path):
+        with (
+            patch.object(stretch.shutil, "which", _which_only("ffmpeg")),
+            patch.object(stretch.subprocess, "run", run),
+            patch.object(stretch, "_cache_dir", return_value=tmp_path),
+        ):
             render_stretched(str(fake_source), 0.5)
 
         invoked = [call.args[0][0] for call in run.call_args_list]
@@ -157,8 +159,9 @@ class TestRenderStretched:
         assert "rubberband" not in invoked
 
     def test_raises_when_no_engine_available(self, fake_source: Path, tmp_path: Path):
-        with patch.object(stretch.shutil, "which", _which_only()), patch.object(
-            stretch, "_cache_dir", return_value=tmp_path
+        with (
+            patch.object(stretch.shutil, "which", _which_only()),
+            patch.object(stretch, "_cache_dir", return_value=tmp_path),
         ):
             with pytest.raises(StretchError):
                 render_stretched(str(fake_source), 0.5)
@@ -168,8 +171,9 @@ class TestRenderStretched:
         # any subprocess. We materialise the expected output and check
         # subprocess.run isn't called.
         run = _ok_subprocess()
-        with patch.object(stretch.shutil, "which", _which_only("ffmpeg")), patch.object(
-            stretch, "_cache_dir", return_value=tmp_path
+        with (
+            patch.object(stretch.shutil, "which", _which_only("ffmpeg")),
+            patch.object(stretch, "_cache_dir", return_value=tmp_path),
         ):
             expected = stretch._cache_path(str(fake_source), 0.5)
             expected.write_bytes(b"already rendered")
@@ -188,9 +192,11 @@ class TestRenderStretched:
 
     def test_failed_engine_raises(self, fake_source: Path, tmp_path: Path):
         failed = MagicMock(returncode=1, stderr="boom")
-        with patch.object(stretch.shutil, "which", _which_only("ffmpeg")), patch.object(
-            stretch.subprocess, "run", return_value=failed
-        ), patch.object(stretch, "_cache_dir", return_value=tmp_path):
+        with (
+            patch.object(stretch.shutil, "which", _which_only("ffmpeg")),
+            patch.object(stretch.subprocess, "run", return_value=failed),
+            patch.object(stretch, "_cache_dir", return_value=tmp_path),
+        ):
             with pytest.raises(StretchError, match="boom"):
                 render_stretched(str(fake_source), 0.5)
 
@@ -222,10 +228,10 @@ class TestCacheVersion:
             v1_path.write_bytes(b"old broken render")
 
             run = _ok_subprocess()
-            with patch.object(
-                stretch.shutil, "which", _which_only("ffmpeg")
-            ), patch.object(stretch.subprocess, "run", run), patch.object(
-                stretch, "_CACHE_VERSION", "v2"
+            with (
+                patch.object(stretch.shutil, "which", _which_only("ffmpeg")),
+                patch.object(stretch.subprocess, "run", run),
+                patch.object(stretch, "_CACHE_VERSION", "v2"),
             ):
                 render_stretched(str(fake_source), 0.5)
 
@@ -246,8 +252,9 @@ class TestCachePrune:
         a.write_bytes(b"x" * 100)
         b.write_bytes(b"x" * 100)
 
-        with patch.object(stretch, "_cache_dir", return_value=tmp_path), patch.object(
-            stretch, "_CACHE_MAX_BYTES", 10_000
+        with (
+            patch.object(stretch, "_cache_dir", return_value=tmp_path),
+            patch.object(stretch, "_CACHE_MAX_BYTES", 10_000),
         ):
             stretch._prune_cache_to_limit()
 
@@ -271,8 +278,9 @@ class TestCachePrune:
         os.utime(new, (now - 100, now - 100))
 
         # Cap at 150 bytes — must evict two of the three.
-        with patch.object(stretch, "_cache_dir", return_value=tmp_path), patch.object(
-            stretch, "_CACHE_MAX_BYTES", 150
+        with (
+            patch.object(stretch, "_cache_dir", return_value=tmp_path),
+            patch.object(stretch, "_CACHE_MAX_BYTES", 150),
         ):
             stretch._prune_cache_to_limit()
 
@@ -285,11 +293,12 @@ class TestCachePrune:
         # sessions don't accumulate orphaned files. We can't easily
         # observe the prune from outside, but we can confirm it's called.
         run = _ok_subprocess()
-        with patch.object(stretch.shutil, "which", _which_only("ffmpeg")), patch.object(
-            stretch.subprocess, "run", run
-        ), patch.object(stretch, "_cache_dir", return_value=tmp_path), patch.object(
-            stretch, "_prune_cache_to_limit"
-        ) as prune:
+        with (
+            patch.object(stretch.shutil, "which", _which_only("ffmpeg")),
+            patch.object(stretch.subprocess, "run", run),
+            patch.object(stretch, "_cache_dir", return_value=tmp_path),
+            patch.object(stretch, "_prune_cache_to_limit") as prune,
+        ):
             render_stretched(str(fake_source), 0.5)
 
         prune.assert_called_once()
@@ -309,22 +318,42 @@ class TestCachePrune:
         assert not stale.exists()
 
 
-class TestPartialPathPreservesExtension:
-    """Both ffmpeg and rubberband (via libsndfile) infer output container
-    from filename extension. An earlier version of the atomic-rename
-    placed `.partial` as the trailing suffix, which made ffmpeg refuse
-    to muxer-init ('Unable to choose an output format'). The contract
-    is: the partial path must still end in `.wav`."""
+class TestPartialPathContract:
+    """Each ``_make_partial_path`` call must yield a fresh, unique scratch
+    path that (1) ends in ``.wav`` so ffmpeg/rubberband pick the WAV muxer
+    (an older version put ``.partial`` as the trailing suffix and ffmpeg
+    refused with 'Unable to choose an output format'), (2) is detectable
+    by the prune sweep, and (3) doesn't collide with another concurrent
+    attempt for the same dst (the Windows ``PermissionError`` crash a
+    deterministic name produces when two threads race on it)."""
 
     def test_partial_path_ends_in_wav(self, tmp_path: Path):
         dst = tmp_path / "abc123.wav"
-        partial = stretch._partial_path(dst)
+        partial = stretch._make_partial_path(dst)
         assert partial.suffix == ".wav", (
             f"Partial path {partial.name!r} doesn't end in .wav — "
             "ffmpeg/rubberband will fail to pick a muxer."
         )
         assert partial != dst, "Partial must differ from final path."
         assert ".partial" in partial.name, "Partial must be detectable for cleanup."
+
+    def test_partial_path_matches_prune_glob(self, tmp_path: Path):
+        # `_prune_cache_to_limit` sweeps `*.partial.wav`; if the unique
+        # naming put the suffix elsewhere, leftover partials from
+        # killed renders would never be reaped.
+        dst = tmp_path / "abc123.wav"
+        partial = stretch._make_partial_path(dst)
+        partial.write_bytes(b"")
+        swept = list(tmp_path.glob("*.partial.wav"))
+        assert partial in swept
+
+    def test_partial_path_differs_each_call(self, tmp_path: Path):
+        # Two concurrent threads targeting the same dst must get
+        # different scratch paths so the second's subprocess can't
+        # clobber (or race-unlink) the first's in-progress file.
+        dst = tmp_path / "abc123.wav"
+        seen = {stretch._make_partial_path(dst) for _ in range(8)}
+        assert len(seen) == 8, "Repeated calls returned non-unique paths."
 
 
 class TestPartialRenderAtomicRename:
@@ -341,9 +370,11 @@ class TestPartialRenderAtomicRename:
         # output as a cache hit.
         failed = MagicMock(returncode=1, stderr="boom")
         dst = None
-        with patch.object(stretch, "_cache_dir", return_value=tmp_path), patch.object(
-            stretch.shutil, "which", _which_only("ffmpeg")
-        ), patch.object(stretch.subprocess, "run", return_value=failed):
+        with (
+            patch.object(stretch, "_cache_dir", return_value=tmp_path),
+            patch.object(stretch.shutil, "which", _which_only("ffmpeg")),
+            patch.object(stretch.subprocess, "run", return_value=failed),
+        ):
             dst = stretch._cache_path(str(fake_source), 0.5)
             with pytest.raises(StretchError):
                 render_stretched(str(fake_source), 0.5)
@@ -353,9 +384,10 @@ class TestPartialRenderAtomicRename:
             "Failed render published a file at the cache path; next lookup "
             "would return it as a stale cache hit."
         )
-        assert not stretch._partial_path(dst).exists(), (
-            "Failed render left a `.partial` sibling — it should be cleaned "
-            "up on failure to avoid disk leaks."
+        leftover_partials = list(tmp_path.glob("*.partial.wav"))
+        assert not leftover_partials, (
+            f"Failed render left {leftover_partials!r} — partials should "
+            "be cleaned up on failure to avoid disk leaks."
         )
 
     def test_killed_subprocess_does_not_publish_final_path(
@@ -365,15 +397,17 @@ class TestPartialRenderAtomicRename:
         # like KeyboardInterrupt or process kill). The partial must be
         # removed and the final path must remain absent so the cache
         # doesn't memorise the interrupted state.
-        with patch.object(stretch, "_cache_dir", return_value=tmp_path), patch.object(
-            stretch.shutil, "which", _which_only("ffmpeg")
-        ), patch.object(stretch.subprocess, "run", side_effect=KeyboardInterrupt):
+        with (
+            patch.object(stretch, "_cache_dir", return_value=tmp_path),
+            patch.object(stretch.shutil, "which", _which_only("ffmpeg")),
+            patch.object(stretch.subprocess, "run", side_effect=KeyboardInterrupt),
+        ):
             dst = stretch._cache_path(str(fake_source), 0.5)
             with pytest.raises(KeyboardInterrupt):
                 render_stretched(str(fake_source), 0.5)
 
         assert not dst.exists()
-        assert not stretch._partial_path(dst).exists()
+        assert not list(tmp_path.glob("*.partial.wav"))
 
     def test_preexisting_partial_does_not_satisfy_cache(
         self, fake_source: Path, tmp_path: Path
@@ -386,11 +420,15 @@ class TestPartialRenderAtomicRename:
         run = _ok_subprocess()
         with patch.object(stretch, "_cache_dir", return_value=tmp_path):
             dst = stretch._cache_path(str(fake_source), 0.5)
-            stretch._partial_path(dst).write_bytes(b"stale partial from killed run")
+            # Match the prune-sweep / unique-partial naming so the seeded
+            # file looks just like a real leftover from a killed run.
+            stale = tmp_path / f"{dst.stem}-stale.partial.wav"
+            stale.write_bytes(b"stale partial from killed run")
 
-            with patch.object(
-                stretch.shutil, "which", _which_only("ffmpeg")
-            ), patch.object(stretch.subprocess, "run", run):
+            with (
+                patch.object(stretch.shutil, "which", _which_only("ffmpeg")),
+                patch.object(stretch.subprocess, "run", run),
+            ):
                 result = render_stretched(str(fake_source), 0.5)
 
         assert run.called, "A stale partial should NOT satisfy the cache."
@@ -401,12 +439,111 @@ class TestPartialRenderAtomicRename:
         self, fake_source: Path, tmp_path: Path
     ):
         run = _ok_subprocess()
-        with patch.object(stretch.shutil, "which", _which_only("ffmpeg")), patch.object(
-            stretch.subprocess, "run", run
-        ), patch.object(stretch, "_cache_dir", return_value=tmp_path):
+        with (
+            patch.object(stretch.shutil, "which", _which_only("ffmpeg")),
+            patch.object(stretch.subprocess, "run", run),
+            patch.object(stretch, "_cache_dir", return_value=tmp_path),
+        ):
             dst = render_stretched(str(fake_source), 0.5)
 
         assert dst.exists()
-        assert not stretch._partial_path(
-            dst
-        ).exists(), "Atomic rename should consume the .partial, not leave a sibling."
+        assert not list(
+            tmp_path.glob("*.partial.wav")
+        ), "Atomic rename should consume the .partial, not leave a sibling."
+
+
+class TestConcurrentRenders:
+    """Regressions for the audio-open crash: opening a .tla with an
+    audiowave timeline triggers an ffmpeg run for peak extraction plus
+    four parallel preemptive stretch renders of the same source. The
+    four stretch workers all decode to the same WAV destination first,
+    so without per-attempt unique partials they collide on a single
+    deterministic name and the second attempt's defensive unlink dies
+    with PermissionError on Windows (the first attempt's subprocess
+    holds an exclusive write lock on that path)."""
+
+    def test_concurrent_calls_use_different_partials(self, tmp_path: Path):
+        # The property that prevents the lock race: every concurrent
+        # attempt for the same dst gets its own scratch path.
+        import threading
+
+        used_partials: list[Path] = []
+        used_lock = threading.Lock()
+        barrier = threading.Barrier(4)
+        errors: list[BaseException] = []
+
+        def _run(cmd, *args, **kwargs):
+            with used_lock:
+                used_partials.append(Path(cmd[-1]))
+            # Hold all workers inside the subprocess so any unlink-on-entry
+            # of a SHARED partial would land while another's "subprocess"
+            # has it open — that's the exact race we're guarding against.
+            barrier.wait(timeout=5)
+            Path(cmd[-1]).write_bytes(b"")
+            return MagicMock(returncode=0, stderr="")
+
+        dst = tmp_path / "out.wav"
+
+        def worker():
+            try:
+                stretch._run_to_partial(["fake", str(dst)], dst, "fake", "src")
+            except BaseException as e:
+                errors.append(e)
+
+        with patch.object(stretch.subprocess, "run", side_effect=_run):
+            threads = [threading.Thread(target=worker) for _ in range(4)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(timeout=10)
+
+        assert not errors, f"Concurrent renders raised: {errors}"
+        assert len(used_partials) == 4
+        assert len(set(used_partials)) == 4, (
+            "Concurrent calls reused the same partial path — the Windows "
+            "file-lock race that crashes audio playback would still apply."
+        )
+        assert dst.exists()
+
+    def test_replace_failure_when_dst_already_published_is_noop(self, tmp_path: Path):
+        # The decoded-WAV destination is shared by every preemptive
+        # rate's rubberband path. Once one thread publishes dst and
+        # starts rubberband (which holds dst open for reading), a
+        # second thread's `tmp.replace(dst)` raises a Windows sharing
+        # violation. Treat it as "we lost the race; dst is already
+        # there" rather than a render failure.
+        dst = tmp_path / "out.wav"
+        dst.write_bytes(b"first attempt's published content")
+
+        def _run(cmd, *args, **kwargs):
+            Path(cmd[-1]).write_bytes(b"second attempt's content")
+            return MagicMock(returncode=0, stderr="")
+
+        with (
+            patch.object(stretch.subprocess, "run", side_effect=_run),
+            patch("pathlib.Path.replace", side_effect=PermissionError("locked")),
+        ):
+            # Must not raise — losing the publish race is a normal outcome.
+            stretch._run_to_partial(["fake", str(dst)], dst, "fake", "src")
+
+        assert dst.exists()
+        # The partial got cleaned up even though replace failed.
+        assert not list(tmp_path.glob("*.partial.wav"))
+
+    def test_replace_failure_with_no_dst_still_raises(self, tmp_path: Path):
+        # The graceful path is conditioned on dst.exists(). If dst is
+        # NOT there (the failure is some other OSError — disk full, bad
+        # filesystem perms — not a winning-race situation), surface the
+        # error so the caller / engine reports it.
+        dst = tmp_path / "out.wav"
+
+        def _run(cmd, *args, **kwargs):
+            Path(cmd[-1]).write_bytes(b"")
+            return MagicMock(returncode=0, stderr="")
+
+        with (
+            patch.object(stretch.subprocess, "run", side_effect=_run),
+            patch("pathlib.Path.replace", side_effect=PermissionError("locked")),
+        ):
+            with pytest.raises(PermissionError):
+                stretch._run_to_partial(["fake", str(dst)], dst, "fake", "src")
