@@ -490,6 +490,12 @@ def notes_from_musicXML(
 
     reader_kwargs = reader_kwargs or {}
 
+    if not beat_tl.measure_count:
+        return False, [
+            "The selected beat timeline has no beats. "
+            "Add beats to the beat timeline before importing a score."
+        ]
+
     svg_converter = musicxml_to_svg(score_tl.id)
     with TiliaMXLReader(path, file_kwargs, reader_kwargs) as file:
         parser = etree.XMLParser(remove_blank_text=True)

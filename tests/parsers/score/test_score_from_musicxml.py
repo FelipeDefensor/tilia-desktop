@@ -12,6 +12,22 @@ def _import_with_patch(score_tl, beat_tl, data, tmp_path):
     return errors
 
 
+def test_import_with_empty_beat_timeline(score_tl, beat_tl, tmp_path):
+    xml = """<score-partwise version="3.1">
+    <part-list>
+        <score-part id="P1"><part-name>Piano</part-name></score-part>
+    </part-list>
+    <part id="P1"><measure number="1"></measure></part>
+    </score-partwise>
+    """
+
+    success, errors = _import_with_patch(score_tl, beat_tl, xml, tmp_path)
+
+    assert not success
+    assert errors
+    assert "no beats" in errors[0].lower()
+
+
 def _get_components_by_kind(
     score_tl: ScoreTimeline, kind: ComponentKind
 ) -> list[ComponentKind]:
