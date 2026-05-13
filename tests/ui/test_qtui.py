@@ -65,6 +65,10 @@ class TestImport:
     def test_raises_error_if_invalid_musicXML(
         self, qtui, score_tlui, beat_tlui, tilia_errors, resources
     ):
+        beat_tlui.timeline.beat_pattern = [2]
+        for b in range(4):
+            beat_tlui.create_beat(b)
+
         with Serve(
             Get.FROM_USER_FILE_PATH,
             (
