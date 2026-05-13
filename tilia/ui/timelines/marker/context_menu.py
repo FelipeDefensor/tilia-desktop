@@ -11,7 +11,6 @@ class MarkerContextMenu(TimelineUIElementContextMenu):
         (MenuItemKind.COMMAND, "timeline.element.inspect"),
         (MenuItemKind.SEPARATOR, None),
         (MenuItemKind.COMMAND, "timeline.component.snap_to_downbeat"),
-        (MenuItemKind.COMMAND, "timeline.component.snap_to_measure"),
         (MenuItemKind.SEPARATOR, None),
         (MenuItemKind.COMMAND, "timeline.component.set_color"),
         (MenuItemKind.COMMAND, "timeline.component.reset_color"),

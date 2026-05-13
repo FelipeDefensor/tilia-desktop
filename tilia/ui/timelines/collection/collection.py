@@ -446,14 +446,8 @@ class TimelineUIs:
 
         commands.register(
             "timeline.component.snap_to_downbeat",
-            functools.partial(self.on_timeline_snap, target="downbeat"),
+            self.on_timeline_snap,
             "Snap to downbeat",
-        )
-
-        commands.register(
-            "timeline.component.snap_to_measure",
-            functools.partial(self.on_timeline_snap, target="measure"),
-            "Snap to measure",
         )
 
         # Commands for all timelines
@@ -1535,17 +1529,18 @@ class TimelineUIs:
             TimelineSelector.SELECTED,
         )
 
-    def on_timeline_snap(self, target: str) -> None:
-        # target: "downbeat" snaps to the nearest beat (any beat);
-        # "measure" snaps to the nearest measure start (a downbeat in the
-        # strict sense).
+    def on_timeline_snap(self) -> None:
+        # Snaps the selected element's anchor (start/time) to the nearest
+        # measure start (downbeat). On segment-like timelines (hierarchy,
+        # range) we also pull along every other component on the same
+        # timeline whose `start` or `end` matched the old time — that
+        # keeps adjacent siblings, parents, and joined ranges aligned,
+        # mirroring how dragging a frame handle moves connected
+        # extremities together.
         #
-        # On segment-like timelines (hierarchy, range) we snap the
-        # selected element's `start` and pull along every other component
-        # on the same timeline whose `start` or `end` matched the old
-        # time. That keeps adjacent siblings, parents, and joined ranges
-        # aligned — the equivalent of dragging a frame handle, where
-        # connected extremities move together.
+        # Uses `timeline.set_component_data` (not `component.set_data`
+        # directly) so the UI receives `TIMELINE_COMPONENT_SET_DATA_DONE`
+        # and redraws the moved scene items.
         beat_tl: BeatTimeline | None = get(
             Get.TIMELINE_COLLECTION
         ).get_beat_timeline_for_measure_calculation()
@@ -1553,10 +1548,7 @@ class TimelineUIs:
             tilia.errors.display(tilia.errors.SNAP_NO_BEAT_TIMELINE)
             return
 
-        if target == "downbeat":
-            snap_fn = beat_tl.get_closest_beat_time
-        else:
-            snap_fn = beat_tl.get_closest_measure_start_time
+        snap_fn = beat_tl.get_closest_measure_start_time
 
         def snap_segment_attr(attr: str):
             @with_elements
@@ -1575,10 +1567,10 @@ class TimelineUIs:
                 for cmp in list(tlui.timeline.components):
                     for old, new in old_to_new.items():
                         if math.isclose(cmp.get_data("start"), old):
-                            cmp.set_data("start", new)
+                            tlui.timeline.set_component_data(cmp.id, "start", new)
                             changed = True
                         if math.isclose(cmp.get_data("end"), old):
-                            cmp.set_data("end", new)
+                            tlui.timeline.set_component_data(cmp.id, "end", new)
                             changed = True
                 return changed
 
