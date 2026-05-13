@@ -247,6 +247,9 @@ class Timeline(ABC, Generic[TC]):
         return self.component_manager.get_closest_component_by_time(time)
 
     def set_component_data(self, id: int, attr: str, value: Any):
+        # UI-aware: posts TIMELINE_COMPONENT_SET_DATA_DONE on success so the
+        # element redraws. Prefer this over `component.set_data` from any code
+        # path the UI is supposed to follow.
         return self.component_manager.set_component_data(id, attr, value)
 
     def get_component_data(self, id: int, attr: str):
