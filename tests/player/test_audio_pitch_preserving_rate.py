@@ -282,6 +282,33 @@ class TestPlaybackRateDispatch:
         native.assert_called_once_with(0.5)
         tilia_errors.assert_error()
 
+    def test_unexpected_render_exception_does_not_escape_worker(
+        self, player, tilia_errors
+    ):
+        # Regression for the silent audio-open crash: any exception
+        # other than StretchError used to escape `_RenderRunnable.run`
+        # and reach the QThreadPool worker thread, where some
+        # PySide6 / Qt builds convert it into an unceremonious process
+        # termination. Force a PermissionError (the shape produced by
+        # the partial-file race) and verify it's routed through the
+        # same failed-signal path StretchError takes.
+        _set_loaded(player, "/tmp/song.mp3", 20.0, rate=1.0)
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch(
+                "tilia.media.player.qtaudio.render_stretched",
+                side_effect=PermissionError("temp file locked"),
+            ),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+            patch.object(player.player, "setPlaybackRate") as native,
+        ):
+            pool.return_value.start = lambda runnable: runnable.run()
+            # Must not raise; fallback to native playback should still fire.
+            player._engine_try_playback_rate(0.5)
+
+        native.assert_called_once_with(0.5)
+        tilia_errors.assert_error()
+
 
 class TestPreemptiveRenders:
     def test_load_kicks_off_workers_for_common_rates(self, player):

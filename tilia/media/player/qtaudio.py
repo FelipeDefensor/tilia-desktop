@@ -72,6 +72,17 @@ class _RenderRunnable(QRunnable):
         except StretchError as e:
             self.signals.failed.emit(self.rate, str(e))
             return
+        except Exception as e:
+            # Anything other than StretchError is unexpected (e.g. a
+            # transient PermissionError from a temp-file race, an OSError
+            # from a full disk). An unhandled exception in a QRunnable
+            # escapes the thread pool, and some PySide6 / Qt builds turn
+            # that into a silent process termination. Surface the failure
+            # the same way StretchError does so the caller falls back to
+            # native (pitch-warping) playback instead of taking the app
+            # down with it.
+            self.signals.failed.emit(self.rate, f"Unexpected render error: {e}")
+            return
         self.signals.finished.emit(self.rate, str(out))
 
 
