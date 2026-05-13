@@ -118,13 +118,11 @@ class TestPlaybackRateDispatch:
         _set_loaded(player, "/tmp/song.mp3", 20.0, rate=1.0)
         player._rate_cache[("/tmp/song.mp3", 0.5)] = rendered
 
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch(
-            "tilia.media.player.qtaudio.QThreadPool.globalInstance"
-        ) as pool, patch.object(
-            player, "_swap_source"
-        ) as swap:
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+            patch.object(player, "_swap_source") as swap,
+        ):
             player._engine_try_playback_rate(0.5)
 
         swap.assert_called_once_with(str(rendered), rate=0.5)
@@ -135,15 +133,14 @@ class TestPlaybackRateDispatch:
         rendered = tmp_path / "0.5x.wav"
         rendered.write_bytes(b"")
 
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch(
-            "tilia.media.player.qtaudio.render_stretched", return_value=rendered
-        ) as render, patch(
-            "tilia.media.player.qtaudio.QThreadPool.globalInstance"
-        ) as pool, patch.object(
-            player, "_swap_source"
-        ) as swap:
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch(
+                "tilia.media.player.qtaudio.render_stretched", return_value=rendered
+            ) as render,
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+            patch.object(player, "_swap_source") as swap,
+        ):
             # Make the pool execute the runnable inline so the test
             # observes the full finished-signal → swap chain.
             pool.return_value.start = lambda runnable: runnable.run()
@@ -162,15 +159,15 @@ class TestPlaybackRateDispatch:
         slow_rendered = tmp_path / "0.5x.wav"
         slow_rendered.write_bytes(b"")
 
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch(
-            "tilia.media.player.qtaudio.render_stretched", return_value=slow_rendered
-        ), patch(
-            "tilia.media.player.qtaudio.QThreadPool.globalInstance"
-        ) as pool, patch.object(
-            player, "_swap_source"
-        ) as swap:
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch(
+                "tilia.media.player.qtaudio.render_stretched",
+                return_value=slow_rendered,
+            ),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+            patch.object(player, "_swap_source") as swap,
+        ):
             captured: list = []
             pool.return_value.start = lambda runnable: captured.append(runnable)
 
@@ -205,15 +202,16 @@ class TestPlaybackRateDispatch:
             stale_rendered = tmp_path / "0.5x.wav"
             stale_rendered.write_bytes(b"")
 
-            with patch(
-                "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-            ), patch(
-                "tilia.media.player.qtaudio.render_stretched",
-                return_value=stale_rendered,
-            ), patch(
-                "tilia.media.player.qtaudio.QThreadPool.globalInstance"
-            ) as pool, patch.object(
-                player, "_swap_source"
+            with (
+                patch(
+                    "tilia.media.player.qtaudio.is_stretch_available", return_value=True
+                ),
+                patch(
+                    "tilia.media.player.qtaudio.render_stretched",
+                    return_value=stale_rendered,
+                ),
+                patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+                patch.object(player, "_swap_source"),
             ):
                 captured: list = []
                 pool.return_value.start = lambda runnable: captured.append(runnable)
@@ -239,9 +237,10 @@ class TestPlaybackRateDispatch:
         # decode + stretch the same file).
         _set_loaded(player, "/tmp/song.mp3", 20.0, rate=1.0)
 
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool:
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+        ):
             started: list = []
             pool.return_value.start = lambda runnable: started.append(runnable)
 
@@ -252,9 +251,12 @@ class TestPlaybackRateDispatch:
 
     def test_no_engine_falls_back_to_native_rate(self, player, tilia_errors):
         _set_loaded(player, "/tmp/song.mp3", 20.0, rate=1.0)
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=False
-        ), patch.object(player.player, "setPlaybackRate") as native:
+        with (
+            patch(
+                "tilia.media.player.qtaudio.is_stretch_available", return_value=False
+            ),
+            patch.object(player.player, "setPlaybackRate") as native,
+        ):
             player._engine_try_playback_rate(0.5)
 
         native.assert_called_once_with(0.5)
@@ -265,16 +267,15 @@ class TestPlaybackRateDispatch:
         from tilia.media.player.stretch import StretchError
 
         _set_loaded(player, "/tmp/song.mp3", 20.0, rate=1.0)
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch(
-            "tilia.media.player.qtaudio.render_stretched",
-            side_effect=StretchError("boom"),
-        ), patch(
-            "tilia.media.player.qtaudio.QThreadPool.globalInstance"
-        ) as pool, patch.object(
-            player.player, "setPlaybackRate"
-        ) as native:
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch(
+                "tilia.media.player.qtaudio.render_stretched",
+                side_effect=StretchError("boom"),
+            ),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+            patch.object(player.player, "setPlaybackRate") as native,
+        ):
             pool.return_value.start = lambda runnable: runnable.run()
             player._engine_try_playback_rate(0.5)
 
@@ -291,9 +292,10 @@ class TestPreemptiveRenders:
 
         _set_loaded(player, "/tmp/song.mp3", 20.0, rate=1.0)
 
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool:
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+        ):
             queued: list = []
             pool.return_value.start = lambda runnable: queued.append(runnable.rate)
 
@@ -308,14 +310,14 @@ class TestPreemptiveRenders:
 
         _set_loaded(player, "/tmp/song.mp3", 20.0, rate=1.0)
 
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch(
-            "tilia.media.player.qtaudio.render_stretched",
-            side_effect=StretchError("background boom"),
-        ), patch(
-            "tilia.media.player.qtaudio.QThreadPool.globalInstance"
-        ) as pool:
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch(
+                "tilia.media.player.qtaudio.render_stretched",
+                side_effect=StretchError("background boom"),
+            ),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+        ):
             pool.return_value.start = lambda runnable: runnable.run()
             player._queue_preemptive_renders()
 
@@ -328,15 +330,12 @@ class TestPreemptiveRenders:
         rendered = tmp_path / "0.5x.wav"
         rendered.write_bytes(b"")
 
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch(
-            "tilia.media.player.qtaudio.render_stretched", return_value=rendered
-        ), patch(
-            "tilia.media.player.qtaudio.QThreadPool.globalInstance"
-        ) as pool, patch.object(
-            player, "_swap_source"
-        ) as swap:
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch("tilia.media.player.qtaudio.render_stretched", return_value=rendered),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+            patch.object(player, "_swap_source") as swap,
+        ):
             pool.return_value.start = lambda runnable: runnable.run()
             # User isn't actively asking for any non-unit rate.
             player._pending_rate = 1.0
@@ -356,15 +355,12 @@ class TestPreemptiveRenders:
         rendered = tmp_path / "0.5x.wav"
         rendered.write_bytes(b"")
 
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch(
-            "tilia.media.player.qtaudio.render_stretched", return_value=rendered
-        ), patch(
-            "tilia.media.player.qtaudio.QThreadPool.globalInstance"
-        ) as pool, patch.object(
-            player, "_swap_source"
-        ) as swap:
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch("tilia.media.player.qtaudio.render_stretched", return_value=rendered),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+            patch.object(player, "_swap_source") as swap,
+        ):
             captured: list = []
             pool.return_value.start = lambda runnable: captured.append(runnable)
 
@@ -396,9 +392,10 @@ class TestSwapSourceShortCircuit:
 
         _set_loaded(player, "/tmp/song.mp3", 20.0, rate=1.0)
         url = QUrl.fromLocalFile("/tmp/song.mp3")
-        with patch.object(player.player, "source", return_value=url), patch.object(
-            player.player, "setSource"
-        ) as set_source:
+        with (
+            patch.object(player.player, "source", return_value=url),
+            patch.object(player.player, "setSource") as set_source,
+        ):
             player._swap_source("/tmp/song.mp3", rate=1.0)
 
         set_source.assert_not_called()
@@ -436,9 +433,10 @@ class TestUserWaitCursor:
 
     def test_user_initiated_render_pushes_cursor(self, player):
         _set_loaded(player, "/tmp/song.mp3", 20.0, rate=1.0)
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch("tilia.media.player.qtaudio.QThreadPool.globalInstance"):
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance"),
+        ):
             player._engine_try_playback_rate(0.5)
 
         assert player._cursor_pushed is True
@@ -450,10 +448,10 @@ class TestUserWaitCursor:
         _set_loaded(player, "/tmp/song.mp3", 20.0, rate=1.0)
         player._rate_cache[("/tmp/song.mp3", 0.5)] = rendered
 
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch("tilia.media.player.qtaudio.QThreadPool.globalInstance"), patch.object(
-            player, "_swap_source"
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance"),
+            patch.object(player, "_swap_source"),
         ):
             player._engine_try_playback_rate(0.5)
 
@@ -465,14 +463,11 @@ class TestUserWaitCursor:
         rendered = tmp_path / "0.5x.wav"
         rendered.write_bytes(b"")
 
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch(
-            "tilia.media.player.qtaudio.render_stretched", return_value=rendered
-        ), patch(
-            "tilia.media.player.qtaudio.QThreadPool.globalInstance"
-        ) as pool, patch.object(
-            player, "_swap_source"
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch("tilia.media.player.qtaudio.render_stretched", return_value=rendered),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+            patch.object(player, "_swap_source"),
         ):
             pool.return_value.start = lambda runnable: runnable.run()
             player._engine_try_playback_rate(0.5)
@@ -485,15 +480,14 @@ class TestUserWaitCursor:
 
         _set_loaded(player, "/tmp/song.mp3", 20.0, rate=1.0)
 
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch(
-            "tilia.media.player.qtaudio.render_stretched",
-            side_effect=StretchError("boom"),
-        ), patch(
-            "tilia.media.player.qtaudio.QThreadPool.globalInstance"
-        ) as pool, patch.object(
-            player.player, "setPlaybackRate"
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch(
+                "tilia.media.player.qtaudio.render_stretched",
+                side_effect=StretchError("boom"),
+            ),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+            patch.object(player.player, "setPlaybackRate"),
         ):
             pool.return_value.start = lambda runnable: runnable.run()
             player._engine_try_playback_rate(0.5)
@@ -511,12 +505,10 @@ class TestUserWaitCursor:
         _set_loaded(player, "/tmp/song.mp3", 20.0, rate=1.0)
         player._rate_cache[("/tmp/song.mp3", 0.75)] = cached_075
 
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch(
-            "tilia.media.player.qtaudio.QThreadPool.globalInstance"
-        ) as pool, patch.object(
-            player, "_swap_source"
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+            patch.object(player, "_swap_source"),
         ):
             pool.return_value.start = lambda runnable: None  # never finish
             player._engine_try_playback_rate(0.5)
@@ -529,12 +521,10 @@ class TestUserWaitCursor:
 
     def test_switch_to_rate_one_mid_render_pops_cursor(self, player):
         _set_loaded(player, "/tmp/song.mp3", 20.0, rate=1.0)
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch(
-            "tilia.media.player.qtaudio.QThreadPool.globalInstance"
-        ) as pool, patch.object(
-            player, "_swap_source"
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+            patch.object(player, "_swap_source"),
         ):
             pool.return_value.start = lambda runnable: None
             player._engine_try_playback_rate(0.5)
@@ -547,9 +537,10 @@ class TestUserWaitCursor:
 
     def test_clear_cache_pops_cursor(self, player):
         _set_loaded(player, "/tmp/song.mp3", 20.0, rate=1.0)
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool:
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+        ):
             pool.return_value.start = lambda runnable: None
             player._engine_try_playback_rate(0.5)
             assert player._cursor_pushed is True
@@ -561,9 +552,10 @@ class TestUserWaitCursor:
 
     def test_preemptive_render_does_not_push_cursor(self, player):
         _set_loaded(player, "/tmp/song.mp3", 20.0, rate=1.0)
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool:
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+        ):
             pool.return_value.start = lambda runnable: None
             player._queue_preemptive_renders()
 
@@ -583,14 +575,11 @@ class TestUserWaitCursor:
         rendered = tmp_path / "0.5x.wav"
         rendered.write_bytes(b"")
 
-        with patch(
-            "tilia.media.player.qtaudio.is_stretch_available", return_value=True
-        ), patch(
-            "tilia.media.player.qtaudio.render_stretched", return_value=rendered
-        ), patch(
-            "tilia.media.player.qtaudio.QThreadPool.globalInstance"
-        ) as pool, patch.object(
-            player, "_swap_source"
+        with (
+            patch("tilia.media.player.qtaudio.is_stretch_available", return_value=True),
+            patch("tilia.media.player.qtaudio.render_stretched", return_value=rendered),
+            patch("tilia.media.player.qtaudio.QThreadPool.globalInstance") as pool,
+            patch.object(player, "_swap_source"),
         ):
             captured: list = []
             pool.return_value.start = lambda runnable: captured.append(runnable)
@@ -629,11 +618,15 @@ class TestRubberbandDirection:
 
         # Make the decoded WAV "exist" so the rubberband call goes
         # through to the second subprocess.run.
-        with patch.object(stretch, "_decode_to_wav", return_value=src), patch.object(
-            stretch.shutil,
-            "which",
-            side_effect=lambda exe: f"/fake/{exe}" if exe == "rubberband" else None,
-        ), patch.object(stretch, "_cache_dir", return_value=tmp_path):
+        with (
+            patch.object(stretch, "_decode_to_wav", return_value=src),
+            patch.object(
+                stretch.shutil,
+                "which",
+                side_effect=lambda exe: f"/fake/{exe}" if exe == "rubberband" else None,
+            ),
+            patch.object(stretch, "_cache_dir", return_value=tmp_path),
+        ):
             with patch.object(stretch.subprocess, "run", side_effect=_run) as run:
                 stretch.render_stretched(str(src), 2.0)
 
