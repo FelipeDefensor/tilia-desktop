@@ -149,8 +149,9 @@ class BeatTimelineUI(TimelineUI):
         )
         if not accepted:
             return False
-        for i in reversed(self._get_measure_indices(elements)):
-            self.timeline.set_beat_amount_in_measure(i, amount)
+        self.timeline.set_beat_amount_in_measures(
+            self._get_measure_indices(elements), amount
+        )
         return True
 
     def on_add(self, time: float | None = None):

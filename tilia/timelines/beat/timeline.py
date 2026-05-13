@@ -646,11 +646,94 @@ class BeatTimeline(Timeline):
         post(Post.BEAT_TIMELINE_MEASURE_NUMBER_CHANGE_DONE, self.id, measure_index)
 
     def set_beat_amount_in_measure(self, measure_index: int, beat_amount: int) -> None:
+        # Single-measure form, kept for callers (e.g. `add_measure_zero`)
+        # that want the spillover-into-last-measure behaviour of
+        # `recalculate_measures`. For user-driven multi-measure updates,
+        # call `set_beat_amount_in_measures` instead — that path is robust
+        # to the silent-undo bug described there.
         self.clear_cached_metric_positions()
         new_beats_in_measure = self.beats_in_measure.copy()
         new_beats_in_measure[measure_index] = beat_amount
         self.set_data("beats_in_measure", new_beats_in_measure)
         post(Post.BEAT_TIMELINE_MEASURE_NUMBER_CHANGE_DONE, self.id, measure_index)
+
+    def set_beat_amount_in_measures(
+        self, measure_indices: list[int], beat_amount: int
+    ) -> None:
+        """Set every measure in ``measure_indices`` to ``beat_amount`` beats.
+
+        For each selected measure being shrunk, the displaced beats form
+        new measures right after it (each at most ``beat_amount`` long).
+        ``beats_in_measure``, ``measure_numbers``, and
+        ``measures_to_force_display`` are rebuilt in a single pass and
+        applied atomically — necessary because spillover inserts shift
+        the indices of every later measure, so the three parallel lists
+        must stay in lock-step.
+
+        Why a dedicated multi-measure path: routing per-measure through
+        the ``beats_in_measure`` setter fires ``recalculate_measures``
+        after every step. When the just-modified measure is the last and
+        now incomplete vs ``beat_pattern``, ``extend_beats_in_measure``
+        puts the "lost" beats back into it — silently reverting the
+        change. Reversing the iteration order doesn't help: as soon as
+        the highest selected measure shrinks, recalculate either undoes
+        the change (last-measure case) or appends a tag-along measure
+        that then steals from the next iteration's target. User-visible
+        symptom: "only some of my measures got set; I have to click
+        again to finish the job."
+
+        Building the parallel lists in one shot keeps
+        ``sum(beats_in_measure) == total_beats`` for the shrink path, so
+        the setter's recalculate is a structural no-op and every
+        selected measure ends up with exactly ``beat_amount`` beats."""
+        if not measure_indices:
+            return
+
+        selected = set(measure_indices)
+        new_beats: list[int] = []
+        new_numbers: list[int] = []
+        new_force_display: list[int] = []
+        # Cumulative shift applied to measure numbers after each spillover
+        # insertion. Keeps already-sequential numbering sequential, and
+        # preserves any user-set jumps (forced numbers) for the original
+        # measures past each insertion point.
+        bump = 0
+
+        for old_index, current in enumerate(self.beats_in_measure):
+            new_position = len(new_beats)
+            original_number = self.measure_numbers[old_index]
+
+            if old_index in self.measures_to_force_display:
+                new_force_display.append(new_position)
+
+            if old_index in selected:
+                new_beats.append(beat_amount)
+                new_numbers.append(original_number + bump)
+                if beat_amount < current:
+                    spillover = current - beat_amount
+                    while spillover > 0:
+                        chunk = min(beat_amount, spillover)
+                        new_beats.append(chunk)
+                        bump += 1
+                        new_numbers.append(original_number + bump)
+                        spillover -= chunk
+            else:
+                new_beats.append(current)
+                new_numbers.append(original_number + bump)
+
+        # Order matters: ``measure_numbers`` and ``measures_to_force_display``
+        # must already match the new length before the ``beats_in_measure``
+        # setter fires, because it triggers ``recalculate_measures`` which
+        # rebuilds metric positions (and indexes into ``measure_numbers``).
+        self.set_data("measure_numbers", new_numbers)
+        self.set_data("measures_to_force_display", new_force_display)
+        self.clear_cached_metric_positions()
+        self.set_data("beats_in_measure", new_beats)
+        post(
+            Post.BEAT_TIMELINE_MEASURE_NUMBER_CHANGE_DONE,
+            self.id,
+            min(selected),
+        )
 
     def distribute_beats(self, measure_index: int) -> None:
         self.component_manager.distribute_beats(measure_index)

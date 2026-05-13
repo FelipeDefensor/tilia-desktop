@@ -489,11 +489,11 @@ class TestSetBeatAmountInMeasure:
 
         beat_tlui.select_element(beat_tlui[0])
 
-        beat_tlui.timeline.set_beat_amount_in_measure = MagicMock()
+        beat_tlui.timeline.set_beat_amount_in_measures = MagicMock()
         with Serve(Get.FROM_USER_INT, (True, 11)):
             commands.execute("timeline.beat.set_amount_in_measure")
 
-        beat_tlui.timeline.set_beat_amount_in_measure.assert_called_with(0, 11)
+        beat_tlui.timeline.set_beat_amount_in_measures.assert_called_with([0], 11)
 
     def test_updates_measure_numbers(self, beat_tlui):
         beat_tlui.timeline.beat_pattern = [1]
@@ -508,6 +508,22 @@ class TestSetBeatAmountInMeasure:
             commands.execute("timeline.beat.set_amount_in_measure")
 
         assert [get_displayed_measure_number(b) for b in beat_tlui] == ["1", "", "2"]
+
+    def test_shrink_all_selected_measures_applied_in_one_pass(self, beat_tlui):
+        # Regression for the bug where selecting every measure and setting
+        # amount to a smaller value left some measures at their old size: the
+        # per-measure loop fed each change through `recalculate_measures`,
+        # which absorbed the just-introduced "spillover" by extending the
+        # last (incomplete) measure — silently undoing the user's change.
+        for i in range(8):
+            beat_tlui.create_beat(i)
+        assert beat_tlui.timeline.beats_in_measure == [4, 4]
+
+        beat_tlui.select_all_elements()
+        with Serve(Get.FROM_USER_INT, (True, 2)):
+            commands.execute("timeline.beat.set_amount_in_measure")
+
+        assert beat_tlui.timeline.beats_in_measure == [2, 2, 2, 2]
 
 
 class TestFillWithBeats:
