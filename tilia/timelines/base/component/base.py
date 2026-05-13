@@ -59,6 +59,11 @@ class TimelineComponent:
             ) from e
 
     def set_data(self, attr: str, value: Any):
+        # WARNING: backend-only — does NOT post TIMELINE_COMPONENT_SET_DATA_DONE,
+        # so the UI won't redraw. From UI-side code (commands, callbacks, snap,
+        # drag, paste, …) call `timeline.set_component_data(id, attr, value)`
+        # instead. Use this method directly only inside the backend (validators,
+        # bulk migrations, deserialization) where no UI exists yet.
         if not self.validate_set_data(attr, value):
             return None, False
         setattr(self, attr, value)
