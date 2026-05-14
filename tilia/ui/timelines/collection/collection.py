@@ -930,12 +930,7 @@ class TimelineUIs:
         self.loop_delete_ignore.add((tl_id, comp_id))
 
     def on_loop_cancel(self):
-        # Order matters: update_loop_elements_ui iterates self.loop_elements
-        # to repaint each element, so we must repaint before clearing the set.
-        # on_loop_change posts PLAYER_CURRENT_LOOP_CHANGED, which is what
-        # actually resets player.is_looping (#438).
         self.update_loop_elements_ui(False)
-        self.loop_elements.clear()
         self.on_loop_change(0, 0)
         post(Post.PLAYER_UI_UPDATE, PlayerToolbarElement.TOGGLE_LOOP, False)
 
