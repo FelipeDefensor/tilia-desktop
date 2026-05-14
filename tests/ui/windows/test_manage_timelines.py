@@ -184,9 +184,7 @@ class TestClearButtonEnablement:
             commands.execute("timeline.marker.add")
             assert mt.clear_button.isEnabled()
 
-    def test_updates_when_component_removed_while_open(
-        self, marker_tlui, tilia_state
-    ):
+    def test_updates_when_component_removed_while_open(self, marker_tlui, tilia_state):
         commands.execute("timeline.marker.add")
         with manage_timelines() as mt:
             assert mt.clear_button.isEnabled()
