@@ -164,7 +164,7 @@ class TesttimelinesChangeWhileOpen:
     # Much more could be tested here.
 
 
-class TestClearButtonEnablement:
+class TestClearButtonIsEnabled:
     """Regression tests for #435 — Clear button should be disabled when
     the selected timeline has nothing to clear, and should react to
     components being added or removed underneath the open window."""
