@@ -846,7 +846,6 @@ class TestWindowTitle:
         commands.execute("file.open", path)
         self.assert_window_title(qtui, file_title)
 
-
     def test_is_filename_after_file_load_if_no_title(self, qtui, tmp_path):
         save_tilia_to_tmp_path(tmp_path, "test_window_title.tla")
         self.assert_window_title(qtui, "test_window_title.tla")
