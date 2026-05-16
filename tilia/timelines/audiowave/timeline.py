@@ -60,6 +60,7 @@ class AudioWaveTimeline(Timeline):
     COMPONENT_MANAGER_CLASS = AudioWaveTLComponentManager
     FLAGS = [
         TimelineFlag.NOT_CLEARABLE,
+        TimelineFlag.NOT_DUPLICABLE,
         TimelineFlag.NOT_EXPORTABLE,
         TimelineFlag.COMPONENTS_NOT_EDITABLE,
         TimelineFlag.COMPONENTS_NOT_DELETABLE,
@@ -253,9 +254,7 @@ class AudioWaveTimeline(Timeline):
             return
         component.samplerate = int(samplerate)
         component.total_frames = int(total_frames)
-        component.lod_min, component.lod_max = build_lod_pyramid(
-            peaks_min, peaks_max
-        )
+        component.lod_min, component.lod_max = build_lod_pyramid(peaks_min, peaks_max)
         component.is_ready = True
         post(Post.AUDIOWAVE_PEAKS_READY, self.id, component.id)
         post(Post.STATUS_MESSAGE_CLEAR)
@@ -274,9 +273,7 @@ class AudioWaveTimeline(Timeline):
                     frames_per_peak=component.frames_per_peak,
                 ),
             )
-            cap_mb = int(
-                settings.get("audiowave_timeline", "pyramid_cache_max_mb")
-            )
+            cap_mb = int(settings.get("audiowave_timeline", "pyramid_cache_max_mb"))
             payload_bytes = estimate_pyramid_bytes(
                 component.total_frames, component.frames_per_peak
             )
@@ -295,9 +292,7 @@ class AudioWaveTimeline(Timeline):
         elif isinstance(exc, YTNetworkError):
             tilia.errors.display(tilia.errors.YT_NETWORK_ERROR)
         elif isinstance(exc, YTDownloadError):
-            tilia.errors.display(
-                tilia.errors.YT_DLP_DOWNLOAD_FAILED, str(exc)
-            )
+            tilia.errors.display(tilia.errors.YT_DLP_DOWNLOAD_FAILED, str(exc))
         else:
             tilia.errors.display(tilia.errors.AUDIOWAVE_INVALID_FILE)
         self._update_visibility(False)
@@ -316,8 +311,7 @@ class AudioWaveTimeline(Timeline):
         # legacy format by the presence of "amplitude" and re-extract from
         # the source media instead of trying to translate.
         is_legacy = any(
-            isinstance(c, dict) and "amplitude" in c
-            for c in components.values()
+            isinstance(c, dict) and "amplitude" in c for c in components.values()
         )
         if is_legacy:
             self.refresh()

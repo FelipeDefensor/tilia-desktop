@@ -71,6 +71,9 @@ class ManageTimelines(QDialog):
         self.checkbox = checkbox
         checkbox.stateChanged.connect(self.on_checkbox_state_changed)
 
+        self.duplicate_button = QPushButton("Duplicate")
+        self.duplicate_button.pressed.connect(list_widget.on_duplicate_button)
+
         self.delete_button = QPushButton("Delete")
         self.delete_button.pressed.connect(list_widget.on_delete_button)
 
@@ -79,6 +82,7 @@ class ManageTimelines(QDialog):
         right_layout.addWidget(self.up_button)
         right_layout.addWidget(self.down_button)
         right_layout.addWidget(checkbox)
+        right_layout.addWidget(self.duplicate_button)
         right_layout.addWidget(self.clear_button)
         right_layout.addWidget(self.delete_button)
 
@@ -99,6 +103,9 @@ class ManageTimelines(QDialog):
             else Qt.CheckState.Unchecked
         )
         self.delete_button.setEnabled(TimelineFlag.NOT_DELETABLE not in timeline.FLAGS)
+        self.duplicate_button.setEnabled(
+            TimelineFlag.NOT_DUPLICABLE not in timeline.FLAGS
+        )
         self.clear_button.setEnabled(
             TimelineFlag.NOT_CLEARABLE not in timeline.FLAGS and not timeline.is_empty
         )
@@ -212,6 +219,9 @@ class TimelinesListWidget(QListWidget):
 
     def on_delete_button(self):
         commands.execute("timeline.delete", self.selected_timeline_ui)
+
+    def on_duplicate_button(self):
+        commands.execute("timeline.duplicate", self.selected_timeline_ui)
 
     def on_clear_button(self):
         commands.execute("timeline.clear", self.selected_timeline_ui)

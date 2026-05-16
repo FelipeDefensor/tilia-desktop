@@ -391,6 +391,8 @@ class TimelineUIs:
 
         commands.register("timeline.delete", self.on_timeline_delete, "Delete")
 
+        commands.register("timeline.duplicate", self.on_timeline_duplicate, "Duplicate")
+
         commands.register("timeline.clear", self.on_timeline_clear, "Clear")
 
         commands.register(
@@ -1443,6 +1445,15 @@ class TimelineUIs:
         get(Get.TIMELINE_COLLECTION).delete_timeline(timeline_ui.timeline)
 
         return True
+
+    @staticmethod
+    @command_callback
+    def on_timeline_duplicate(timeline_ui: TimelineUI) -> bool:
+        timeline = timeline_ui.timeline
+        if TimelineFlag.NOT_DUPLICABLE in timeline.FLAGS:
+            return False
+
+        return get(Get.TIMELINE_COLLECTION).duplicate_timeline(timeline) is not None
 
     @staticmethod
     @command_callback

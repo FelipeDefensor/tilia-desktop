@@ -77,6 +77,7 @@ class ScoreTimeline(Timeline):
         TimelineFlag.COMPONENTS_COLORED,
         TimelineFlag.COMPONENTS_NOT_DELETABLE,
         TimelineFlag.COMPONENTS_IMPORTABLE,
+        TimelineFlag.NOT_DUPLICABLE,
     ]
 
     def __init__(

@@ -193,6 +193,38 @@ class TestClearButtonIsEnabled:
             assert not mt.clear_button.isEnabled()
 
 
+class TestDuplicateTimeline:
+    def test_duplicate_button_adds_timeline_below_source(self, tluis, tls):
+        commands.execute("timelines.add.marker", name="Source")
+        with manage_timelines() as mt:
+            mt.list_widget.setCurrentRow(0)
+            mt.duplicate_button.click()
+            assert mt.list_widget.count() == 2
+
+        assert sorted(tls)[0].get_data("name") == "Source"
+        assert sorted(tls)[1].get_data("name") == "Source (copy)"
+
+    def test_duplicate_button_disabled_for_slider(self, slider_tl, tluis):
+        with manage_timelines() as mt:
+            for i in range(mt.list_widget.count()):
+                if mt.list_widget.item(i).timeline_ui.timeline.id == slider_tl.id:
+                    mt.list_widget.setCurrentRow(i)
+                    break
+            assert not mt.duplicate_button.isEnabled()
+
+    def test_duplicate_undo_restores_state(self, tluis, tls):
+        commands.execute("timelines.add.marker", name="Source")
+        with manage_timelines() as mt:
+            mt.list_widget.setCurrentRow(0)
+            mt.duplicate_button.click()
+        assert len(tls) == 2
+
+        commands.execute("edit.undo")
+
+        assert len(tls) == 1
+        assert sorted(tls)[0].get_data("name") == "Source"
+
+
 class TestDeleteTimeline:
     def delete_selected_timeline(self, mt):
         with patch_yes_or_no_dialog(True):

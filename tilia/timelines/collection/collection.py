@@ -173,6 +173,32 @@ class Timelines:
         if type(timeline) not in self.timeline_types:
             post(Post.TIMELINE_TYPE_NOT_INSTANCED, type(timeline))
 
+    def duplicate_timeline(self, source: Timeline) -> Timeline | None:
+        if TimelineFlag.NOT_DUPLICABLE in source.FLAGS:
+            return None
+
+        source_ordinal = source.get_data("ordinal")
+
+        # Shift higher-ordinal timelines up by 1, in descending order to avoid
+        # transient ordinal duplicates during the bulk shift.
+        to_shift = sorted(
+            (tl for tl in self._timelines if tl.get_data("ordinal") > source_ordinal),
+            key=lambda tl: tl.get_data("ordinal"),
+            reverse=True,
+        )
+        for tl in to_shift:
+            self.set_timeline_data(tl.id, "ordinal", tl.get_data("ordinal") + 1)
+
+        state = copy.deepcopy(source.get_state())
+        kind = state.pop("kind")
+        components = state.pop("components", None)
+        state.pop("hash", None)
+        state.pop("components_hash", None)
+        state["name"] = source.get_data("name") + " (copy)"
+        state["ordinal"] = source_ordinal + 1
+
+        return self.create_timeline(kind, components=components, **state)
+
     @staticmethod
     def clear_timeline(timeline: Timeline):
         timeline.clear()

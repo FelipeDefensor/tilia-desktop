@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from tilia.requests import Get, get
+from tilia.timelines.base.timeline import TimelineFlag
 from tilia.ui import commands
 from tilia.ui.commands import CommandQAction, get_qaction
 from tilia.ui.menus import MenuItemKind, TiliaMenu
@@ -75,6 +76,9 @@ class TimelineUIContextMenu(TiliaMenu):
     def add_default_actions(self):
         # I wasn't able to make this work with functools.partial,
         # so I'm defining these functions.
+        def on_duplicate_timeline():
+            commands.execute("timeline.duplicate", self.timeline_ui)
+
         def on_delete_timeline():
             commands.execute("timeline.delete", self.timeline_ui)
 
@@ -82,6 +86,12 @@ class TimelineUIContextMenu(TiliaMenu):
             commands.execute("timeline.clear", self.timeline_ui)
 
         self.addSeparator()
+
+        if TimelineFlag.NOT_DUPLICABLE not in self.timeline_ui.timeline.FLAGS:
+            duplicate_timeline = CommandQAction("timeline.duplicate", self)
+            duplicate_timeline.setText("Duplicate")
+            duplicate_timeline.triggered.connect(on_duplicate_timeline)
+            self.addAction(duplicate_timeline)
 
         delete_timeline = CommandQAction("timeline.delete", self)
         delete_timeline.setText("Delete")
