@@ -1,0 +1,590 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-05-08T00:00:00.000Z" agent="Claude (TiLiA planning)" version="24.0.0" type="device">
+  <diagram name="Desktop" id="tilia-desktop-deps">
+    <mxGraphModel dx="2200" dy="1900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ============ Page title ============ -->
+        <mxCell id="p1_title" value="TiLiA Desktop — feature dependencies" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="700" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_subtitle" value="★ = LCMA meeting feature (2026-05). Other items from ClickUp backlog." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=2;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="760" y="30" width="600" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- ============ TOP SECTION: dependency chains ============ -->
+
+        <mxCell id="p1_h_epic4" value="Epic 4 — Component relationships" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_h_epic12" value="Epics 1+2 — Properties &amp; templates" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="320" y="80" width="220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_h_epic3" value="Epic 3 — Score timeline (Verovio cluster)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="80" width="500" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Col 1: Persistent IDs chain -->
+        <mxCell id="p1_n_pids" value="★ 4.1 Persistent IDs&#10;(in progress)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="130" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_refs" value="★ 4.2 References&#10;#334 (in props), #340 (relations layer)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="210" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_link" value="★ 4.3 Link / Reuse component&#10;#341  [CU:86a72qxu7]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="290" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_inline_refs" value="★ 4.4 Inline references in component text" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="370" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_connectors" value="★ 4.5 Connectors in hierarchy&#10;[shortlist]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="450" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Col 2: Templating chain -->
+        <mxCell id="p1_n_label_tmpl" value="★ 1.1 Component label templating&#10;[shortlist]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="130" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_udp" value="★ 2.1 User-defined properties" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="210" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_computed_props" value="★ 2.2 Computed properties" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="290" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_comp_tmpl" value="★ 2.3 Component templates&#10;(auto-complete)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="370" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Col 3 + 4: Score chain -->
+        <mxCell id="p1_n_verovio" value="★ 3.1 Verovio as score engine&#10;#506" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="130" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_implicit" value="★ 3.3 Implicit measures (cadenzas)&#10;#273" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="880" y="130" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_mei" value="★ 3.2 MEI support" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="210" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_mei_annot" value="★ 3.4 Save note annotations to MEI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="290" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_vc_save" value="★ 3.5 Version-controllable save" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="880" y="290" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_mxl_create" value="3.6 Create timelines from MusicXML&#10;[CU:86a72qxgt — Anne Foo]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="370" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_score_polish" value="3.7 Score-TL polish (cluster):&#10;img export · all measure nums · vexflow refactor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="600" y="450" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ============ ROW 1 CLUSTERS ============ -->
+
+        <mxCell id="p1_h_epic5" value="Epic 5 — Hierarchy graphics" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="600" width="220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_h_epic6" value="Epic 6 — Harmony" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="320" y="600" width="220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_h_epic7" value="Epic 7 — Beat &amp; grid alignment" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="600" width="220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_h_epic8" value="Epic 8 — Import / export / corpus" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="880" y="600" width="220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_h_epic9" value="Epic 9 — New timeline types" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="600" width="220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_h_epic10" value="Epic 10 — Misc" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="600" width="220" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Epic 5 Hierarchy -->
+        <mxCell id="p1_n_h_overlap" value="★ 5.1 Overlapping ends" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="650" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_h_fills" value="★ 5.2 Fill patterns / brush&#10;[CU:86a72qxf7]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="720" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_h_shapes" value="★ 5.3 Different shapes (triangle / oval / trapezoid)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="790" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_h_indicators" value="★ 5.4 Overlap indicators (BriFormer-style)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="860" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Epic 6 Harmony -->
+        <mxCell id="p1_n_harm_input" value="★ 6.1 Better chord input UI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="650" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_harm_types" value="★ 6.2 More chord types" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="720" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_harm_parsing" value="★ 6.3 Flexible chord-text parsing&#10;#352" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="790" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_harm_kbd" value="★ 6.4 Better keyboard navigation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="860" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_harm_clutter" value="★ 6.5 Display chord labels with less clutter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="930" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_harm_render" value="6.6 Rendering: inversions + quality settings" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="1000" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_harm_extparse" value="6.7 Extend parsing: custom labels, mixed-case, tremolo" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="1070" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_harm_misc" value="6.8 Misc harmony UX (beat-for-beat, alt-text tooltip)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="320" y="1140" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Epic 7 Beat alignment -->
+        <mxCell id="p1_n_snap" value="★ 7.1 Snap to metric grid&#10;#342  [CU:86a72qxha]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="650" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_align" value="★ 7.2 Align components to beat grid&#10;[shortlist]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="720" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_realign" value="★ 7.3 Align components to a new recording" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="790" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_beat_detect" value="★ 7.4 Automatic beat detection&#10;[scope?]  [CU:86a72qxkt]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="860" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_snap_comp" value="7.5 Snap to components&#10;[CU:86a72qxub]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="930" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Epic 8 Import -->
+        <mxCell id="p1_n_no_empty" value="★ 8.1 Don't require empty TL for import&#10;#327" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="880" y="650" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_csv" value="★ 8.2 CSV export per timeline&#10;[shortlist]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="880" y="720" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_tabs" value="★ 8.3 Tabs in TiLiA (paste-complete)&#10;[scope?]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="880" y="790" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_mxl_beats" value="★ 8.4 MusicXML→beat timeline&#10;(superseded by 3.6)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;fontStyle=2;opacity=60;" vertex="1" parent="1">
+          <mxGeometry x="880" y="860" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_corpus" value="★ 8.5 Corpus management" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="880" y="930" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_csv_dialog" value="8.6 Improve import CSV dialog&#10;[CU:86a72qxqm]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="880" y="1000" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Epic 9 New timeline types -->
+        <mxCell id="p1_n_graph_tl" value="★ 9.1 Graph Timeline (continuous values)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="650" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_lyrics_tl" value="★ 9.2 Lyrics timeline&#10;[CU:86a72qxj3]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="720" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Epic 10 Misc -->
+        <mxCell id="p1_n_alt_ui" value="★ 10.1 UI for alternative analyses" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="650" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ============ ROW 2 CLUSTERS — from ClickUp ============ -->
+
+        <mxCell id="p1_h_epic11" value="Epic 11 — Selection &amp; keyboard navigation" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1280" width="260" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_h_epic12cu" value="Epic 12 — Streaming &amp; playback" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="320" y="1280" width="220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_h_epic13" value="Epic 13 — Engineering &amp; refactor" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1280" width="220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_h_epic14" value="Epic 14 — i18n" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="880" y="1280" width="220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_h_epic15" value="Epic 15 — View / UX polish" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="1280" width="220" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Epic 11 Selection -->
+        <mxCell id="p1_n_sel_ctrl" value="11.1 Ctrl + click multi-select&#10;[CU:86a72qxgc]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1330" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_sel_shift" value="11.2 Shift + arrow / Shift + click selection&#10;[CU:86a72qxfa, 86a72qxnr]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1400" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_sel_vert" value="11.3 Vertical arrow selection (incl. harmony)&#10;[CU:86a72qxvw, 86a72qxcz]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1470" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_sel_box" value="11.4 Box selection: ignore occluded&#10;[CU:86a72qxft]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1540" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_sel_hand" value="11.5 Hand tool (middle-click drag)&#10;[CU:86a72qxvh]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1610" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_sel_zoom" value="11.6 Zoom to rectangle&#10;[CU:86a72qxfn]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1680" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Epic 12 Streaming -->
+        <mxCell id="p1_n_str_audio" value="12.1 Audio streaming integration&#10;[CU:86a72qxcj]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="1330" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_str_movie" value="12.2 Movie streaming integration&#10;[CU:86a72qxqz]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="1400" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_str_subs" value="12.3 Subtitle support (local video)&#10;[CU:86a72qxfe]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="1470" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_str_yt" value="12.4 YouTube fixes (3 items)&#10;[CU:86a72qxk6, 86a72qxkx, 86a72qxjd]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="320" y="1540" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_n_str_qm" value="12.5 QMediaPlayer error display&#10;[CU:86a74cahz]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="1610" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Epic 13 Engineering (cluster summary) -->
+        <mxCell id="p1_n_eng" value="13. Engineering &amp; refactor (cluster)&#10;~17 items in ClickUp:&#10;drag dedup, post enum split, exceptions success-pattern, Timeline → facade,&#10;attr renames, BeatTimeline validation, …" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1330" width="220" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Epic 14 i18n -->
+        <mxCell id="p1_n_i18n" value="14.1 Implement internationalization&#10;[CU:86a72qxq9]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="880" y="1330" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Epic 15 UX polish (cluster summary) -->
+        <mxCell id="p1_n_ux" value="15. View / UX polish (cluster)&#10;~12 items in ClickUp:&#10;hover info, loading screen, label lock, label overlap on zoom,&#10;status bar, multiple views per kind, time-in-measures, scene detect, …" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="1330" width="240" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- ============ EDGES ============ -->
+
+        <!-- Persistent IDs chain -->
+        <mxCell id="p1_e_pids_refs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=2;endArrow=classic;" edge="1" parent="1" source="p1_n_pids" target="p1_n_refs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_e_refs_link" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=2;endArrow=classic;" edge="1" parent="1" source="p1_n_refs" target="p1_n_link">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_e_refs_inline" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=2;endArrow=classic;" edge="1" parent="1" source="p1_n_refs" target="p1_n_inline_refs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Templating chain -->
+        <mxCell id="p1_e_tmpl_udp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=2;endArrow=classic;" edge="1" parent="1" source="p1_n_label_tmpl" target="p1_n_udp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_e_udp_computed" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=2;endArrow=classic;" edge="1" parent="1" source="p1_n_udp" target="p1_n_computed_props">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_e_udp_comptmpl" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=2;endArrow=classic;" edge="1" parent="1" source="p1_n_udp" target="p1_n_comp_tmpl">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_e_tmpl_inline" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=2;endArrow=classic;" edge="1" parent="1" source="p1_n_label_tmpl" target="p1_n_inline_refs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Verovio chain -->
+        <mxCell id="p1_e_verovio_mei" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=2;endArrow=classic;" edge="1" parent="1" source="p1_n_verovio" target="p1_n_mei">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_e_mei_annot" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;strokeWidth=2;endArrow=classic;" edge="1" parent="1" source="p1_n_mei" target="p1_n_mei_annot">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_e_mei_vcsave" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=2;endArrow=classic;" edge="1" parent="1" source="p1_n_mei" target="p1_n_vc_save">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Design overlap dashed -->
+        <mxCell id="p1_e_connectors_refs" value="design overlap" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#999999;strokeWidth=1;endArrow=none;startArrow=none;fontSize=10;fontColor=#999999;" edge="1" parent="1" source="p1_n_connectors" target="p1_n_refs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_e_align_snap" value="competing scope&#10;(shortlist note)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#999999;strokeWidth=1;endArrow=none;startArrow=none;fontSize=10;fontColor=#999999;" edge="1" parent="1" source="p1_n_align" target="p1_n_snap">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_e_mxlbeats_create" value="superseded by" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#999999;strokeWidth=1;endArrow=classic;startArrow=none;fontSize=10;fontColor=#999999;" edge="1" parent="1" source="p1_n_mxl_beats" target="p1_n_mxl_create">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_e_snapcomp_snap" value="related" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#999999;strokeWidth=1;endArrow=none;startArrow=none;fontSize=10;fontColor=#999999;" edge="1" parent="1" source="p1_n_snap_comp" target="p1_n_snap">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_e_harm_extparse_parsing" value="extends" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#999999;strokeWidth=1;endArrow=classic;startArrow=none;fontSize=10;fontColor=#999999;" edge="1" parent="1" source="p1_n_harm_extparse" target="p1_n_harm_parsing">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_e_harm_misc_kbd" value="overlaps with" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#999999;strokeWidth=1;endArrow=none;startArrow=none;fontSize=10;fontColor=#999999;" edge="1" parent="1" source="p1_n_harm_misc" target="p1_n_harm_kbd">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ============ LEGEND ============ -->
+
+        <mxCell id="p1_legend_title" value="Legend" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1780" width="120" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p1_legend_existing" value="Existing issue (open)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1820" width="160" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_legend_inprog" value="In progress" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="220" y="1820" width="160" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_legend_shortlist" value="Shortlist (proposed,&#10;prioritised)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1820" width="160" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_legend_proposed" value="Proposed (net-new)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="580" y="1820" width="160" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_legend_scope" value="Scope-flag (much&#10;larger than peers)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="760" y="1820" width="160" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_legend_cluster" value="Cluster summary&#10;(many small items)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="940" y="1820" width="160" height="36" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p1_legend_star" value="★ = LCMA meeting feature&#10;solid arrow = hard dependency&#10;dashed line = related / scope conflict / supersession" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="1810" width="450" height="50" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram name="Web" id="tilia-web-deps">
+    <mxGraphModel dx="2200" dy="1500" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1500" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Page title -->
+        <mxCell id="p2_title" value="TiLiA Web — feature backlog" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_subtitle" value="All items from ClickUp. Promote to GitHub issues only when actively scoped for a release." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=2;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="560" y="30" width="700" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Section header: Frontend -->
+        <mxCell id="p2_h_frontend" value="FRONTEND" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#444444;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="200" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Cluster headers -->
+        <mxCell id="p2_h_wf1" value="WF1 — Querying &amp; search" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="120" width="240" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_h_wf2" value="WF2 — PDF / score viewer" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="320" y="120" width="240" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_h_wf3" value="WF3 — Profile / dashboard" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="120" width="240" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_h_wf4" value="WF4 — Wiki / metadata pages" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="880" y="120" width="240" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_h_wf5" value="WF5 — Help pages" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="120" width="240" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_h_wf6" value="WF6 — UI / styling polish" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="120" width="240" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_h_wf7" value="WF7 — Frontend engineering" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1720" y="120" width="240" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- WF1 Querying & search -->
+        <mxCell id="p2_n_wf1_pdf_query" value="Add querying for PDF timeline (frontend)&#10;[CU:86a72qx13]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="160" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf1_link_pos" value="Link source-file position on TL query&#10;[CU:86a72qx1m]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="220" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf1_link_src" value="Link to source file on TL query (HIGH)&#10;[CU:86a72qx1w]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="280" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf1_tlname" value="TL-name column in results&#10;[CU:86a72qx98]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="340" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf1_react_select" value="react-select on explore-page dropdowns&#10;[CU:86a72qx43]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="400" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf1_operators" value="&gt;, &lt;, between operators in TL queries&#10;[CU:86a72qxbh]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="460" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf1_seq" value="Sequence querying&#10;[CU:86a72qx7t]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="520" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf1_simple" value="Simple search (no field selection)&#10;[CU:86a72qx9z]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="580" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf1_harm" value="Harmony query&#10;[CU:86a9xveq7]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="640" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf1_multi" value="Querying multiple component types&#10;[CU:86a9xvgdj]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="700" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf1_colhide" value="Column hide/show on query tables&#10;[CU:86a72qxb2]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="760" width="240" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- WF2 PDF / score viewer -->
+        <mxCell id="p2_n_wf2_imslp" value="Display IMSLP PDFs&#10;[CU:86a72qxa9]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="320" y="160" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf2_pdf_fail" value="Layout fix when PDF fails to load&#10;[CU:86a72qxae]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="320" y="220" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf2_buffer" value="Buffer next PDF page&#10;[CU:86a72qxb7]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="320" y="280" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf2_spinner" value="Spinner replaces &quot;Loading PDF…&quot;&#10;[CU:86a72qx4g]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="320" y="340" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf2_ribbon" value="PDF ribbon overlap with user menu&#10;[CU:86a72qxbt]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="320" y="400" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf2_yt_aspect" value="YouTube player aspect ratio matches video&#10;[CU:86a72qx9r]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="320" y="460" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf2_yt_disclaim" value="YouTube copyright disclaimer&#10;[CU:86a9g3ra1]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="320" y="520" width="240" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- WF3 Profile / dashboard -->
+        <mxCell id="p2_n_wf3_title" value="Set file title from dashboard&#10;[CU:86a72qx0j]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="600" y="160" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf3_composer" value="Set composer from dashboard&#10;[CU:86a72qx20]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="600" y="220" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf3_profile" value="Basic profile info&#10;[CU:86a72qx2z]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="600" y="280" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf3_paginate" value="Pagination on dashboard&#10;[CU:86a72qx4a]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="600" y="340" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf3_ellipsis" value="Ellipsis on excessive pagination links&#10;[CU:86a72qx2d]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="600" y="400" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf3_files_spinner" value="Spinner for user-files loading&#10;[CU:86a72qx5r]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="600" y="460" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf3_sort" value="Dashboard sorting&#10;[CU:86a72qx94]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="600" y="520" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf3_split" value="Split profile and &quot;My files&quot; page&#10;[CU:86a72qx8z]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="600" y="580" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf3_rename" value="Rename Dashboard → My account&#10;[CU:86a72qxcf]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="600" y="640" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf3_overwrite" value="Confirm overwrite when metadata identical&#10;[CU:86a72qx9g]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="600" y="700" width="240" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- WF4 Wiki / metadata -->
+        <mxCell id="p2_n_wf4_composer" value="Wiki page for composers&#10;[CU:86a72qx7j]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="880" y="160" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf4_works" value="Wiki page for works&#10;[CU:86a72qxam]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="880" y="220" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf4_corpus" value="Page for analytical-corpus info&#10;[CU:86a72qx8k]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="880" y="280" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf4_pdfmarker" value="time property on PdfMarker data&#10;[CU:86a72qxc2]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="880" y="340" width="240" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- WF5 Help pages cluster -->
+        <mxCell id="p2_n_wf5_cluster" value="WF5. Help pages (cluster)&#10;~7 items in ClickUp:&#10;PDF help, score help, audio-wave help,&#10;delete-toolbar gif update, help-page search" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="160" width="240" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- WF6 UI / styling polish cluster -->
+        <mxCell id="p2_n_wf6_cluster" value="WF6. UI / styling polish (cluster)&#10;~14 items in ClickUp:&#10;form appearance, file-viewer responsive,&#10;navbar limits, footer toolbars, TL-name wrapping,&#10;dark mode, fit-to-screen zoom, mouse-position zoom,&#10;preserve visible TLs on zoom, …" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="160" width="240" height="180" as="geometry" />
+        </mxCell>
+
+        <!-- WF7 Frontend engineering -->
+        <mxCell id="p2_n_wf7_reducer" value="Reducer for tilia-viewer state&#10;[CU:86a72qx60]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1720" y="160" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf7_css" value="CSS file naming convention&#10;[CU:86a72qx8u]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1720" y="220" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wf7_media" value="Group media state into single object (HIGH)&#10;[CU:86a72qxav]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1720" y="280" width="240" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- ============ Section header: Backend ============ -->
+        <mxCell id="p2_h_backend" value="BACKEND" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#444444;" vertex="1" parent="1">
+          <mxGeometry x="40" y="900" width="200" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p2_h_wb1" value="WB1 — Upload handling" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="940" width="240" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_h_wb2" value="WB2 — Querying backend" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="320" y="940" width="240" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_h_wb3" value="WB3 — Analytical corpus DB" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="940" width="240" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_h_wb4" value="WB4 — Email service" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="880" y="940" width="240" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- WB1 -->
+        <mxCell id="p2_n_wb1_size" value="File-size limit on upload&#10;[CU:86a72qxwd]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="980" width="240" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_n_wb1_missing" value="Handle missing file params (e.g. title)&#10;[CU:86a72qxwk]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1040" width="240" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- WB2 -->
+        <mxCell id="p2_n_wb2_pdfquery" value="Querying for PDF timeline (backend)&#10;[CU:86a72qxx2]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="320" y="980" width="240" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- WB3 -->
+        <mxCell id="p2_n_wb3_corpus" value="DB model for analytical corpus&#10;[CU:86a72qxwz]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="600" y="980" width="240" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- WB4 -->
+        <mxCell id="p2_n_wb4_email" value="Change SendGrid email to tilia@tilia-app.com&#10;[CU:86a72qxwr]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="880" y="980" width="240" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- ============ Cross-stack edges (front/back) ============ -->
+
+        <mxCell id="p2_e_pdf_query_stack" value="needs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=2;endArrow=classic;fontSize=10;" edge="1" parent="1" source="p2_n_wf1_pdf_query" target="p2_n_wb2_pdfquery">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_e_corpus_stack" value="needs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=2;endArrow=classic;fontSize=10;" edge="1" parent="1" source="p2_n_wf4_corpus" target="p2_n_wb3_corpus">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ============ LEGEND ============ -->
+
+        <mxCell id="p2_legend_title" value="Legend" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1140" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_legend_proposed" value="Proposed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1180" width="160" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_legend_cluster" value="Cluster summary&#10;(many small items)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="220" y="1180" width="160" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_legend_arrow" value="solid arrow = front needs back" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1180" width="320" height="36" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
