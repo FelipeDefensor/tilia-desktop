@@ -205,6 +205,68 @@ class TestSeekClampsToMediaBounds:
         assert tilia_state.player.current_time == 6
 
 
+class TestRepeatLastSeek:
+    """Ctrl+. replays the most recent successful Ctrl+K seek.
+
+    Relative seeks are re-resolved from the current position, so
+    repeating advances cumulatively; absolute seeks land on the same
+    spot every time.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _reset_last_seek(self, tluis):
+        # qtui (and so the TimelineUIs instance) is module-scoped, so
+        # last_seek leaks between tests. Reset it to a clean precondition.
+        tluis.last_seek = None
+
+    def test_no_op_without_prior_seek(self, tluis, tilia_state):
+        commands.execute("media.seek", 10)
+        tluis.on_repeat_last_seek()
+        assert tilia_state.player.current_time == 10
+
+    def test_repeats_relative_seconds_cumulatively(self, tluis, tilia_state):
+        commands.execute("media.seek", 0)
+        _trigger_seek(tluis, "+5s")
+        assert tilia_state.player.current_time == 5
+        tluis.on_repeat_last_seek()
+        assert tilia_state.player.current_time == 10
+        tluis.on_repeat_last_seek()
+        assert tilia_state.player.current_time == 15
+
+    def test_repeats_relative_measure(self, tluis, beats_in_two_measures, tilia_state):
+        commands.execute("media.seek", 0)  # measure 1
+        _trigger_seek(tluis, "+1m")
+        assert tilia_state.player.current_time == 4  # measure 2
+        # Repeating from measure 2 clamps to the last measure (still t=4).
+        tluis.on_repeat_last_seek()
+        assert tilia_state.player.current_time == 4
+
+    def test_repeats_absolute_seek_to_same_spot(self, tluis, tilia_state):
+        commands.execute("media.seek", 0)
+        _trigger_seek(tluis, "30s")
+        assert tilia_state.player.current_time == 30
+        commands.execute("media.seek", 5)  # move away
+        tluis.on_repeat_last_seek()
+        assert tilia_state.player.current_time == 30
+
+    def test_failed_seek_is_not_stored(self, tluis, tilia_state, tilia_errors):
+        # A measure seek with no beat timeline fails; nothing should be
+        # stored, so a later repeat stays a no-op.
+        commands.execute("media.seek", 7)
+        _trigger_seek(tluis, "5m")
+        tilia_errors.assert_error()
+        tluis.on_repeat_last_seek()
+        assert tilia_state.player.current_time == 7
+
+    def test_repeat_after_two_different_seeks_uses_latest(self, tluis, tilia_state):
+        commands.execute("media.seek", 0)
+        _trigger_seek(tluis, "+5s")
+        _trigger_seek(tluis, "+10s")  # now last_seek is +10s
+        assert tilia_state.player.current_time == 15
+        tluis.on_repeat_last_seek()
+        assert tilia_state.player.current_time == 25
+
+
 class TestSeekErrors:
     def test_no_beat_timeline_for_measure_seek(self, tluis, tilia_state, tilia_errors):
         _trigger_seek(tluis, "1")

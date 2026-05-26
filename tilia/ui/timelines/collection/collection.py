@@ -170,8 +170,14 @@ class TimelineUIs:
         self.loop_delete_ignore = set()
         setup_smooth(self)
 
+        # Last successful Ctrl+K seek request, replayable via Ctrl+. .
+        self.last_seek: tuple[bool, str, float] | None = None
+
         self.seek_to_measure_action = QShortcut("Ctrl+K", self.main_window)
         self.seek_to_measure_action.activated.connect(self.on_seek_to_measure)
+
+        self.repeat_seek_action = QShortcut("Ctrl+.", self.main_window)
+        self.repeat_seek_action.activated.connect(self.on_repeat_last_seek)
 
         # "P" is a single-letter shortcut bound at the main window. Qt's
         # default WindowShortcut context yields to focused text-input
@@ -204,12 +210,33 @@ class TimelineUIs:
             tilia.errors.display(tilia.errors.SEEK_INVALID_INPUT, seek_str)
             return
 
+        self._perform_seek(parsed)
+
+    def _perform_seek(self, parsed: tuple[bool, str, float]) -> None:
+        """Resolve a parsed seek request and move the playhead.
+
+        Stores the request as ``last_seek`` on success so it can be
+        replayed via ``on_repeat_last_seek`` (Ctrl+.). Relative requests
+        are re-resolved from the *current* position on each call, so
+        repeating e.g. ``+1m`` keeps advancing measure by measure.
+        """
         is_relative, unit, value = parsed
         seek_time = self._resolve_seek_target(is_relative, unit, value)
         if seek_time is None:
             return
 
+        self.last_seek = parsed
         commands.execute("media.seek", _clamp_to_media(seek_time))
+
+    def on_repeat_last_seek(self) -> None:
+        """Replay the most recent successful Ctrl+K seek (bound to Ctrl+.).
+
+        No-op until a seek has succeeded this session.
+        """
+        if self.last_seek is None:
+            return
+
+        self._perform_seek(self.last_seek)
 
     def _resolve_seek_target(
         self, is_relative: bool, unit: str, value: float
