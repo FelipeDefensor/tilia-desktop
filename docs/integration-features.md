@@ -1,6 +1,6 @@
 # Integration-branch feature catalog
 
-*Internal reference — last updated 2026-05-22.*
+*Internal reference — last updated 2026-06-16.*
 
 This catalogs the features that live **only on the `integration` branch** — i.e. the diff
 against **`dev`** (the upstream PR target; local `dev` tracks `upstream/dev`). For each feature
@@ -34,6 +34,7 @@ user-visible features and the fixes tied to them are listed.
 | Repeat last Ctrl+K seek | **`Ctrl+.`** | ✓ | — |
 | Seek to selected element | **`P`** | ✓ | — |
 | Snap to downbeat / Snap to measure | element context menu | ✓ | — |
+| Fill hierarchy gaps with empty units | hierarchy tl context menu (empty area) | ✓ | — |
 | Set beats-in-measure across selection | Inspector (beat tl) | ✓ | fork #17 (open) |
 | Hover guideline across timelines | View ▸ **Show hover guideline** | ✓ | — |
 | Hover time / measure in status bar | hover (automatic) | ✓ | — |
@@ -169,6 +170,19 @@ user-visible features and the fixes tied to them are listed.
 - **Tests:** `tests/ui/windows/test_inspect_length_in_measures.py`.
 - **Origin:** `f927b9a8`.
 - **PR:** none — staged on `feat/inspect-length-in-measures`.
+
+### Fill hierarchy gaps with empty units
+- **What:** Fills the "blank" spaces of a hierarchy timeline — the stretches between 0 and the
+  media duration not covered by a level-1 unit — with new empty level-1 units. Higher-level
+  units are ignored when computing coverage; degenerate (zero-length) gaps are skipped.
+- **Trigger:** hierarchy timeline **context menu** (right-click empty area) ▸ "Fill gaps with empty units".
+- **Code:** `tilia/timelines/hierarchy/timeline.py` (`HierarchyTLComponentManager.fill_gaps`,
+  `HierarchyTimeline.fill_gaps`); `tilia/ui/timelines/hierarchy/timeline.py` (`on_fill_gaps`,
+  command `timeline.hierarchy.fill_gaps`); `tilia/ui/timelines/hierarchy/context_menu.py`
+  (`HierarchyTimelineUIContextMenu`).
+- **Tests:** `tests/timelines/hierarchy/test_hierarchy_timeline.py` (`test_fill_gaps_*`).
+- **Origin:** `644c1f84`.
+- **PR:** none.
 
 ### Fix — inspector dock resize regression
 - **What:** Clicking through components with longer labels no longer grows the inspector dock
