@@ -55,6 +55,43 @@ class TestHierarchyTimelineComponentManager:
 
         assert child.parent in parent.children
 
+    # TEST FILL GAPS
+    @staticmethod
+    def _level_1_extents(hierarchy_tl):
+        return [
+            (h.start, h.end)
+            for h in sorted(
+                (h for h in hierarchy_tl if h.level == 1), key=lambda h: h.start
+            )
+        ]
+
+    def test_fill_gaps_fills_leading_middle_and_trailing_blanks(self, hierarchy_tl):
+        hierarchy_tl.create_hierarchy(start=10, end=20, level=1)
+        hierarchy_tl.create_hierarchy(start=30, end=40, level=1)
+
+        assert hierarchy_tl.fill_gaps() is True
+        assert self._level_1_extents(hierarchy_tl) == [
+            (0, 10),
+            (10, 20),
+            (20, 30),
+            (30, 40),
+            (40, 100),
+        ]
+
+    def test_fill_gaps_returns_false_when_fully_covered(self, hierarchy_tl):
+        hierarchy_tl.create_hierarchy(start=0, end=100, level=1)
+
+        assert hierarchy_tl.fill_gaps() is False
+        assert len(hierarchy_tl) == 1
+
+    def test_fill_gaps_ignores_higher_levels(self, hierarchy_tl):
+        hierarchy_tl.create_hierarchy(start=0, end=100, level=2)
+        hierarchy_tl.create_hierarchy(start=0, end=40, level=1)
+
+        hierarchy_tl.fill_gaps()
+
+        assert self._level_1_extents(hierarchy_tl) == [(0, 40), (40, 100)]
+
     # TEST CLEAR
     def test_clear(self, hierarchy_tl):
         hierarchy_tl.create_hierarchy(start=0.0, end=0.1, level=1)

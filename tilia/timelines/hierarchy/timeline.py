@@ -428,6 +428,31 @@ class HierarchyTLComponentManager(TimelineComponentManager):
 
         return True, ""
 
+    def fill_gaps(self) -> bool:
+        """Create empty level-1 units spanning the 'blank' spaces, i.e. the time
+        between 0 and the media duration that is not covered by a level-1 unit."""
+        media_duration = get(Get.MEDIA_DURATION)
+        level_1_units = sorted((h for h in self if h.level == 1), key=lambda h: h.start)
+
+        gaps: list[tuple[float, float]] = []
+        cursor = 0.0
+        for unit in level_1_units:
+            if unit.start > cursor:
+                gaps.append((cursor, unit.start))
+            cursor = max(cursor, unit.end)
+        if cursor < media_duration:
+            gaps.append((cursor, media_duration))
+
+        created_any = False
+        for start, end in gaps:
+            unit, _ = self.timeline.create_component(
+                kind=ComponentKind.HIERARCHY, start=start, end=end, level=1
+            )
+            if unit:
+                created_any = True
+
+        return created_any
+
     def delete_component(self, component: Hierarchy, **kwargs) -> None:
         super().delete_component(component, **kwargs)
 
@@ -545,6 +570,9 @@ class HierarchyTimeline(Timeline):
         if not success:
             tilia.errors.display(tilia.errors.HIERARCHY_MERGE_FAILED, reason)
         return success
+
+    def fill_gaps(self) -> bool:
+        return self.component_manager.fill_gaps()
 
     def get_boundary_conflicts(self):
         return self.component_manager.get_boundary_conflicts()

@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from tilia.requests import Get, get
 from tilia.ui.menus import MenuItemKind
-from tilia.ui.timelines.base.context_menus import TimelineUIElementContextMenu
+from tilia.ui.timelines.base.context_menus import (
+    TimelineUIContextMenu,
+    TimelineUIElementContextMenu,
+)
 
 DEFAULT_ITEMS = [
     (MenuItemKind.COMMAND, "timeline.element.inspect"),
@@ -46,3 +49,13 @@ class HierarchyContextMenu(TimelineUIElementContextMenu):
             )
 
         super().__init__(element)
+
+
+class HierarchyTimelineUIContextMenu(TimelineUIContextMenu):
+    title = "Hierarchy timeline"
+    items = [
+        (MenuItemKind.COMMAND, "timeline.set_name"),
+        (MenuItemKind.COMMAND, "timeline.set_height"),
+        (MenuItemKind.SEPARATOR, None),
+        (MenuItemKind.COMMAND, "timeline.hierarchy.fill_gaps"),
+    ]

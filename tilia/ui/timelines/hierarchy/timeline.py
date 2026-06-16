@@ -10,9 +10,14 @@ from tilia.ui.timelines.base.timeline import (
     TimelineUI,
     with_elements,
 )
-from tilia.ui.timelines.collection.collection import TimelineSelector, TimelineUIs
+from tilia.ui.timelines.collection.collection import (
+    TimelineSelector,
+    TimelineUIs,
+    command_callback,
+)
 from tilia.ui.timelines.copy_paste import get_copy_data_from_element, paste_into_element
 from tilia.ui.timelines.hierarchy import HierarchyTimelineToolbar, HierarchyUI
+from tilia.ui.timelines.hierarchy.context_menu import HierarchyTimelineUIContextMenu
 from tilia.ui.timelines.hierarchy.copy_paste import (
     _display_copy_error,
     _display_paste_complete_error,
@@ -29,6 +34,7 @@ from tilia.ui.timelines.hierarchy.key_press_manager import (
 class HierarchyTimelineUI(TimelineUI):
     TOOLBAR_CLASS = HierarchyTimelineToolbar
     ELEMENT_CLASS = HierarchyUI
+    CONTEXT_MENU_CLASS = HierarchyTimelineUIContextMenu
     ACCEPTS_HORIZONTAL_ARROWS = True
     ACCEPTS_VERTICAL_ARROWS = True
     MIN_MARGIN = 10
@@ -45,6 +51,12 @@ class HierarchyTimelineUI(TimelineUI):
 
     @classmethod
     def register_commands(cls, collection: TimelineUIs):
+        commands.register(
+            "timeline.hierarchy.fill_gaps",
+            cls.on_fill_gaps,
+            "Fill gaps with empty units",
+        )
+
         args = [
             ("add_post_end", "Add post-end", "", ""),
             ("add_pre_start", "Add pre-start", "", ""),
@@ -341,6 +353,10 @@ class HierarchyTimelineUI(TimelineUI):
     @with_elements
     def on_merge(self, elements: list[HierarchyUI]):
         return self.timeline.merge(self.elements_to_components(elements))
+
+    @command_callback
+    def on_fill_gaps(self):
+        return self.timeline.fill_gaps()
 
     @with_elements
     def on_create_child(self, elements: list[HierarchyUI]):
