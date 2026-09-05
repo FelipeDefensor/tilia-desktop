@@ -123,6 +123,53 @@ class TestFileManager:
         params["media_path"] = "modified path"
         assert tilia.file_manager.is_file_modified(params)
 
+    def test_is_file_modified_after_notes_edit(self, tilia):
+        # Regression test for #377: editing the "notes" metadata field
+        # (and any other field, including added custom fields) directly
+        # mutates self.file.media_metadata, so comparing the live state
+        # against itself never reported a change. The save-changes
+        # dialog never fired on close.
+        post(Post.MEDIA_METADATA_FIELD_SET, "notes", "user-typed notes")
+
+        assert tilia.file_manager.is_file_modified(get(Get.APP_STATE))
+
+    def test_is_file_modified_after_title_edit(self, tilia):
+        # Same root cause as the notes case (#377), so guard the title
+        # path explicitly. The reporter mentioned existing automatic
+        # tests cover other fields, but only the test at line ~111
+        # actually catches it — it passes a custom params dict and so
+        # bypasses the live-vs-live comparison this test exercises.
+        post(Post.MEDIA_METADATA_FIELD_SET, "title", "Renamed")
+
+        assert tilia.file_manager.is_file_modified(get(Get.APP_STATE))
+
+    def test_file_open_duration_confirmation_does_not_mark_modified(
+        self, tilia, tmp_path
+    ):
+        # Opening a .tla occasionally sets media duration twice, due to the asynchronous nature of the YouTube player.
+        # Confirmation reports with "keep" should not trigger a modification flag.
+        tilia.set_file_media_duration(100, scale_timelines="keep")
+        tmp_file_path = (tmp_path / "test_save.tla").resolve().__str__()
+        tilia.file_manager.on_save_to_path_request(tmp_file_path)
+        assert not tilia.file_manager.is_file_modified(get(Get.APP_STATE))
+
+        tilia.set_file_media_duration(100.94, scale_timelines="keep")
+        assert not tilia.file_manager.is_file_modified(get(Get.APP_STATE))
+
+    def test_duration_change_after_save_marks_file_modified(self, tilia, tmp_path):
+        tilia.set_file_media_duration(120, scale_timelines="prompt")
+        tmp_file_path = (tmp_path / "test_save.tla").resolve().__str__()
+        tilia.file_manager.on_save_to_path_request(tmp_file_path)
+        tilia.set_file_media_duration(10, scale_timelines="prompt")
+        assert tilia.file_manager.is_file_modified(get(Get.APP_STATE))
+
+    def test_media_load_marks_file_modified(self, tilia):
+        # Loading a different media file is a user action and must be
+        # detected as a modification so the "save changes?" prompt fires.
+        if not post(Post.APP_MEDIA_LOAD, EXAMPLE_MEDIA_PATH):
+            pytest.skip("media failed to load")
+        assert tilia.file_manager.is_file_modified(get(Get.APP_STATE))
+
     def test_import_metadata(self, tilia):
         data = {
             "title": "test",

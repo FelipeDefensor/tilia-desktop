@@ -12,15 +12,18 @@ if (toml := Path(__file__).parent.parent / "pyproject.toml").exists():
 
     with open(toml, "rb") as f:
         setupcfg = load(f).get("project", {})
-    AUTHOR = setupcfg.get("authors", [{"name": ""}])[0]["name"]
-    EMAIL = setupcfg.get("authors", [{"email": ""}])[0]["email"]
+    AUTHORS = [a.get("name", "") for a in setupcfg.get("authors", [{"name": ""}])]
+    AUTHOR = ", ".join(a for a in AUTHORS if a)
+    EMAILS = (
+        e for a in setupcfg.get("authors", [{"email": ""}]) if (e := a.get("email", ""))
+    )
+    EMAIL = next(EMAILS, "")
 
 else:
     try:
         setupcfg = metadata.metadata("TiLiA").json.copy()
-
-        AUTHOR = re.search(r'"(.*?)"', setupcfg.get("author_email", "")).group(1)
-        EMAIL = re.search(r"<(.*?)>", setupcfg.get("author_email", "")).group(1)
+        AUTHOR = setupcfg.get("author", "")
+        EMAIL = setupcfg.get("author_email", "")
         if "urls" not in setupcfg:
             setupcfg["urls"] = {}
         for url in setupcfg.get("project_url", {}):
@@ -42,9 +45,10 @@ EMAIL_URL = "mailto:" + EMAIL
 GITHUB_URL = setupcfg.get("urls", {}).get("Repository", "")
 WEBSITE_URL = setupcfg.get("urls", {}).get("Homepage", "")
 YOUTUBE_URL_REGEX = r"^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube(-nocookie)?\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$"
+COPYRIGHT = f"{APP_NAME} GNU General Public License v3 — {YEAR} {AUTHOR}"
 NOTICE = f"""
-{APP_NAME}, {setupcfg.get("description", "") if AUTHOR else ""}
-Copyright © {YEAR} {AUTHOR}
+{COPYRIGHT}
+{setupcfg.get("description", "") if AUTHOR else ""}
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or any later version.
 

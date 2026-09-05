@@ -72,7 +72,7 @@ class PlayerToolbar(QToolBar):
         self.update_time_string()
         self.on_ui_update_silent(PlayerToolbarElement.TOGGLE_PLAY_PAUSE, False)
 
-    def on_media_duration_changed(self, duration: float):
+    def on_media_duration_changed(self, duration: float, is_confirmation: bool = False):
         self.duration_string = format_media_time(duration)
         self.update_time_string()
 
@@ -145,7 +145,7 @@ class PlayerToolbar(QToolBar):
         self.play_toggle_action = QAction(self)
         self.play_toggle_action.setText("Play / Pause")
         self.play_toggle_action.triggered.connect(
-            lambda checked: post(Post.PLAYER_TOGGLE_PLAY_PAUSE, checked)
+            lambda checked: commands.execute("media.toggle_play", checked)
         )
         self.play_toggle_action.setCheckable(True)
         play_icon = QIcon()
@@ -205,7 +205,7 @@ class PlayerToolbar(QToolBar):
                     else QIcon.ThemeIcon.AudioVolumeHigh
                 )
             )
-            post(Post.PLAYER_VOLUME_MUTE, checked)
+            commands.execute("media.volume.mute", checked)
             self.volume_slider.setEnabled(not checked)
 
         self.volume_toggle_action = QAction(self)
@@ -222,7 +222,7 @@ class PlayerToolbar(QToolBar):
 
     def add_volume_slider(self):
         def on_volume_slide(value: int) -> None:
-            post(Post.PLAYER_VOLUME_CHANGE, value)
+            commands.execute("media.volume.change", value)
 
         self.volume_slider = QSlider(Qt.Orientation.Horizontal)
         self.volume_slider.setMinimum(0)
@@ -237,13 +237,15 @@ class PlayerToolbar(QToolBar):
     def _update_stylesheet(self):
         self.volume_slider.setStyleSheet(
             "QSlider {margin-right: 4px;}"
-            "QSlider::groove:horizontal { height: 4px; background: palette(text);}"
-            "QSlider::handle::horizontal { background: palette(text); border: 2px solid palette(text); width: 8px; margin: -4px 0; border-radius: 6px;}"
+            "QSlider::groove::horizontal { height: 4px;}"
+            "QSlider::groove::horizontal:enabled { background: palette(text); }"
+            "QSlider::handle::horizontal { width: 8px; margin: -4px 0; border-radius: 6px;}"
+            "QSlider::handle::horizontal:enabled { background: palette(text); border: 2px solid palette(text); }"
         )
 
     def add_playback_rate_spinbox(self):
         def on_playback_rate_changed(rate: float) -> None:
-            post(Post.PLAYER_PLAYBACK_RATE_TRY, rate)
+            commands.execute("media.playback_rate.try", rate)
 
             if get(Get.MEDIA_TYPE) == "youtube":
                 self.playback_rate_spinbox_update_silent()

@@ -16,6 +16,3 @@ tilia/dev
 
 # uv can be useful to create worktrees
 uv.lock
-
-# AI
-CLAUDE.md

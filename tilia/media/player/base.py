@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import functools
 from abc import ABC, abstractmethod
 from enum import Enum, auto
 from pathlib import Path
@@ -20,6 +19,7 @@ from tilia.requests import (
     stop_serving_all,
 )
 from tilia.ui import commands
+from tilia.ui.player import PlayerStatus
 from tilia.utils import get_tilia_class_string
 
 
@@ -59,19 +59,15 @@ class Player(ABC):
         commands.register(
             "media.stop", self.stop, text="Stop", icon="MediaPlaybackStop"
         )
+        commands.register("media.toggle_play", self.toggle_play)
+        commands.register("media.seek", self.on_seek)
+        commands.register("media.volume.change", self.on_volume_change)
+        commands.register("media.volume.mute", self.on_volume_mute)
+        commands.register("media.playback_rate.try", self.on_playback_rate_try)
+        commands.register("media.export_audio", self.on_export_audio)
 
     def _setup_requests(self):
         LISTENS = {
-            (Post.PLAYER_TOGGLE_PLAY_PAUSE, self.toggle_play),
-            (Post.PLAYER_VOLUME_CHANGE, self.on_volume_change),
-            (Post.PLAYER_VOLUME_MUTE, self.on_volume_mute),
-            (Post.PLAYER_PLAYBACK_RATE_TRY, self.on_playback_rate_try),
-            (Post.PLAYER_SEEK, self.on_seek),
-            (
-                Post.PLAYER_SEEK_IF_NOT_PLAYING,
-                functools.partial(self.on_seek, if_paused=True),
-            ),
-            (Post.PLAYER_EXPORT_AUDIO, self.on_export_audio),
             (Post.PLAYER_CURRENT_LOOP_CHANGED, self.on_loop_changed),
         }
 
@@ -141,6 +137,7 @@ class Player(ABC):
         self.is_playing = False
         self.is_looping = False
         post(Post.PLAYER_CANCEL_LOOP)
+        post(Post.PLAYER_UPDATE_CONTROLS, PlayerStatus.NO_MEDIA)
 
     def toggle_play(self, toggle_is_playing: bool):
         if toggle_is_playing:
@@ -198,8 +195,8 @@ class Player(ABC):
     def on_playback_rate_try(self, playback_rate: float) -> None:
         self._engine_try_playback_rate(playback_rate)
 
-    def on_seek(self, time: float, if_paused: bool = False) -> None:
-        if if_paused and self.is_playing:
+    def on_seek(self, time: float, seek_if_playing: bool = True) -> None:
+        if not seek_if_playing and self.is_playing:
             return
 
         if self.is_media_loaded:
@@ -275,8 +272,6 @@ class Player(ABC):
         self.unload_media()
 
     def destroy(self):
-        self.stop()
-        self.unload_media()
         stop_listening_to_all(self)
         stop_serving_all(self)
         self._engine_exit()

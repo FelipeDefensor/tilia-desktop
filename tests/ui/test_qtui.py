@@ -1,17 +1,19 @@
 from types import SimpleNamespace
-from unittest.mock import mock_open, patch
+from unittest.mock import Mock, mock_open, patch
 
 import pytest
-from PySide6.QtCore import QtMsgType
+from PySide6.QtCore import QEvent, QtMsgType, QUrl
 
 from tests.conftest import parametrize_tlui
 from tests.constants import EXAMPLE_MEDIA_PATH
-from tests.mock import Serve
-from tests.utils import get_actions_in_menu, get_main_window_menu
+from tests.mock import PatchPost, Serve
+from tests.utils import get_actions_in_menu, get_main_window_menu, get_submenu
+from tilia.boot import handle_qt_log_message
 from tilia.requests import Get, Post, post
-from tilia.timelines.timeline_kinds import TimelineKind
+from tilia.timelines.hierarchy.timeline import HierarchyTimeline
+from tilia.timelines.marker.timeline import MarkerTimeline
 from tilia.ui.commands import get_qaction
-from tilia.ui.qtui import TiliaMainWindow
+from tilia.ui.qtui import FileDropEventFilter
 from tilia.ui.timelines.marker import MarkerTimelineUI
 from tilia.ui.windows import WindowKind
 
@@ -36,7 +38,7 @@ class TestImport:
                     with Serve(
                         Get.FROM_USER_YES_OR_NO, True
                     ):  # confirm overwriting components
-                        post(Post.IMPORT_CSV, TimelineKind.MARKER_TIMELINE)
+                        post(Post.IMPORT_CSV, MarkerTimeline)
 
         assert marker_tl.get_state() == prev_state
 
@@ -56,7 +58,7 @@ class TestImport:
                 ),  # we use a media file as garbage
             ),
         ):
-            post(Post.IMPORT_CSV, TimelineKind.MARKER_TIMELINE)
+            post(Post.IMPORT_CSV, MarkerTimeline)
 
         tilia_errors.assert_error()
         tilia_errors.assert_in_error_title("Import")
@@ -65,6 +67,10 @@ class TestImport:
     def test_raises_error_if_invalid_musicXML(
         self, qtui, score_tlui, beat_tlui, tilia_errors, resources
     ):
+        beat_tlui.timeline.beat_pattern = [2]
+        for b in range(4):
+            beat_tlui.create_beat(b)
+
         with Serve(
             Get.FROM_USER_FILE_PATH,
             (
@@ -128,17 +134,17 @@ class TestTimelineToolbars:
         assert not is_toolbar_visible(qtui, tlui.TOOLBAR_CLASS)
 
     def test_is_not_duplicated_when_multiple_timelines_are_present(self, qtui, tls):
-        tls.create_timeline(TimelineKind.MARKER_TIMELINE)
-        tls.create_timeline(TimelineKind.MARKER_TIMELINE)
-        tls.create_timeline(TimelineKind.MARKER_TIMELINE)
+        tls.create_timeline(MarkerTimeline)
+        tls.create_timeline(MarkerTimeline)
+        tls.create_timeline(MarkerTimeline)
 
         assert len(get_toolbars_of_class(qtui, MarkerTimelineUI.TOOLBAR_CLASS)) == 1
 
     def test_is_not_hidden_when_second_instance_of_timeline_is_deleted(
         self, qtui, marker_tlui, tls
     ):
-        tls.create_timeline(TimelineKind.MARKER_TIMELINE)
-        tls.create_timeline(TimelineKind.MARKER_TIMELINE)
+        tls.create_timeline(MarkerTimeline)
+        tls.create_timeline(MarkerTimeline)
         tls.delete_timeline(tls[1])
 
         assert is_toolbar_visible(qtui, marker_tlui.TOOLBAR_CLASS)
@@ -149,8 +155,8 @@ class TestTimelineToolbars:
         assert not is_toolbar_visible(qtui, MarkerTimelineUI.TOOLBAR_CLASS)
 
     def test_is_not_hidden_when_second_instance_of_timeline_is_hidden(self, qtui, tls):
-        tls.create_timeline(TimelineKind.MARKER_TIMELINE)
-        tls.create_timeline(TimelineKind.MARKER_TIMELINE)
+        tls.create_timeline(MarkerTimeline)
+        tls.create_timeline(MarkerTimeline)
         tls.set_timeline_data(tls[1].id, "is_visible", False)
 
         assert is_toolbar_visible(qtui, MarkerTimelineUI.TOOLBAR_CLASS)
@@ -160,6 +166,85 @@ class TestTimelineToolbars:
         tls.set_timeline_data(marker_tl.id, "is_visible", True)
 
         assert is_toolbar_visible(qtui, MarkerTimelineUI.TOOLBAR_CLASS)
+
+
+class TestDragAndDrop:
+    @staticmethod
+    def _local_url(path: str) -> QUrl:
+        return QUrl.fromLocalFile(path)
+
+    @staticmethod
+    def _drop_event(urls: list[QUrl]) -> Mock:
+        event = Mock()
+        event.mimeData.return_value.urls.return_value = urls
+        return event
+
+    def test_tla_file_is_droppable(self):
+        assert FileDropEventFilter._is_file_droppable([self._local_url("/x/file.tla")])
+
+    def test_media_file_is_droppable(self):
+        assert FileDropEventFilter._is_file_droppable([self._local_url("/x/audio.mp3")])
+
+    def test_uppercase_extension_is_droppable(self):
+        assert FileDropEventFilter._is_file_droppable([self._local_url("/x/file.TLA")])
+        assert FileDropEventFilter._is_file_droppable([self._local_url("/x/audio.MP3")])
+
+    def test_unsupported_extension_is_not_droppable(self):
+        assert not FileDropEventFilter._is_file_droppable(
+            [self._local_url("/x/file.xyz")]
+        )
+
+    def test_multiple_files_are_not_droppable(self):
+        urls = [self._local_url("/a.tla"), self._local_url("/b.tla")]
+        assert not FileDropEventFilter._is_file_droppable(urls)
+
+    def test_remote_url_is_not_droppable(self):
+        assert not FileDropEventFilter._is_file_droppable(
+            [QUrl("http://example.com/file.tla")]
+        )
+
+    @staticmethod
+    def _filter_event(urls: list[QUrl], event_type: QEvent.Type) -> Mock:
+        event = Mock()
+        event.type.return_value = event_type
+        event.mimeData.return_value.urls.return_value = urls
+        return event
+
+    def test_filter_dispatches_tla_drop(self, qtui):
+        url = self._local_url("/x/y.tla")
+        event = self._filter_event([url], QEvent.Type.Drop)
+        with patch("tilia.ui.qtui.commands.execute") as mock_execute:
+            consumed = qtui.main_window._drop_filter.eventFilter(Mock(), event)
+        assert consumed
+        event.acceptProposedAction.assert_called_once()
+        mock_execute.assert_called_once_with("file.open", url.toLocalFile())
+
+    def test_filter_dispatches_media_drop(self, qtui):
+        url = self._local_url("/x/y.mp3")
+        event = self._filter_event([url], QEvent.Type.Drop)
+        with PatchPost("tilia.ui.qtui", Post.APP_MEDIA_LOAD) as mock_post:
+            consumed = qtui.main_window._drop_filter.eventFilter(Mock(), event)
+        assert consumed
+        event.acceptProposedAction.assert_called_once()
+        mock_post.assert_called_once_with(Post.APP_MEDIA_LOAD, url.toLocalFile())
+
+    def test_filter_accepts_drag_enter_for_droppable(self, qtui):
+        event = self._filter_event([self._local_url("/x/y.tla")], QEvent.Type.DragEnter)
+        consumed = qtui.main_window._drop_filter.eventFilter(Mock(), event)
+        assert consumed
+        event.acceptProposedAction.assert_called_once()
+
+    def test_filter_ignores_non_droppable_drop(self, qtui):
+        event = self._filter_event([self._local_url("/x/y.xyz")], QEvent.Type.Drop)
+        consumed = qtui.main_window._drop_filter.eventFilter(Mock(), event)
+        assert not consumed
+
+    def test_filter_ignores_unrelated_event_types(self, qtui):
+        event = Mock()
+        event.type.return_value = QEvent.Type.MouseMove
+        consumed = qtui.main_window._drop_filter.eventFilter(Mock(), event)
+        assert not consumed
+        event.mimeData.assert_not_called()
 
 
 class TestMenus:
@@ -178,19 +263,52 @@ class TestMenus:
         assert set(actions) == set(expected)
 
 
+class TestDynamicTimelinesSubmenus:
+    """Per-kind submenus under Timelines should be visible iff at least one
+    timeline of that kind currently exists."""
+
+    @staticmethod
+    def _submenu(qtui, name):
+        return get_submenu(get_main_window_menu(qtui, "Timelines"), name)
+
+    def test_marker_submenu_hidden_when_no_marker_timeline(self, qtui):
+        assert not self._submenu(qtui, "Marker").menuAction().isVisible()
+
+    def test_range_submenu_hidden_when_no_range_timeline(self, qtui):
+        # Regression: previously stayed visible because RangeTimelineUI had
+        # no menu_class, so the dynamic-menu plumbing skipped it.
+        assert not self._submenu(qtui, "Range").menuAction().isVisible()
+
+    def test_marker_submenu_visible_when_marker_timeline_exists(
+        self, qtui, marker_tlui
+    ):
+        assert self._submenu(qtui, "Marker").menuAction().isVisible()
+
+    def test_range_submenu_visible_when_range_timeline_exists(self, qtui, range_tlui):
+        assert self._submenu(qtui, "Range").menuAction().isVisible()
+
+    def test_marker_submenu_stays_visible_after_other_kind_created(
+        self, qtui, marker_tlui, tls
+    ):
+        # Regression: comparing UI class against backend-class list always
+        # returned False, hiding every dynamic submenu on each TYPE_INSTANCED.
+        marker_submenu = self._submenu(qtui, "Marker")
+        assert marker_submenu.menuAction().isVisible()
+        tls.create_timeline(HierarchyTimeline)
+        assert marker_submenu.menuAction().isVisible()
+
+
 class TestHandleQtLogMessage:
     def _ctx(self, file="widget.cpp", line=42):
         return SimpleNamespace(file=file, line=line)
 
     def test_fatal_message_raises_exception(self):
         with pytest.raises(Exception, match=r"\[QtFatalMsg\] widget\.cpp:42 - boom"):
-            TiliaMainWindow.handle_qt_log_message(
-                QtMsgType.QtFatalMsg, self._ctx(), "boom"
-            )
+            handle_qt_log_message(QtMsgType.QtFatalMsg, self._ctx(), "boom")
 
     def test_fatal_exception_message_includes_file_and_line(self):
         with pytest.raises(Exception) as exc_info:
-            TiliaMainWindow.handle_qt_log_message(
+            handle_qt_log_message(
                 QtMsgType.QtFatalMsg, self._ctx(file="core.cpp", line=99), "fatal"
             )
         assert "core.cpp:99" in str(exc_info.value)
@@ -206,20 +324,58 @@ class TestHandleQtLogMessage:
     )
     def test_non_fatal_message_calls_logger_error(self, msg_type):
         ctx = self._ctx(file="view.cpp", line=7)
-        with patch("tilia.ui.qtui.logger") as mock_logger:
-            TiliaMainWindow.handle_qt_log_message(msg_type, ctx, "something happened")
+        with patch("tilia.boot.logger") as mock_logger:
+            handle_qt_log_message(msg_type, ctx, "something happened")
         mock_logger.error.assert_called_once_with(
             f"[{msg_type.name}] view.cpp:7 - something happened"
         )
 
     def test_non_fatal_message_does_not_raise(self):
-        with patch("tilia.ui.qtui.logger"):
-            TiliaMainWindow.handle_qt_log_message(
-                QtMsgType.QtWarningMsg, self._ctx(), "non-fatal"
-            )
+        with patch("tilia.boot.logger"):
+            handle_qt_log_message(QtMsgType.QtWarningMsg, self._ctx(), "non-fatal")
 
     def test_context_file_none_does_not_raise(self):
-        with patch("tilia.ui.qtui.logger"):
-            TiliaMainWindow.handle_qt_log_message(
+        with patch("tilia.boot.logger"):
+            handle_qt_log_message(
                 QtMsgType.QtWarningMsg, self._ctx(file=None, line=-1), "msg"
             )
+
+    @pytest.mark.parametrize(
+        "noisy_msg",
+        [
+            "QFont::setPixelSize: Pixel size <= 0 (0)",
+            "QWindowsFontEngineDirectWrite::addGlyphsToPath: GetGlyphRunOutline failed (Der Vorgang wurde erfolgreich beendet.)",
+            "fromIccProfile: Failed to parse description",
+        ],
+    )
+    def test_known_noise_warning_is_suppressed(self, noisy_msg):
+        with patch("tilia.boot.logger") as mock_logger:
+            handle_qt_log_message(QtMsgType.QtWarningMsg, self._ctx(), noisy_msg)
+        mock_logger.error.assert_not_called()
+
+    def test_noise_pattern_match_is_substring(self):
+        with patch("tilia.boot.logger") as mock_logger:
+            handle_qt_log_message(
+                QtMsgType.QtWarningMsg,
+                self._ctx(),
+                "prefix QFont::setPixelSize: Pixel size <= 0 (0) suffix",
+            )
+        mock_logger.error.assert_not_called()
+
+    def test_unrelated_warning_is_still_logged(self):
+        with patch("tilia.boot.logger") as mock_logger:
+            handle_qt_log_message(
+                QtMsgType.QtWarningMsg,
+                self._ctx(),
+                "some other warning",
+            )
+        mock_logger.error.assert_called_once()
+
+    def test_noise_pattern_in_critical_message_is_still_logged(self):
+        with patch("tilia.boot.logger") as mock_logger:
+            handle_qt_log_message(
+                QtMsgType.QtCriticalMsg,
+                self._ctx(),
+                "QFont::setPixelSize: Pixel size <= 0 (0)",
+            )
+        mock_logger.error.assert_called_once()

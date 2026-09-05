@@ -6,21 +6,24 @@ import pytest
 from tests.constants import EXAMPLE_MEDIA_DURATION, EXAMPLE_MEDIA_PATH
 from tests.mock import Serve, patch_yes_or_no_dialog
 from tests.ui.timelines.interact import click_timeline_ui, drag_mouse_in_timeline_view
+from tests.utils import save_and_reopen, save_tilia_to_tmp_path
 from tilia.file.common import are_tilia_data_equal
 from tilia.media.player.base import MediaTimeChangeReason
 from tilia.requests import Get, Post, get, post
 from tilia.settings import settings
-from tilia.timelines.timeline_kinds import (
-    TimelineKind,
-)
-from tilia.timelines.timeline_kinds import (
-    TimelineKind as TlKind,
-)
+from tilia.timelines.hierarchy.timeline import HierarchyTimeline
+from tilia.timelines.marker.timeline import MarkerTimeline
+from tilia.timelines.slider.timeline import SliderTimeline
 from tilia.ui import commands
 from tilia.ui.coords import time_x_converter
 from tilia.ui.dialogs.add_timeline_without_media import AddTimelineWithoutMedia
 from tilia.ui.enums import ScrollType
 from tilia.ui.timelines.collection.collection import TimelineSelector
+from tilia.ui.timelines.constants import (
+    MAX_PLAYBACK_WIDTH,
+    PLAYBACK_AREA_WIDTH,
+    ZOOM_MULTIPLIER,
+)
 from tilia.ui.timelines.marker import MarkerTimelineUI
 
 ADD_TIMELINE_ACTIONS = [
@@ -41,6 +44,20 @@ class TestTimelineUICreation:
         ):
             commands.execute(command)
         assert len(tluis) == 1
+
+    def test_beat_creation_uses_pattern_from_user_prompt(self, tluis):
+        # Regression: the kind-refactor passed the backend Timeline class to
+        # on_timeline_add, so `hasattr(ui_cls, "get_additional_args_for_creation")`
+        # was being checked on the backend class instead of the UI class and
+        # silently returned False, leaving the beat pattern at its default.
+        # Make sure the prompted value actually reaches the timeline.
+        prompted_pattern = [3, 2]
+        with (
+            Serve(Get.FROM_USER_BEAT_PATTERN, (True, prompted_pattern)),
+            Serve(Get.FROM_USER_STRING, (True, "")),
+        ):
+            commands.execute("timelines.add.beat")
+        assert tluis[0].timeline.beat_pattern == prompted_pattern
 
     def test_create_multiple(self, tilia_state, tluis):
         create_actions = [
@@ -118,9 +135,9 @@ class TestTimelineUICreation:
         assert tls.is_empty
 
     def test_update_select_order(self, tls, tluis):
-        tl1 = tls.create_timeline(TlKind.HIERARCHY_TIMELINE, name="test1")
+        tl1 = tls.create_timeline(HierarchyTimeline, name="test1")
 
-        tl2 = tls.create_timeline(TlKind.HIERARCHY_TIMELINE, name="test2")
+        tl2 = tls.create_timeline(HierarchyTimeline, name="test2")
 
         tlui1 = tluis.get_timeline_ui(tl1.id)
         tlui2 = tluis.get_timeline_ui(tl2.id)
@@ -141,12 +158,12 @@ class TestServe:
         assert not get(Get.TIMELINE_ELEMENTS_SELECTED)
 
     def test_serve_timeline_elements_selected_case_false(self, tls, tluis):
-        tls.create_timeline(TimelineKind.HIERARCHY_TIMELINE)
+        tls.create_timeline(HierarchyTimeline)
 
         assert not get(Get.TIMELINE_ELEMENTS_SELECTED)
 
     def test_serve_timeline_elements_selected_case_true(self, tls, tluis):
-        tls.create_timeline(TimelineKind.HIERARCHY_TIMELINE)
+        tls.create_timeline(HierarchyTimeline)
         tluis[0].select_all_elements()
 
         assert get(Get.TIMELINE_ELEMENTS_SELECTED)
@@ -154,16 +171,16 @@ class TestServe:
     def test_serve_timeline_elements_selected_case_false_multiple_timelines(
         self, tls, tluis
     ):
-        tls.create_timeline(TimelineKind.HIERARCHY_TIMELINE)
-        tls.create_timeline(TimelineKind.HIERARCHY_TIMELINE)
-        tls.create_timeline(TimelineKind.HIERARCHY_TIMELINE)
+        tls.create_timeline(HierarchyTimeline)
+        tls.create_timeline(HierarchyTimeline)
+        tls.create_timeline(HierarchyTimeline)
 
         assert not get(Get.TIMELINE_ELEMENTS_SELECTED)
 
     def test_serve_timeline_elements_selected_case_true_multiple_tls(self, tls, tluis):
-        tls.create_timeline(TimelineKind.HIERARCHY_TIMELINE)
-        tls.create_timeline(TimelineKind.HIERARCHY_TIMELINE)
-        tls.create_timeline(TimelineKind.HIERARCHY_TIMELINE)
+        tls.create_timeline(HierarchyTimeline)
+        tls.create_timeline(HierarchyTimeline)
+        tls.create_timeline(HierarchyTimeline)
         tluis[2].select_all_elements()
 
         assert get(Get.TIMELINE_ELEMENTS_SELECTED)
@@ -185,7 +202,7 @@ class TestAutoScroll:
     def test_is_not_triggered_when_seeking(self, scroll_type, tluis):
         self._set_auto_scroll(scroll_type)
         with patch.object(tluis, "center_on_time") as center_on_time_mock:
-            post(Post.PLAYER_SEEK, 50)
+            commands.execute("media.seek", 50)
         center_on_time_mock.assert_not_called()
 
     @pytest.mark.parametrize("scroll_type", [ScrollType.CONTINUOUS, ScrollType.BY_PAGE])
@@ -216,30 +233,43 @@ class TestAutoScroll:
 
     def test_by_page_is_triggered(self, tluis):
         self._set_auto_scroll(ScrollType.BY_PAGE)
+        viewport = tluis.view.current_viewport_x
+        time_outside = time_x_converter.get_time_by_x(viewport[1] + 100)
         with (
             patch.object(tluis, "center_on_time") as center_on_time_mock,
             patch.object(tluis.view, "move_to_x") as move_to_x_mock,
         ):
-            post(Post.PLAYER_CURRENT_TIME_CHANGED, 100, MediaTimeChangeReason.PLAYBACK)
+            post(
+                Post.PLAYER_CURRENT_TIME_CHANGED,
+                time_outside,
+                MediaTimeChangeReason.PLAYBACK,
+            )
         move_to_x_mock.assert_called()
         center_on_time_mock.assert_not_called()
 
     def test_by_page_is_not_triggered_when_not_over_threshold(self, tluis):
         self._set_auto_scroll(ScrollType.BY_PAGE)
+        viewport = tluis.view.current_viewport_x
+        x_center = (viewport[0] + viewport[1]) / 2
+        time_inside = time_x_converter.get_time_by_x(x_center)
         with patch.object(tluis.view, "move_to_x") as move_to_x_mock:
-            post(Post.PLAYER_CURRENT_TIME_CHANGED, 10, MediaTimeChangeReason.PLAYBACK)
+            post(
+                Post.PLAYER_CURRENT_TIME_CHANGED,
+                time_inside,
+                MediaTimeChangeReason.PLAYBACK,
+            )
         move_to_x_mock.assert_not_called()
 
 
 def test_set_timeline_height_updates_playback_line_height(tls, tluis):
-    tls.create_timeline(TimelineKind.MARKER_TIMELINE)
+    tls.create_timeline(MarkerTimeline)
     tls.set_timeline_data(tls[0].id, "height", 100)
     assert tluis[0].scene.playback_line.line().dy() == 100
 
 
 def test_zooming_updates_playback_line_position(tls, tluis):
-    tls.create_timeline(TimelineKind.MARKER_TIMELINE)
-    post(Post.PLAYER_SEEK, 50)
+    tls.create_timeline(MarkerTimeline)
+    commands.execute("media.seek", 50)
     commands.execute("view.zoom.in")
     assert tluis[0].scene.playback_line.line().x1() == pytest.approx(
         time_x_converter.get_x_by_time(50)
@@ -264,6 +294,30 @@ class TestSeek:
         target_x = time_x_converter.get_x_by_time(60)
         drag_mouse_in_timeline_view(target_x, y)
         assert marker_tlui.playback_line.line().x1() == target_x
+
+    def test_slider_drag_release_seeks_media(
+        self, marker_tlui, slider_tlui, tilia_state
+    ):
+        # Regression: dragging the trough used to post Post.PLAYER_SEEK on
+        # release, which had no listeners, so the media position never
+        # actually moved (only the visual playback lines did, via
+        # SLIDER_DRAG). The fix routes the release through `media.seek`.
+        y = slider_tlui.trough.pos().y()
+        click_timeline_ui(slider_tlui, 0, y=y)
+        target_x = time_x_converter.get_x_by_time(60)
+        drag_mouse_in_timeline_view(target_x, y)
+        assert tilia_state.current_time == pytest.approx(60)
+
+    def test_slider_click_seeks_media(self, marker_tlui, slider_tlui, tilia_state):
+        # Companion to the drag-release regression: the click path used
+        # `commands.execute("media.seek", ...)` already and was never
+        # broken — pin it so a future refactor can't break both at once.
+        # Click the line itself (centre y of the view), not the trough's y.
+        line_y = slider_tlui.view.height() / 2
+        target_x = time_x_converter.get_x_by_time(40)
+        click_timeline_ui(slider_tlui, 40, y=line_y)
+        assert tilia_state.current_time == pytest.approx(40)
+        assert marker_tlui.playback_line.line().x1() == pytest.approx(target_x)
 
     @pytest.mark.parametrize(
         "tlui,request_to_serve, add_request",
@@ -320,13 +374,13 @@ class TestLoop:
 
     def test_loop_with_hierarchy(self, tilia_state):
         tilia_state.duration = 100
-        self.tlui.create_hierarchy(10, 50, 1)
+        commands.execute("timeline.hierarchy.add", start=10, end=50, level=1)
         self.tlui.select_element(self.tlui[0])
         post(Post.PLAYER_TOGGLE_LOOP, True)
         assert get(Get.LOOP_TIME) == (10, 50)
 
     def test_loop_hierarchy_move_start_end(self):
-        self.tlui.create_hierarchy(10, 50, 1)
+        commands.execute("timeline.hierarchy.add", start=10, end=50, level=1)
         hrc = self.tlui.timeline[0]
         hui = self.tlui[0]
         self.tlui.select_element(hui)
@@ -345,7 +399,7 @@ class TestLoop:
         assert get(Get.LOOP_TIME) == (0, 50)
 
     def test_loop_hierarchy_delete_all_cancels(self):
-        self.tlui.create_hierarchy(10, 50, 1)
+        commands.execute("timeline.hierarchy.add", start=10, end=50, level=1)
         hui = self.tlui[0]
         self.tlui.select_element(hui)
         post(Post.PLAYER_TOGGLE_LOOP, True)
@@ -355,24 +409,24 @@ class TestLoop:
         assert get(Get.LOOP_TIME) == (0, 0)
 
     def test_loop_hierarchy_neighbouring_passes(self):
-        self.tlui.create_hierarchy(10, 20, 1)
-        self.tlui.create_hierarchy(20, 30, 1)
+        commands.execute("timeline.hierarchy.add", start=10, end=20, level=1)
+        commands.execute("timeline.hierarchy.add", start=20, end=30, level=1)
         self.tlui.select_element(self.tlui[0])
         self.tlui.select_element(self.tlui[1])
         post(Post.PLAYER_TOGGLE_LOOP, True)
         assert get(Get.LOOP_TIME) == (10, 30)
 
     def test_loop_hierarchy_disjunct_fails(self):
-        self.tlui.create_hierarchy(10, 20, 1)
-        self.tlui.create_hierarchy(25, 30, 1)
+        commands.execute("timeline.hierarchy.add", start=10, end=20, level=1)
+        commands.execute("timeline.hierarchy.add", start=25, end=30, level=1)
         self.tlui.select_element(self.tlui[0])
         self.tlui.select_element(self.tlui[1])
         post(Post.PLAYER_TOGGLE_LOOP, True)
         assert get(Get.LOOP_TIME) == (0, 0)
 
     def test_loop_hierarchy_delete_end_continues(self):
-        self.tlui.create_hierarchy(10, 50, 1)
-        self.tlui.create_hierarchy(50, 100, 1)
+        commands.execute("timeline.hierarchy.add", start=10, end=50, level=1)
+        commands.execute("timeline.hierarchy.add", start=50, end=100, level=1)
         self.tlui.select_all_elements()
         post(Post.PLAYER_TOGGLE_LOOP, True)
         assert get(Get.LOOP_TIME) == (10, 100)
@@ -383,9 +437,9 @@ class TestLoop:
         assert get(Get.LOOP_TIME) == (50, 100)
 
     def test_loop_hierarchy_delete_middle_cancels(self):
-        self.tlui.create_hierarchy(0, 10, 1)
-        self.tlui.create_hierarchy(10, 50, 1)
-        self.tlui.create_hierarchy(50, 100, 1)
+        commands.execute("timeline.hierarchy.add", start=0, end=10, level=1)
+        commands.execute("timeline.hierarchy.add", start=10, end=50, level=1)
+        commands.execute("timeline.hierarchy.add", start=50, end=100, level=1)
         self.tlui.select_all_elements()
         post(Post.PLAYER_TOGGLE_LOOP, True)
         assert get(Get.LOOP_TIME) == (0, 100)
@@ -396,7 +450,7 @@ class TestLoop:
         assert get(Get.LOOP_TIME) == (0, 0)
 
     def test_loop_hierarchy_merge_split(self):
-        self.tlui.create_hierarchy(10, 20, 1)
+        commands.execute("timeline.hierarchy.add", start=10, end=20, level=1)
         self.tlui.select_all_elements()
         post(Post.PLAYER_TOGGLE_LOOP, True)
         assert get(Get.LOOP_TIME) == (10, 20)
@@ -411,13 +465,32 @@ class TestLoop:
         assert get(Get.LOOP_TIME) == (10, 20)
 
     def test_loop_undo_manager_cancels(self):
-        self.tlui.create_hierarchy(10, 20, 1)
+        commands.execute("timeline.hierarchy.add", start=10, end=20, level=1)
         self.tlui.select_all_elements()
         post(Post.PLAYER_TOGGLE_LOOP, True)
         assert get(Get.LOOP_TIME) == (10, 20)
 
         commands.execute("edit.undo")
         assert get(Get.LOOP_TIME) == (0, 0)
+
+    def test_player_cancel_loop_clears_full_state(self, tluis, tilia_state):
+        # Regression test for #438: PLAYER_CANCEL_LOOP (posted by
+        # app.load_media after a successful media swap, among other
+        # paths) used to leave loop_elements populated and the player
+        # still in is_looping=True, so playback would keep seeking
+        # back over the new media.
+        commands.execute("timeline.hierarchy.add", start=10, end=20, level=1)
+        self.tlui.select_all_elements()
+        post(Post.PLAYER_TOGGLE_LOOP, True)
+        assert get(Get.LOOP_TIME) == (10, 20)
+        assert tluis.loop_elements
+        assert tilia_state.player.is_looping
+
+        post(Post.PLAYER_CANCEL_LOOP)
+
+        assert get(Get.LOOP_TIME) == (0, 0)
+        assert not tluis.loop_elements
+        assert not tilia_state.player.is_looping
 
 
 class TestClearAllTimelines:
@@ -426,7 +499,7 @@ class TestClearAllTimelines:
         assert tluis.is_empty
 
     def test_non_clearable_timeline(self, tilia, tls, tluis):
-        tls.create_timeline(TimelineKind.SLIDER_TIMELINE)
+        tls.create_timeline(SliderTimeline)
         commands.execute("timelines.clear_all")
 
     def test_timelines_are_empty(self, tilia, tls, tluis):
@@ -435,7 +508,7 @@ class TestClearAllTimelines:
         commands.execute("timelines.clear_all")
 
     def test_not_clearable_and_empty_timeline(self, tilia, tls, tluis):
-        tls.create_timeline(TimelineKind.SLIDER_TIMELINE)
+        tls.create_timeline(SliderTimeline)
         commands.execute("timelines.add.marker", name="")
         commands.execute("timelines.clear_all")
 
@@ -470,6 +543,76 @@ class TestClearAllTimelines:
         assert all(tl.is_empty for tl in tluis[0])
 
 
+class TestZoom:
+    def test_zoom_in_multiplies_by_factor(self, tilia_state, tluis):
+        tilia_state.duration = 100
+        commands.execute("view.zoom.set", 1.0)
+        commands.execute("view.zoom.in")
+        assert get(Get.CURRENT_ZOOM) == pytest.approx(1.0 * ZOOM_MULTIPLIER)
+
+    def test_zoom_out_divides_by_factor(self, tilia_state, tluis):
+        tilia_state.duration = 100
+        commands.execute("view.zoom.set", 1.0)
+        commands.execute("view.zoom.out")
+        assert get(Get.CURRENT_ZOOM) == pytest.approx(1.0 / ZOOM_MULTIPLIER)
+
+    def test_zoom_in_rejected_at_physical_max(self, tilia_state, tluis):
+        tilia_state.duration = 100
+        zoom_ref = get(Get.ZOOM_REFERENCE_WIDTH)
+        # largest ratio whose next step would exceed MAX_PLAYBACK_WIDTH
+        at_limit = MAX_PLAYBACK_WIDTH / zoom_ref / ZOOM_MULTIPLIER
+        commands.execute("view.zoom.set", at_limit)
+        commands.execute("view.zoom.in")
+        assert get(Get.CURRENT_ZOOM) == pytest.approx(at_limit)
+
+    def test_zoom_out_rejected_at_physical_min(self, tilia_state, tluis):
+        tilia_state.duration = 100
+        zoom_ref = get(Get.ZOOM_REFERENCE_WIDTH)
+        # ratio where new_width=1 (passes); next step gives new_width<1 (rejected)
+        at_limit = 1 / zoom_ref
+        commands.execute("view.zoom.set", at_limit)
+        commands.execute("view.zoom.out")
+        assert get(Get.CURRENT_ZOOM) == pytest.approx(at_limit)
+
+    def test_zoom_set_changes_playback_area_width(self, tilia_state, tluis):
+        tilia_state.duration = 100
+        zoom_ref = get(Get.ZOOM_REFERENCE_WIDTH)
+        commands.execute("view.zoom.set", 2.0)
+        assert get(Get.PLAYBACK_AREA_WIDTH) == pytest.approx(zoom_ref * 2.0)
+
+    def test_zoom_without_media_uses_default_reference(self, tilia_state, tluis):
+        tilia_state.duration = 0
+        commands.execute("view.zoom.set", 2.0)
+        assert get(Get.PLAYBACK_AREA_WIDTH) == pytest.approx(PLAYBACK_AREA_WIDTH * 2.0)
+
+    def test_zoom_resets_to_one_on_clear(self, tilia_state, tluis):
+        tilia_state.duration = 100
+        commands.execute("view.zoom.set", 3.0)
+        post(Post.APP_CLEAR)
+        assert get(Get.CURRENT_ZOOM) == pytest.approx(1.0)
+
+    def test_zoom_preserved_when_duration_changes(self, tilia_state, tluis):
+        tilia_state.duration = 100
+        commands.execute("view.zoom.set", 2.0)
+        post(Post.PLAYER_DURATION_AVAILABLE, 200)
+        assert get(Get.CURRENT_ZOOM) == pytest.approx(2.0)
+
+    def test_zoom_saved_and_restored_on_file_open(self, tilia_state, tluis, tmp_path):
+        duration = 123
+        tilia_state.duration = duration
+        commands.execute("view.zoom.set", 1.5)
+        original_width = get(Get.PLAYBACK_AREA_WIDTH)
+        file_path = save_tilia_to_tmp_path(tmp_path)
+        assert settings.get_file_zoom(file_path) == pytest.approx(1.5)
+        save_and_reopen(tmp_path)
+        # save_and_reopen opens the .tla file but doesn't load media, so
+        # PLAYER_DURATION_AVAILABLE never fires; post it manually to trigger
+        # _on_duration_available and apply the restored zoom to the timeline width
+        post(Post.PLAYER_DURATION_AVAILABLE, duration)
+        assert get(Get.CURRENT_ZOOM) == pytest.approx(1.5)
+        assert get(Get.PLAYBACK_AREA_WIDTH) == pytest.approx(original_width)
+
+
 def test_timeline_command_fails(tilia, qtui, tluis, marker_tlui, tilia_errors):
     healthy_state = tilia.get_app_state()
 
@@ -485,7 +628,7 @@ def test_timeline_command_fails(tilia, qtui, tluis, marker_tlui, tilia_errors):
 
     callback = functools.partial(
         tluis.on_timeline_command,
-        TimelineKind.MARKER_TIMELINE,
+        MarkerTimeline,
         "add_and_fail",
         TimelineSelector.ALL,
     )

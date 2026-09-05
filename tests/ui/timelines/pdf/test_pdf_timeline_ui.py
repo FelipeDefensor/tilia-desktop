@@ -10,9 +10,9 @@ def assert_pdf_marker(tlui: PdfTimelineUI, index: int, attr: str, value: Any) ->
 
 class TestAddMarker:
     def test_no_args(self, pdf_tlui, tilia_state):
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         commands.execute("timeline.pdf.add")
-        tilia_state.current_time = 11
+        commands.execute("media.seek", 11)
         commands.execute("timeline.pdf.add")
 
         assert len(pdf_tlui.timeline) == 2

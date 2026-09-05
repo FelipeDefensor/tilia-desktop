@@ -1,7 +1,14 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from tilia.requests import Get, get
 from tilia.ui import commands
 from tilia.ui.commands import CommandQAction, get_qaction
 from tilia.ui.menus import MenuItemKind, TiliaMenu
+
+if TYPE_CHECKING:
+    from tilia.ui.timelines.base.timeline import TimelineUI
 
 
 class TimelineUIContextMenu(TiliaMenu):
@@ -11,14 +18,14 @@ class TimelineUIContextMenu(TiliaMenu):
         (MenuItemKind.COMMAND, "timeline.set_height"),
     ]
 
-    def __init__(self, timeline_ui):
+    def __init__(self, timeline_ui: TimelineUI, x: int, y: int):
         super().__init__()
         self.timeline_ui = timeline_ui
         self._add_timeline_actions()
 
     def _add_timeline_actions(self):
-        self.addSeparator()
-
+        # Move up/down belong with the top "this timeline" actions
+        # (Set name, etc.) — they reorder the timeline as a whole.
         self.check_move_up()
         self.check_move_down()
         self.add_default_actions()
@@ -43,7 +50,7 @@ class TimelineUIContextMenu(TiliaMenu):
         }
         if indices_to_timelines.get(current_index - 1, False):
             move_up = CommandQAction("timeline.move_up", self)
-            move_up.setText("Move up")
+            move_up.setText("Move timeline up")
             move_up.triggered.connect(on_move_up)
             self.addAction(move_up)
 
@@ -61,7 +68,7 @@ class TimelineUIContextMenu(TiliaMenu):
         }
         if indices_to_timelines.get(current_index + 1, False):
             move_down = CommandQAction("timeline.move_down", self)
-            move_down.setText("Move down")
+            move_down.setText("Move timeline down")
             move_down.triggered.connect(on_move_down)
             self.addAction(move_down)
 
@@ -83,6 +90,7 @@ class TimelineUIContextMenu(TiliaMenu):
 
         clear_timeline = CommandQAction("timeline.clear", self)
         clear_timeline.setText("Clear")
+        clear_timeline.setEnabled(not self.timeline_ui.is_empty)
         clear_timeline.triggered.connect(on_clear_timeline)
         self.addAction(clear_timeline)
 

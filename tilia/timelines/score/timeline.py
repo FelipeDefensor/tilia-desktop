@@ -16,7 +16,6 @@ from tilia.timelines.base.timeline import (
 )
 from tilia.timelines.base.validators import validate_pre_validated, validate_string
 from tilia.timelines.component_kinds import ComponentKind
-from tilia.timelines.timeline_kinds import TimelineKind
 
 
 class ScoreTLComponentManager(TimelineComponentManager):
@@ -64,7 +63,6 @@ class ScoreTLComponentManager(TimelineComponentManager):
 
 
 class ScoreTimeline(Timeline):
-    KIND = TimelineKind.SCORE_TIMELINE
     SERIALIZABLE = [
         "height",
         "is_visible",
@@ -76,6 +74,7 @@ class ScoreTimeline(Timeline):
     NOT_EXPORTABLE_ATTRS = ["svg_data", "viewer_beat_x"]
     COMPONENT_MANAGER_CLASS = ScoreTLComponentManager
     FLAGS = [
+        TimelineFlag.COMPONENTS_COLORED,
         TimelineFlag.COMPONENTS_NOT_DELETABLE,
         TimelineFlag.COMPONENTS_IMPORTABLE,
     ]

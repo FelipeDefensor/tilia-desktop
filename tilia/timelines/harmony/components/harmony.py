@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import music21
 
-import tilia.errors
 from tilia.timelines.base.component import PointLikeTimelineComponent
 from tilia.timelines.base.validators import validate_string, validate_time
 from tilia.timelines.component_kinds import ComponentKind
@@ -20,17 +19,13 @@ from tilia.timelines.harmony.validators import (
     validate_quality,
     validate_step,
 )
-from tilia.ui.timelines.harmony.constants import (
-    CHORD_COMMON_NAME_TO_TYPE,
-    NOTE_NAME_TO_INT,
-    ROMAN_TO_INT,
-)
 
 if TYPE_CHECKING:
     from tilia.timelines.harmony.timeline import HarmonyTimeline
 
 
 class Harmony(PointLikeTimelineComponent):
+
     SERIALIZABLE = [
         "time",
         "comments",
@@ -55,7 +50,6 @@ class Harmony(PointLikeTimelineComponent):
         "step": validate_step,
         "accidental": validate_accidental,
         "quality": validate_quality,
-        "inversion": validate_inversion,
         "applied_to": validate_applied_to,
         "level": validate_level,
         "display_mode": validate_display_mode,
@@ -85,7 +79,7 @@ class Harmony(PointLikeTimelineComponent):
         self.step = step
         self.accidental = accidental
         self.quality = quality
-        self._inversion = inversion
+        self.inversion = inversion
         self.applied_to = applied_to
         self.level = level
         self.display_mode = display_mode
@@ -120,18 +114,19 @@ class Harmony(PointLikeTimelineComponent):
         params = _get_params_from_music21_object(music21_object, object_type)
         return Harmony(*params)
 
-    @property
-    def inversion(self):
-        return self._inversion
+    def validate_set_data(self, attr: str, value: Any) -> bool:
+        if attr == "inversion":
+            return validate_inversion(value, self.quality)
+        return super().validate_set_data(attr, value)
 
-    @inversion.setter
-    def inversion(self, value):
-        if value > get_inversion_amount(self.get_data("quality")):
-            tilia.errors.display(
-                tilia.errors.INVALID_HARMONY_INVERSION, value, self.get_data("quality")
-            )
-            return
-        self._inversion = value
+    def set_data(self, attr: str, value: Any):
+        result = super().set_data(attr, value)
+        if attr == "quality" and result[1]:
+            max_inv = get_inversion_amount(value)
+            if self.inversion > max_inv:
+                self.inversion = max_inv
+                self.update_hash()
+        return result
 
 
 def get_params_from_text(text: str, key: str):
@@ -165,6 +160,15 @@ def _get_music21_object_from_text(
     tuple[music21.harmony.ChordSymbol | music21.roman.RomanNumeral, str]
     | tuple[None, None]
 ):
+
+    # TODO: these are local imports only because the constants live in the
+    # UI folder and importing them at module level would cause a circular.
+    # Move the constants out of `tilia/ui/` so this can become a top-level import.
+    from tilia.ui.timelines.harmony.constants import (
+        CHORD_COMMON_NAME_TO_TYPE,
+        NOTE_NAME_TO_INT,
+    )
+
     text, prefixed_accidental = _extract_prefixed_accidental(text)
     text = _format_postfix_accidental(text)
     text = _replace_special_abbreviations(text)
@@ -178,8 +182,8 @@ def _get_music21_object_from_text(
     elif text.startswith(("I", "i", "V", "v")):
         try:
             roman_numeral = music21.roman.RomanNumeral(prefixed_accidental + text, key)
-            letter_common_name = music21.chord.Chord(roman_numeral.pitches).commonName
-            roman_numeral.letter_type = CHORD_COMMON_NAME_TO_TYPE[letter_common_name]
+            if roman_numeral.commonName not in CHORD_COMMON_NAME_TO_TYPE:
+                raise KeyError(roman_numeral.commonName)
             return roman_numeral, "roman"
         except (ValueError, KeyError):
             pass
@@ -190,11 +194,20 @@ def _get_music21_object_from_text(
 def _get_params_from_music21_object(
     obj: music21.harmony.ChordSymbol | music21.roman.RomanNumeral, kind: str
 ) -> dict:
+    # TODO: these are local imports only because the constants live in the
+    # UI folder and importing them at module level would cause a circular.
+    # Move the constants out of `tilia/ui/` so this can become a top-level import.
+    from tilia.ui.timelines.harmony.constants import (
+        CHORD_COMMON_NAME_TO_TYPE,
+        NOTE_NAME_TO_INT,
+        ROMAN_TO_INT,
+    )
+
     step = NOTE_NAME_TO_INT[obj.root().step]
     accidental = int(obj.root().alter)
     inversion = obj.inversion() if obj.inversion() else 0
     if kind == "roman":
-        quality = obj.impliedQuality
+        quality = CHORD_COMMON_NAME_TO_TYPE[obj.commonName]
         applied_to = (
             ROMAN_TO_INT[obj.secondaryRomanNumeral.figure.upper()]
             if obj.secondaryRomanNumeral

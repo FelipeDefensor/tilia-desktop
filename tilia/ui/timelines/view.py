@@ -65,12 +65,18 @@ class TimelineView(QGraphicsView):
             )
 
         def handle_right_click():
+            items = [
+                item
+                for item in self.items(event.pos())
+                if not getattr(item, "ignore_right_click", False)
+            ]
+            item = items[0] if items else None
             post(
                 Post.TIMELINE_VIEW_RIGHT_CLICK,
                 self,
                 self.mapToGlobal(event.pos()).x(),
                 self.mapToGlobal(event.pos()).y(),
-                self.itemAt(event.pos()),
+                item,
                 QGuiApplication.keyboardModifiers(),
                 double=False,
             )
@@ -112,14 +118,20 @@ class TimelineView(QGraphicsView):
         self.show() if value else self.hide()
 
     def keyPressEvent(self, event) -> None:
-        request = {
-            Qt.Key.Key_Right: Post.TIMELINE_KEY_PRESS_RIGHT,
-            Qt.Key.Key_Left: Post.TIMELINE_KEY_PRESS_LEFT,
-            Qt.Key.Key_Up: Post.TIMELINE_KEY_PRESS_UP,
-            Qt.Key.Key_Down: Post.TIMELINE_KEY_PRESS_DOWN,
-        }.get(event.key(), None)
-
-        if request:
-            post(request)
+        ctrl = Qt.KeyboardModifier.ControlModifier in event.modifiers()
+        key = event.key()
+        if ctrl and key == Qt.Key.Key_Up:
+            post(Post.TIMELINE_KEY_PRESS_CTRL_UP)
+        elif ctrl and key == Qt.Key.Key_Down:
+            post(Post.TIMELINE_KEY_PRESS_CTRL_DOWN)
+        else:
+            request = {
+                Qt.Key.Key_Right: Post.TIMELINE_KEY_PRESS_RIGHT,
+                Qt.Key.Key_Left: Post.TIMELINE_KEY_PRESS_LEFT,
+                Qt.Key.Key_Up: Post.TIMELINE_KEY_PRESS_UP,
+                Qt.Key.Key_Down: Post.TIMELINE_KEY_PRESS_DOWN,
+            }.get(key, None)
+            if request:
+                post(request)
 
         super().keyPressEvent(event)

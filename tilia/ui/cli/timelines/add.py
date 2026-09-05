@@ -2,7 +2,12 @@ import argparse
 
 import tilia.errors
 from tilia.requests import Get, get
-from tilia.timelines.timeline_kinds import TimelineKind as TlKind
+from tilia.timelines.base.timeline import Timeline
+from tilia.timelines.beat.timeline import BeatTimeline
+from tilia.timelines.hierarchy.timeline import HierarchyTimeline
+from tilia.timelines.marker.timeline import MarkerTimeline
+from tilia.timelines.range.timeline import RangeTimeline
+from tilia.timelines.score.timeline import ScoreTimeline
 from tilia.ui.cli.io import output
 
 
@@ -21,7 +26,18 @@ Examples:
     )
     add_subp.add_argument(
         "kind",
-        choices=["hierarchy", "hrc", "marker", "mrk", "beat", "bea", "score", "sco"],
+        choices=[
+            "hierarchy",
+            "hrc",
+            "marker",
+            "mrk",
+            "beat",
+            "bea",
+            "score",
+            "sco",
+            "range",
+            "rng",
+        ],
         help="Kind of timeline to add",
     )
     add_subp.add_argument(
@@ -35,32 +51,38 @@ Examples:
         "-b",
         type=int,
         nargs="+",
-        default=[4],
-        help="Pattern as space-separated integers indicating beat count in a measure. Pattern will be repeated. Pattern '3 4', for instance, will alternate measures of 3 and 4 beats.",
+        default=None,
+        help="Pattern as space-separated integers indicating beat count in a measure "
+        "(beat timelines only). Pattern will be repeated. Pattern '3 4', for "
+        "instance, will alternate measures of 3 and 4 beats. Defaults to [4].",
+    )
+    add_subp.add_argument(
+        "--row-height",
+        dest="default_row_height",
+        type=int,
+        default=None,
+        help="Per-timeline default row height (range timelines only). "
+        "Defaults to the global setting.",
     )
     add_subp.set_defaults(func=add)
 
 
-KIND_STR_TO_TLKIND = {
-    "hierarchy": TlKind.HIERARCHY_TIMELINE,
-    "hrc": TlKind.HIERARCHY_TIMELINE,
-    "marker": TlKind.MARKER_TIMELINE,
-    "mrk": TlKind.MARKER_TIMELINE,
-    "beat": TlKind.BEAT_TIMELINE,
-    "bea": TlKind.BEAT_TIMELINE,
-    "score": TlKind.SCORE_TIMELINE,
-    "sco": TlKind.SCORE_TIMELINE,
-}
-
 TLKIND_TO_KWARGS_NAMES = {
-    TlKind.BEAT_TIMELINE: ["name", "height", "beat_pattern"],
-    TlKind.HIERARCHY_TIMELINE: ["name", "height"],
-    TlKind.MARKER_TIMELINE: ["name", "height"],
-    TlKind.SCORE_TIMELINE: ["name", "height"],
+    BeatTimeline: ["name", "height", "beat_pattern"],
+    HierarchyTimeline: ["name", "height"],
+    MarkerTimeline: ["name", "height"],
+    RangeTimeline: ["name", "height", "default_row_height"],
+    ScoreTimeline: ["name", "height"],
+}
+
+# arg attr -> (timeline kind it's valid for, flag name for the error message)
+KIND_SPECIFIC_ARGS = {
+    "beat_pattern": (BeatTimeline, "--beat-pattern"),
+    "default_row_height": (RangeTimeline, "--row-height"),
 }
 
 
-def get_kwargs_by_timeline_kind(namespace: argparse.Namespace, kind: TlKind):
+def get_kwargs_by_timeline_type(namespace: argparse.Namespace, kind: type[Timeline]):
     kwargs = {}
     for attr in TLKIND_TO_KWARGS_NAMES[kind]:
         kwargs[attr] = getattr(namespace, attr)
@@ -68,15 +90,36 @@ def get_kwargs_by_timeline_kind(namespace: argparse.Namespace, kind: TlKind):
 
 
 def add(namespace: argparse.Namespace):
+    KIND_STR_TO_TLKIND = {
+        "hierarchy": HierarchyTimeline,
+        "hrc": HierarchyTimeline,
+        "marker": MarkerTimeline,
+        "mrk": MarkerTimeline,
+        "beat": BeatTimeline,
+        "bea": BeatTimeline,
+        "score": ScoreTimeline,
+        "sco": ScoreTimeline,
+        "range": RangeTimeline,
+        "rng": RangeTimeline,
+    }
+
     if not get(Get.MEDIA_DURATION):
         tilia.errors.display(tilia.errors.CLI_CREATE_TIMELINE_WITHOUT_DURATION)
         return
     kind = namespace.kind
     name = namespace.name
 
+    tl_type = KIND_STR_TO_TLKIND[kind]
+
+    for attr, (expected_kind, flag) in KIND_SPECIFIC_ARGS.items():
+        if getattr(namespace, attr) is not None and tl_type is not expected_kind:
+            tilia.errors.display(
+                tilia.errors.CLI_ADD_TIMELINE_ARG_NOT_APPLICABLE, flag, kind
+            )
+            return
+
     output(f"Adding timeline with {kind=}, {name=}")
 
-    tl_kind = KIND_STR_TO_TLKIND[kind]
-    kwargs = get_kwargs_by_timeline_kind(namespace, tl_kind)
+    kwargs = get_kwargs_by_timeline_type(namespace, tl_type)
 
-    get(Get.TIMELINE_COLLECTION).create_timeline(tl_kind, **kwargs)
+    get(Get.TIMELINE_COLLECTION).create_timeline(tl_type, **kwargs)

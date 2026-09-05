@@ -1,19 +1,20 @@
 from __future__ import annotations
 
 import music21
+import music21.chord
 from music21.roman import RomanNumeral
 from PySide6.QtCore import QPointF
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsTextItem
 
 from tilia.requests import Get, Post, get, post
+from tilia.ui import commands
 from tilia.ui.coords import time_x_converter
 from tilia.ui.timelines.base.element import TimelineUIElement
 from tilia.ui.timelines.drag import DragManager
 from tilia.ui.timelines.harmony.constants import (
     INT_TO_NOTE_NAME,
     INT_TO_ROMAN,
-    INVERSION_TO_INTERVAL,
     QUALITY_TO_ABBREVIATION,
     Accidental,
 )
@@ -71,15 +72,19 @@ class HarmonyUI(TimelineUIElement):
 
     @property
     def letter_symbol(self):
-        symbol = music21.harmony.ChordSymbol(
+        note = (
             INT_TO_NOTE_NAME[self.get_data("step")]
-            + Accidental.get_from_int(
-                "music21",
-                self.get_data("accidental"),
-            )
-            + QUALITY_TO_ABBREVIATION[self.get_data("quality")],
-            inversion=self.get_data("inversion"),
+            + Accidental.get_from_int("music21", self.get_data("accidental"))
+            + QUALITY_TO_ABBREVIATION[self.get_data("quality")]
         )
+        try:
+            symbol = music21.harmony.ChordSymbol(
+                note, inversion=self.get_data("inversion")
+            )
+        except music21.chord.ChordException:
+            # Some qualities (e.g. minor-sixth) report more inversions than
+            # music21 can construct; fall back to root position (#376).
+            symbol = music21.harmony.ChordSymbol(note, inversion=0)
         applied_to = self.get_data("applied_to")
         if applied_to:
             symbol.romanNumeral = RomanNumeral(
@@ -124,7 +129,8 @@ class HarmonyUI(TimelineUIElement):
 
     @property
     def letter_symbol_label(self):
-        figure = self.letter_symbol.figure
+        symbol = self.letter_symbol
+        figure = symbol.figure
         match self.get_data("quality"):
             case "Italian":
                 return "It6+"
@@ -142,18 +148,17 @@ class HarmonyUI(TimelineUIElement):
                 return figure.replace("pedal", "`p`e`d")
             case "seventh-flat-five":
                 return figure.replace("dom7dim5", "7((b5))")
-        match self.get_data("accidental"):
-            case -2:
-                figure = figure.replace("--", "`b`b")
-            case -1:
-                figure = figure.replace("-", "b")
-            case 2:
-                figure = figure.replace("##", "`#`#")
+        accidental = self.get_data("accidental")
+        if accidental:
+            figure = figure.replace(
+                Accidental.get_from_int("music21", accidental),
+                Accidental.get_from_int("musanalysis", accidental),
+            )
 
-        if inversion := self.get_data("inversion"):
-            # bass_step = harmony.calculate.bass_step(self.get_data('step'), inversion)
-            # figure += '/' + INT_TO_NOTE_NAME[bass_step]  # TODO calculate bass note
-            figure += "/&" + str(INVERSION_TO_INTERVAL[inversion])
+        if self.get_data("inversion"):
+            bass = symbol.bass()
+            bass_accidental = Accidental.get_from_int("musanalysis", int(bass.alter))
+            figure += "/" + bass.step + bass_accidental
 
         figure = figure.replace("M7", "^^7")
         figure = figure.replace("M9", "^^9")
@@ -229,7 +234,7 @@ class HarmonyUI(TimelineUIElement):
         if self.drag_manager:
             self.drag_manager.on_release()
             self.drag_manager = None
-        post(Post.PLAYER_SEEK, self.seek_time)
+        commands.execute("media.seek", self.seek_time)
 
     def setup_drag(self):
         self.drag_manager = DragManager(

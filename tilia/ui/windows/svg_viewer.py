@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from bisect import bisect
-from typing import Callable
+from typing import Callable, Iterator
 
 from lxml import etree
 from PySide6.QtCore import (
@@ -161,9 +161,15 @@ class SvgViewer(ViewDockWidget):
                 self.beat_x_position = {
                     float(beat): float(x) for beat, x in beat_x_pos.items()
                 }
-            self.timeline.save_svg_data(str(etree.tostring(self.score_root), "utf-8"))
         else:
+            # `_get_beat_x_pos` strips data-marker elements as a side effect.
+            # When viewer_beat_x is already cached we skip it, so the markers
+            # can survive into the rendered SVG. Qt emits a font warning per
+            # marker per paint (issue #513), which both floods the log and
+            # tanks frame rate — strip them here too.
+            self._strip_beat_x_markers(self.score_root)
             self.beat_x_position = {float(beat): float(x) for beat, x in x_pos.items()}
+        self.timeline.save_svg_data(str(etree.tostring(self.score_root), "utf-8"))
 
         self.setParent(get(Get.MAIN_WINDOW))
         self.score_renderer.load(bytearray(etree.tostring(self.score_root)))
@@ -187,20 +193,46 @@ class SvgViewer(ViewDockWidget):
 
         self.view.check_scale()
 
-    def _get_beat_x_pos(self, root: etree._Element) -> dict[float, float]:
-        texts = root.findall(".//g[@class='vf-text']", None)
-        x_stamps = {}
-        measure_divs = {}
-        for e in texts:
-            if float(e[0].attrib["font-size"].strip("px")) > 1:
+    @staticmethod
+    def _extract_beat_position_markers(
+        root: etree._Element,
+    ) -> Iterator[tuple[etree._Element, list[str]]]:
+        """Yield ``(element, ␟-parts)`` for each near-zero-font-size
+        ``<g class='vf-text'>`` data marker carrying a 3-part payload.
+
+        Markers that lack the expected payload have their font-size bumped
+        to ``15px`` (so they render visibly) and are skipped. Callers are
+        responsible for removing the yielded elements.
+        """
+        for e in root.findall(".//g[@class='vf-text']", None):
+            if not len(e):
                 continue
-            if len(x_stamp := e[0].text.split("␟")) != 3:
+            try:
+                if float(e[0].attrib["font-size"].strip("px")) > 1:
+                    continue
+            except (KeyError, ValueError):
+                continue
+            parts = (e[0].text or "").split("␟")
+            if len(parts) != 3:
                 e[0].attrib["font-size"] = "15px"
                 continue
+            yield e, parts
 
+    @staticmethod
+    def _strip_beat_x_markers(root: etree._Element) -> None:
+        """Remove the data-marker text elements that `_get_beat_x_pos`
+        strips on first load. Used when reloading an already-processed SVG.
+        """
+        for e, _ in SvgViewer._extract_beat_position_markers(root):
             e.getparent().remove(e)
 
-            measure, beat_div, max_div = map(int, x_stamp)
+    def _get_beat_x_pos(self, root: etree._Element) -> dict[float, float]:
+        x_stamps = {}
+        measure_divs = {}
+        for e, parts in self._extract_beat_position_markers(root):
+            e.getparent().remove(e)
+
+            measure, beat_div, max_div = map(int, parts)
             if x_stamps.get(measure):
                 if cur_x := x_stamps[measure].get(beat_div):
                     if cur_x > (x := float(e[0].attrib["x"])):
@@ -449,7 +481,7 @@ class SvgViewer(ViewDockWidget):
             Get.TIMELINE_COLLECTION
         ).get_beat_timeline_for_measure_calculation()
 
-        if not beat_tl:
+        if not beat_tl or not beat_tl.measure_count:
             return {}
 
         for key, beat in beat_pos.items():
@@ -735,9 +767,9 @@ class SvgStaveNote(QGraphicsSvgItem):
     def mouseDoubleClickEvent(self, event) -> None:
         t0, t1 = self.get_time(self.seek_x)
         if not t1 or abs(t0[1]) < abs(t1[1]):
-            post(Post.PLAYER_SEEK, t0[0])
+            commands.execute("media.seek", t0[0])
         else:
-            post(Post.PLAYER_SEEK, t1[0])
+            commands.execute("media.seek", t1[0])
         return super().mouseDoubleClickEvent(event)
 
 

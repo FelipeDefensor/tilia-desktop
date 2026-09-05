@@ -82,6 +82,19 @@ class SettingsManager(QObject):
             "default_note_color": "#000000",
             "measure_tracker_color": "#80ff8000",
         },
+        "range_timeline": {
+            "default_row_height": 30,
+            "bottom_margin": 20,
+            "default_range_color": "#A0A0A0",
+            "range_alpha": 125,
+            "handle_color": "#000000",
+            "handle_width": 4,
+            "default_range_size": 2,
+            "default_label_alignment": "left",
+            "merge_separator": "|",
+            "always_show_extensions": "false",
+            "split_all_rows": "false",
+        },
         "PDF_timeline": {
             "default_height": 30,
         },
@@ -163,7 +176,7 @@ class SettingsManager(QObject):
     def _get_key(group_name: str, setting: str, in_default: bool) -> str:
         return f"{'editable/' if in_default else ''}{group_name}/{setting}"
 
-    def update_recent_files(self, path, geometry, state):
+    def update_recent_files(self, path, geometry, state, zoom: float | None = None):
         recent_files = self._settings.value("private/recent_files", [])
         if not isinstance(recent_files, list):
             recent_files = [recent_files]
@@ -174,7 +187,20 @@ class SettingsManager(QObject):
         self._settings.setValue("private/recent_files", recent_files)
         self._settings.setValue(f"private/recent_files/{path}/geometry", geometry)
         self._settings.setValue(f"private/recent_files/{path}/state", state)
+        if zoom is not None:
+            self._settings.setValue(f"private/recent_files/{path}/zoom", zoom)
         self._apply_recent_files_changes()
+
+    def get_file_geometry(self, path) -> tuple:
+        path = Path(path).as_posix()
+        geometry = self._settings.value(f"private/recent_files/{path}/geometry", None)
+        state = self._settings.value(f"private/recent_files/{path}/state", None)
+        return geometry, state
+
+    def get_file_zoom(self, path) -> float | None:
+        path = Path(path).as_posix()
+        zoom = self._settings.value(f"private/recent_files/{path}/zoom", None)
+        return float(zoom) if zoom is not None else None
 
     def remove_from_recent_files(self, path):
         recent_files = self._settings.value("private/recent_files", [])
@@ -190,12 +216,6 @@ class SettingsManager(QObject):
 
     def get_recent_files(self):
         return self._settings.value("private/recent_files", [])[:10]
-
-    def get_geometry_and_state_from_path(self, path):
-        path = Path(path).as_posix()
-        geometry = self._settings.value(f"private/recent_files/{path}/geometry", None)
-        state = self._settings.value(f"private/recent_files/{path}/state", None)
-        return geometry, state
 
     def get_user(self) -> tuple[str, str]:
         email = self._settings.value("private/user/email", "")

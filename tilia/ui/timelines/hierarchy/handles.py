@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QLineF, QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QPen
+from PySide6.QtGui import QColor, QPainterPath, QPen
 from PySide6.QtWidgets import QGraphicsItemGroup, QGraphicsLineItem, QGraphicsRectItem
 
 from tilia.ui.timelines.cursors import CursorMixIn
+
+# Drag handles must sit above the decorative overlays (label, comments and
+# loop icons at z = level + 1 in element.py) so their clicks aren't stolen.
+HANDLE_Z = 100
 
 
 class HierarchyBodyHandle(CursorMixIn, QGraphicsRectItem):
@@ -26,7 +30,7 @@ class HierarchyBodyHandle(CursorMixIn, QGraphicsRectItem):
 
     def set_position(self, x, width, height, tl_height, bottom_margin):
         self.setRect(self.get_rect(x, width, height, tl_height, bottom_margin))
-        self.setZValue(0)
+        self.setZValue(HANDLE_Z)
 
     @staticmethod
     def get_rect(x, width, height, tl_height, bottom_margin):
@@ -51,6 +55,11 @@ class HierarchyFrameHandle(QGraphicsItemGroup):
         )
         self.addToGroup(self.horizontal_line)
         self.addToGroup(self.vertical_line)
+        # By default, QGraphicsItemGroup intercepts events targeted at its
+        # children, which prevents the VLine's CursorMixIn from receiving
+        # hover events. Disabling this lets each child handle its own
+        # events (cursor change, drag).
+        self.setHandlesChildEvents(False)
         self.setZValue(0)
         self.setVisible(False)
 
@@ -60,9 +69,15 @@ class HierarchyFrameHandle(QGraphicsItemGroup):
             frame_x, y - self.HEIGHT / 2, y + self.HEIGHT / 2
         )
 
-    class VLine(QGraphicsLineItem):
+    class VLine(CursorMixIn, QGraphicsLineItem):
+        # Hover/click hit area widened beyond the rendered pen so the
+        # cursor changes and the line is grabbable without pixel-perfect
+        # aim. Qt's default `shape()` for a 3-px line returns a region
+        # only 3 px wide.
+        HIT_WIDTH = 8
+
         def __init__(self, x: float, y0: float, y1: float, width):
-            super().__init__()
+            super().__init__(cursor_shape=Qt.CursorShape.SizeHorCursor)
             self.set_position(x, y0, y1)
             self.set_pen(width)
             self.setZValue(0)
@@ -79,6 +94,20 @@ class HierarchyFrameHandle(QGraphicsItemGroup):
         @staticmethod
         def get_line(x, y0, y1):
             return QLineF(x, y0, x, y1)
+
+        def shape(self) -> QPainterPath:
+            line = self.line()
+            half = self.HIT_WIDTH / 2
+            rect = QRectF(
+                QPointF(line.x1() - half, min(line.y1(), line.y2())),
+                QPointF(line.x2() + half, max(line.y1(), line.y2())),
+            )
+            path = QPainterPath()
+            path.addRect(rect)
+            return path
+
+        def boundingRect(self) -> QRectF:
+            return self.shape().boundingRect()
 
     class HLine(QGraphicsLineItem):
         def __init__(self, x0: float, x1: float, y: float, width):

@@ -11,7 +11,8 @@ import tilia.errors
 from tilia.media.player.base import MediaTimeChangeReason
 from tilia.requests import Get, Post, get, listen
 from tilia.timelines.component_kinds import ComponentKind
-from tilia.timelines.timeline_kinds import TimelineKind
+from tilia.timelines.pdf.timeline import PdfTimeline
+from tilia.ui.menus import PdfMenu
 from tilia.ui.timelines.base.timeline import (
     TimelineUI,
 )
@@ -35,8 +36,8 @@ class PdfTimelineUI(TimelineUI):
     TOOLBAR_CLASS = PdfTimelineToolbar
     ELEMENT_CLASS = PdfMarkerUI
     ACCEPTS_HORIZONTAL_ARROWS = True
-
-    TIMELINE_KIND = TimelineKind.PDF_TIMELINE
+    timeline_class = PdfTimeline
+    menu_class = PdfMenu
 
     def __init__(
         self,
@@ -124,8 +125,8 @@ class PdfTimelineUI(TimelineUI):
             else self.timeline.get_previous_page_number(time) + 1
         )
 
-        # Limit page number to total number of pages in PDF
-        page_number = min(requested_page_number, self.timeline.page_total)
+        # Clamp page number to valid range
+        page_number = min(max(requested_page_number, 1), self.timeline.page_total)
 
         pdf_marker, reason = self.timeline.create_component(
             ComponentKind.PDF_MARKER, time, page_number

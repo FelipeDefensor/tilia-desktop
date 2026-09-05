@@ -26,6 +26,8 @@ from tilia.requests import (
 from tilia.requests.get import reset as reset_get
 from tilia.requests.post import reset as reset_post
 from tilia.ui.cli.ui import CLI
+from tilia.ui.commands import reset as reset_commands
+from tilia.ui.coords import time_x_converter
 from tilia.ui.qtui import QtUI, TiliaMainWindow
 from tilia.ui.windows import WindowKind
 
@@ -48,6 +50,7 @@ pytest_plugins = [
     "tests.timelines.audiowave.fixtures",
     "tests.timelines.pdf.fixtures",
     "tests.timelines.score.fixtures",
+    "tests.timelines.range.fixtures",
 ]
 
 
@@ -86,7 +89,11 @@ class TiliaState:
     def reset(self):
         self.app.on_clear()
         self.duration = 100
-        self.current_time = 0
+
+        # reset current time
+        self.player.current_time = 0
+        post(Post.PLAYER_CURRENT_TIME_CHANGED, 0, MediaTimeChangeReason.PLAYBACK)
+
         self.media_path = ""
         self._reset_undo_manager()
         post(Post.REQUEST_CLEAR_UI)
@@ -111,12 +118,17 @@ class TiliaState:
     @duration.setter
     def duration(self, value):
         self.app.set_file_media_duration(value)
+        # TiliaState pokes app state directly for test setup; it isn't a
+        # simulated user action, so it shouldn't make is_file_modified()
+        # see an edit (#377).
+        self.file_manager.resync_saved_metadata()
 
     def set_duration(
-        self, value, scale_timelines: Literal["yes", "no", "prompt"] = "prompt"
+        self, value, scale_timelines: Literal["yes", "no", "prompt", "keep"] = "prompt"
     ):
         """Use this if you want to pass scale_timelines."""
         self.app.set_file_media_duration(value, scale_timelines)
+        self.file_manager.resync_saved_metadata()
 
     @property
     def media_path(self):
@@ -212,10 +224,35 @@ def use_test_logger(qapplication):
 
 @pytest.fixture(scope="module")
 def qtui(tilia, cleanup_requests, qapplication, use_test_settings, use_test_logger):
+    # Re-register time_x_converter listeners before creating QtUI so that
+    # time_x_converter receives PLAYBACK_AREA_SET_WIDTH before qtui's handler
+    # fires TIMELINE_WIDTH_SET_DONE (which calls set_width which calls
+    # time_x_converter.get_x_by_time). The singleton loses its Post listeners
+    # when reset_post() runs at the end of each module; without this, stale
+    # coordinate state from the previous module would corrupt coordinate math.
+    time_x_converter.__init__()
     mw = TiliaMainWindow()
     qtui_ = QtUI(qapplication, mw)
+    time_x_converter.setup()  # sync values now that qtui serves Get.PLAYBACK_AREA_WIDTH
     stop_listening(qtui_, Post.DISPLAY_ERROR)
     yield qtui_
+
+
+def _teardown_youtube_player(player) -> None:
+    from tilia.media.player.youtube import YouTubePlayer
+
+    if not isinstance(player, YouTubePlayer):
+        return
+    from PySide6.QtCore import QCoreApplication, QEvent
+
+    # Schedule deletion then flush DeferredDelete synchronously so the C++
+    # QWebEngineView object is actually destroyed before the worker exits.
+    # processEvents() alone does not flush DeferredDelete (Qt requires a full
+    # event-loop cycle); sendPostedEvents with DeferredDelete does. Without
+    # this QtWebEngineProcess stays alive as an orphan on macOS, preventing
+    # the xdist worker from exiting and hanging the CI job.
+    player.view.deleteLater()
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 # noinspection PyProtectedMember
@@ -223,8 +260,10 @@ def qtui(tilia, cleanup_requests, qapplication, use_test_settings, use_test_logg
 def tilia(cleanup_requests):
     tilia_ = setup_logic(autosaver=False)
     tilia_.set_file_media_duration(100)
+    tilia_.file_manager.resync_saved_metadata()
     tilia_.reset_undo_manager()
     yield tilia_
+    _teardown_youtube_player(tilia_.player)
 
 
 @pytest.fixture
@@ -240,6 +279,10 @@ def cleanup_requests():
 
     reset_get()
     reset_post()
+    # Without this, a later module whose tests never instantiate qtui (e.g. a
+    # bare backend fixture calling commands.execute()) would silently reuse a
+    # command bound to this module's already-torn-down TimelineUIs instance.
+    reset_commands()
 
 
 @pytest.fixture
@@ -250,7 +293,7 @@ def tls(tilia):
     _tls.clear()  # deletes created timelines
 
 
-@pytest.fixture(params=["marker", "harmony", "beat", "hierarchy", "audiowave", "score"])
+@pytest.fixture
 def tlui(
     request,
     marker_tlui,

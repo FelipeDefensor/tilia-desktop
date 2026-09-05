@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import functools
-import itertools
 import json
 import os
 import re
@@ -16,10 +15,10 @@ from tilia.exceptions import NoReplyToRequest
 from tilia.file.file_manager import open_tla
 from tilia.file.tilia_file import TiliaFile
 from tilia.media.loader import load_media
-from tilia.requests import Get, Post, get, listen, post, serve
+from tilia.requests import Get, Post, get, listen, long_operation, post, serve
 from tilia.settings import settings
 from tilia.timelines.collection.collection import Timelines
-from tilia.timelines.timeline_kinds import TimelineKind
+from tilia.timelines.slider.timeline import SliderTimeline
 from tilia.ui import commands
 from tilia.ui.format import format_media_time
 from tilia.ui.strings import SCALE_TIMELINE_PROMPT
@@ -31,6 +30,9 @@ if TYPE_CHECKING:
     from tilia.file.file_manager import FileManager
     from tilia.media.player import Player
     from tilia.undo_manager import UndoManager
+
+
+DURATION_JITTER_TOLERANCE = 2.0
 
 
 class App:
@@ -101,11 +103,13 @@ class App:
             "edit.redo", self.undo_manager.redo, text="&Redo", shortcut="Ctrl+Shift+Z"
         )
 
-        commands.register(
-            "folder.open.autosaves",
-            tilia.dirs.open_autosaves_dir,
-            "Open autosa&ves folder...",
-        ),
+        (
+            commands.register(
+                "folder.open.autosaves",
+                tilia.dirs.open_autosaves_dir,
+                "Open autosa&ves folder...",
+            ),
+        )
 
         commands.register(
             "file.export.img",
@@ -122,24 +126,43 @@ class App:
     def set_file_media_duration(
         self,
         duration: float,
-        scale_timelines: Literal["yes", "no", "prompt"] | None = None,
+        scale_timelines: Literal["yes", "no", "prompt", "keep"] | None = None,
     ) -> None:
         if scale_timelines:
             self.should_scale_timelines = scale_timelines
+        # Post the new duration first so time_x_converter (and other
+        # coordinate listeners) update before on_media_duration_changed
+        # crops or scales components — otherwise the UI re-positions
+        # cropped elements against the OLD media_duration and the
+        # timeline appears to stop at the old end-time (#496).
+        # is_confirmation tells file_manager this duration belongs to
+        # media we already associated with the current file (#453's
+        # "keep" mode, within normal jitter), not a user-driven change,
+        # so it shouldn't be treated as an unsaved edit.
+        post(
+            Post.FILE_MEDIA_DURATION_CHANGED,
+            duration,
+            is_confirmation=self._is_duration_confirmation(duration),
+        )
         self.on_media_duration_changed(duration)
-        post(Post.FILE_MEDIA_DURATION_CHANGED, duration)
+
+    def _is_duration_confirmation(self, duration: float) -> bool:
+        return (
+            self.should_scale_timelines == "keep"
+            and abs(duration - self.duration) < DURATION_JITTER_TOLERANCE
+        )
 
     def is_file_modified(self) -> bool:
         return self.file_manager.is_file_modified(self.get_app_state())
 
-    def on_open(self, path: Path | str | None = None) -> None:
+    def on_open(self, path: Path | str | None = None) -> bool:
         if isinstance(path, str):
             path = Path(path)
 
         if self.is_file_modified():
             success, should_save = get(Get.FROM_USER_SHOULD_SAVE_CHANGES)
             if not success:
-                return
+                return False
 
             if should_save:
                 commands.execute("file.save")
@@ -147,26 +170,44 @@ class App:
         if not path:
             success, path = get(Get.FROM_USER_TILIA_FILE_PATH)
             if not success:
-                return
+                return False
         prev_state = self.get_app_state()
         self.on_clear()
+        self._do_open(path, prev_state)
 
+    @long_operation("Loading file...")
+    def _do_open(self, path: Path, prev_state: dict) -> None:
         success, file, old_path = open_tla(path)
         if not success:
             self.on_restore_state(prev_state)
-            return
+            return False
 
         self.old_file_path = old_path
         self.cur_file_path = Path(file.file_path)
+        if file.unknown_timelines or file.deleted_timelines:
+            self._reserve_ids({**file.unknown_timelines, **file.deleted_timelines})
 
         success = self.on_file_load(file)
         if not success:
             self.on_restore_state(prev_state)
-            return
-        post(Post.APP_FILE_LOADED, file)
+            return False
+
+        file.timelines, file.timelines_hash = self.get_timelines_state()
+
+        if file.unknown_timelines or file.deleted_timelines:
+            file.timelines = {
+                **self._renumber_ordinal_for_append(
+                    file.unknown_timelines, file.timelines
+                ),
+                **file.deleted_timelines,
+                **file.timelines,
+            }
 
         self.file_manager.file = file
+        post(Post.APP_FILE_LOADED, file)
         self.update_recent_files()
+
+        return True
 
     def update_recent_files(self):
         try:
@@ -217,7 +258,7 @@ class App:
         self,
         path: str,
         record: bool = True,
-        scale_timelines: Literal["yes", "no", "prompt"] = "prompt",
+        scale_timelines: Literal["yes", "no", "prompt", "keep"] = "prompt",
         initial_duration: float | None = None,
     ) -> bool:
         """
@@ -229,10 +270,18 @@ class App:
             self.set_file_media_duration(0.0)
             return True
 
+        return self._do_load_media(path, record, initial_duration)
+
+    @long_operation("Loading media...")
+    def _do_load_media(
+        self,
+        path: str,
+        record: bool,
+        initial_duration: float | None,
+    ) -> bool:
         success, player = load_media(
             self.player, path, initial_duration=initial_duration
         )
-
         self.player = player
 
         if success and record:
@@ -286,10 +335,10 @@ class App:
 
         def handle_invalid_id(id):
             tilia.errors.display(tilia.errors.INVALID_ID, id)
-            return str(next(self._id_counter))
+            return self._next_available_id()
 
         if id is None:
-            return str(next(self._id_counter))
+            return self._next_available_id()
 
         if type(id) not in [int, str]:
             return handle_invalid_id(id)
@@ -309,20 +358,57 @@ class App:
         existing_ids = timeline_ids.union(component_ids)
 
         if int_id in existing_ids:
-            return str(next(self._id_counter))
+            return self._next_available_id()
 
-        if not existing_ids or int_id > max(existing_ids):
-            self._id_counter = itertools.count(int_id + 1)
+        self._next_id = max(self._next_id, int_id + 1)
 
         return str(int_id)
 
+    def _next_available_id(self) -> str:
+        id = self._next_id
+        self._next_id += 1
+        return str(id)
+
     def reset_id_generator(self):
-        self._id_counter = itertools.count()
+        self._next_id = 0
+
+    def _reserve_ids(self, unknown_timelines: dict) -> None:
+        def to_int(value):
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return None
+
+        ids = [
+            n
+            for timeline_id, timeline_data in unknown_timelines.items()
+            for i in (timeline_id, *timeline_data.get("components", {}))
+            if (n := to_int(i)) is not None
+        ]
+        if ids:
+            self._next_id = max(self._next_id, max(ids) + 1)
 
     def on_media_duration_changed(self, duration: float):
-        if not self.timelines.is_blank and duration != self.duration:
+        # "keep" leaves the timelines untouched: they already match this
+        # media (e.g. we just opened a file), so a duration report that
+        # differs only by jitter — YouTube returns it asynchronously, see
+        # DURATION_JITTER_TOLERANCE above — must neither prompt to scale
+        # nor crop end components (#453). Only the duration itself is
+        # updated, below. A difference at or above the tolerance is treated
+        # as a genuine media change instead, falling back to "prompt" for
+        # this report only -- should_scale_timelines itself is untouched,
+        # so a later, smaller jitter report is still handled as "keep".
+        effective_mode = self.should_scale_timelines
+        if effective_mode == "keep" and not self._is_duration_confirmation(duration):
+            effective_mode = "prompt"
+
+        if (
+            not self.timelines.is_blank
+            and duration != self.duration
+            and effective_mode != "keep"
+        ):
             crop_or_scale = ""
-            if self.should_scale_timelines == "prompt":
+            if effective_mode == "prompt":
                 if self.prompt_scale_timelines(self.duration, duration):
                     crop_or_scale = "scale"
                 else:
@@ -331,9 +417,9 @@ class App:
                             crop_or_scale = "crop"
                         else:
                             crop_or_scale = "scale"
-            elif self.should_scale_timelines == "yes":
+            elif effective_mode == "yes":
                 crop_or_scale = "scale"
-            elif duration < self.duration:  # self.should_scale_timelines == 'no'
+            elif duration < self.duration:  # effective_mode == 'no'
                 crop_or_scale = "crop"
 
             if crop_or_scale == "scale":
@@ -392,7 +478,13 @@ class App:
             post(Post.PLAYER_URL_CHANGED, "")
             return
 
-        self.load_media(new_path, initial_duration=duration)
+        # Media that belongs to a file we just opened: the timelines were
+        # saved to match it, so neither prompt to rescale nor crop when the
+        # player reports its duration. "no" is not enough here — it still
+        # crops when the reported duration comes back shorter, and YouTube
+        # returns that duration asynchronously, often off by a few ms from
+        # the stored value, which would silently delete end components (#453).
+        self.load_media(new_path, initial_duration=duration, scale_timelines="keep")
 
     def on_file_load(self, file: TiliaFile) -> bool:
         media_path = file.media_path
@@ -473,11 +565,31 @@ class App:
     def get_timelines_state(self):
         return self.timelines.serialize_timelines()
 
+    @staticmethod
+    def _renumber_ordinal_for_append(
+        unknown_timelines: dict, live_timelines: dict
+    ) -> dict:
+        if not unknown_timelines:
+            return {}
+        live_max = max(
+            (tl.get("ordinal", 0) for tl in live_timelines.values()), default=0
+        )
+        ordered_ids = sorted(
+            unknown_timelines, key=lambda id: unknown_timelines[id].get("ordinal", 0)
+        )
+        return {
+            id: {**unknown_timelines[id], "ordinal": live_max + offset}
+            for offset, id in enumerate(ordered_ids, start=1)
+        }
+
     def get_app_state(self) -> dict:
         timelines_state, timelines_hash = self.timelines.serialize_timelines()
+        unknown_timelines = self._renumber_ordinal_for_append(
+            self.file_manager.file.unknown_timelines, timelines_state
+        )
         params = {
             "media_metadata": dict(self.file_manager.file.media_metadata),
-            "timelines": timelines_state,
+            "timelines": {**unknown_timelines, **timelines_state},
             "timelines_hash": timelines_hash,
             "media_path": get(Get.MEDIA_PATH),
             "file_path": self.file_manager.get_file_path(),
@@ -495,10 +607,8 @@ class App:
 
     def setup_file(self):
         # creates a slider timeline if none was loaded
-        if not get(Get.TIMELINE_COLLECTION).has_timeline_of_kind(
-            TimelineKind.SLIDER_TIMELINE
-        ):
-            self.timelines.create_timeline(TimelineKind.SLIDER_TIMELINE)
+        if not get(Get.TIMELINE_COLLECTION).has_timeline_of_type(SliderTimeline):
+            self.timelines.create_timeline(SliderTimeline)
             self.file_manager.set_timelines(*self.get_timelines_state())
 
         self.reset_undo_manager()

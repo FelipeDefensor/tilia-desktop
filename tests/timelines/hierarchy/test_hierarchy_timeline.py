@@ -256,6 +256,28 @@ class TestHierarchyTimelineComponentManager:
         assert hrc3.start == 1.5
         assert hrc3.end == 3
 
+    def test_scale_scales_pre_start_and_post_end(self, hierarchy_tl):
+        hrc, _ = hierarchy_tl.create_hierarchy(
+            start=2, end=4, level=1, pre_start=1, post_end=6
+        )
+
+        hierarchy_tl.component_manager.scale(0.5)
+
+        assert hrc.start == 1
+        assert hrc.end == 2
+        assert hrc.pre_start == 0.5
+        assert hrc.post_end == 3
+
+    def test_crop_clamps_post_end_beyond_new_length(self, hierarchy_tl):
+        hrc, _ = hierarchy_tl.create_hierarchy(
+            start=0.0, end=0.2, level=1, post_end=0.4
+        )
+
+        hierarchy_tl.component_manager.crop(0.1)
+
+        assert hrc.end == 0.1
+        assert hrc.post_end == 0.1
+
     def test_increase_level(self, hierarchy_tl):
         hrc, _ = hierarchy_tl.create_hierarchy(0, 1, 1)
         hierarchy_tl.alter_levels([hrc], 1)
@@ -781,3 +803,43 @@ class TestMerge:
 
         new_value = self.get_attr(hierarchy_tl[0], attr_name)
         assert new_value == "first" + hierarchy_tl.merge_separator + "second"
+
+    @pytest.mark.parametrize("attr_name", ATTRS)
+    def test_identical_values_kept_without_separator(self, hierarchy_tl, attr_name):
+        hrcs = self.create_units_to_merge(hierarchy_tl, 3)
+        for h in hrcs:
+            self.set_attr(h, attr_name, "same")
+
+        hierarchy_tl.merge(hrcs)
+
+        assert self.get_attr(hierarchy_tl[0], attr_name) == "same"
+
+    @pytest.mark.parametrize("attr_name", ATTRS)
+    def test_identical_values_with_empties_kept_without_separator(
+        self, hierarchy_tl, attr_name
+    ):
+        hrcs = self.create_units_to_merge(hierarchy_tl, 4)
+        self.set_attr(hrcs[0], attr_name, "same")
+        self.set_attr(hrcs[2], attr_name, "same")
+
+        hierarchy_tl.merge(hrcs)
+
+        assert self.get_attr(hierarchy_tl[0], attr_name) == "same"
+
+    def test_identical_colors_kept(self, hierarchy_tl):
+        hrcs = self.create_units_to_merge(hierarchy_tl, 3)
+        for h in hrcs:
+            h.set_data("color", "#aabbcc")
+
+        hierarchy_tl.merge(hrcs)
+
+        assert hierarchy_tl[0].get_data("color") == "#aabbcc"
+
+    def test_differing_colors_not_set(self, hierarchy_tl):
+        hrcs = self.create_units_to_merge(hierarchy_tl, 2)
+        hrcs[0].set_data("color", "#aabbcc")
+        hrcs[1].set_data("color", "#ddeeff")
+
+        hierarchy_tl.merge(hrcs)
+
+        assert hierarchy_tl[0].get_data("color") == ""

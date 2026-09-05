@@ -1,4 +1,5 @@
 from typing import cast
+from unittest.mock import Mock
 
 from tilia.ui import commands
 from tilia.ui.format import format_media_time
@@ -34,3 +35,19 @@ class TestInspect:
         page_number = get_inspect_widget(qtui, "Page number").value()
         assert time == format_media_time(10)
         assert page_number == 5
+
+
+class TestDoubleClick:
+    def test_pdf_marker_seek(self, pdf_tlui, tilia_state):
+        commands.execute("timeline.pdf.add", time=10)
+        pdf_tlui[0].on_double_left_click(None)
+
+        assert tilia_state.current_time == 10
+
+    def test_does_not_trigger_drag(self, pdf_tlui):
+        commands.execute("timeline.pdf.add")
+        mock = Mock()
+        pdf_tlui[0].setup_drag = mock
+        pdf_tlui[0].on_double_left_click(None)
+
+        mock.assert_not_called()

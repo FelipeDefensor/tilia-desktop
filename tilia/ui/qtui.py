@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import os
 import re
 from pathlib import Path
 
@@ -8,10 +9,9 @@ from PySide6 import QtGui
 from PySide6.QtCore import (
     QEvent,
     QKeyCombination,
+    QObject,
     Qt,
-    QtMsgType,
     QUrl,
-    qInstallMessageHandler,
 )
 from PySide6.QtGui import QDesktopServices, QFontDatabase, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (
@@ -20,11 +20,11 @@ from PySide6.QtWidgets import (
     QDockWidget,
     QGraphicsScene,
     QMainWindow,
-    QToolBar,
 )
 
 import tilia.constants
 import tilia.errors
+import tilia.media.constants
 import tilia.parsers.csv.beat
 import tilia.parsers.csv.harmony
 import tilia.parsers.csv.hierarchy
@@ -33,33 +33,29 @@ import tilia.parsers.csv.pdf
 import tilia.parsers.score.musicxml
 import tilia.ui.dialogs.file
 import tilia.ui.timelines.constants
-from tilia import constants
+from tilia.file.media_metadata import MediaMetadata
 from tilia.file.tilia_file import TiliaFile
-from tilia.log import logger
 from tilia.requests import Get, Post, get, listen, post, serve
 from tilia.settings import settings
-from tilia.timelines.timeline_kinds import TimelineKind as TlKind
 from tilia.ui import commands
 from tilia.ui.timelines.collection.collection import TimelineUIs
+from tilia.ui.zoom_toolbar import ZoomToolbar
 from tilia.utils import get_tilia_class_string
 
 from ..media.player import QtAudioPlayer, QtVideoPlayer, YouTubePlayer
+from ..timelines.base.timeline import Timeline
 from .dialog_manager import DialogManager
 from .dialogs.basic import display_error
 from .dialogs.crash import CrashDialog
 from .dialogs.resize_rect import ResizeRect
+from .long_operation import LongOperationToolbar
 from .menubar import TiliaMenuBar
 from .menus import (
-    BeatMenu,
-    HarmonyMenu,
-    HierarchyMenu,
-    MarkerMenu,
-    PdfMenu,
-    ScoreMenu,
     TimelinesMenu,
 )
 from .options_toolbar import OptionsToolbar
 from .player import PlayerToolbar
+from .timelines.base.timeline import TimelineUI
 from .windows.about import About
 from .windows.inspect import Inspect
 from .windows.kinds import WindowKind
@@ -71,26 +67,31 @@ from .windows.settings import SettingsWindow
 class TiliaMainWindow(QMainWindow):
     def __init__(self):
         QIcon.setThemeSearchPaths([(Path(__file__).parent / "icons").as_posix()])
-        QIcon.setThemeName("tilia" + QApplication.styleHints().colorScheme().name)
+        QIcon.setThemeName(self._tilia_theme_name())
         super().__init__()
         self.setWindowTitle(tilia.constants.APP_NAME)
         self.setWindowIcon(QIcon.fromTheme("tilia"))
-        self.setStatusTip("Main window")
-        qInstallMessageHandler(self.handle_qt_log_message)
+        self.setStyleSheet("QMainWindow::separator { height: 0px; width: 0px; }")
+        self.setAcceptDrops(True)
+        self._drop_filter = FileDropEventFilter()
+
+    def install_drop_filter(self):
+        self.installEventFilter(self._drop_filter)
 
     def changeEvent(self, event: QEvent) -> None:
         if event.type() == event.Type.ThemeChange:
-            QIcon.setThemeName("tilia" + QApplication.styleHints().colorScheme().name)
+            QIcon.setThemeName(self._tilia_theme_name())
 
         return super().changeEvent(event)
 
     @staticmethod
-    def handle_qt_log_message(type, context, msg):
-        f_msg = f"[{type.name}] {context.file}:{context.line} - {msg}"
-        if type == QtMsgType.QtFatalMsg:
-            raise Exception(f_msg)
-        else:
-            logger.error(f_msg)
+    def _tilia_theme_name() -> str:
+        # On Linux the platform may not advertise a colour preference,
+        # in which case styleHints().colorScheme() returns Unknown and
+        # we'd otherwise pick the non-existent "tiliaUnknown" theme,
+        # leaving every custom icon blank (#475).
+        scheme = QApplication.styleHints().colorScheme()
+        return "tiliaDark" if scheme == Qt.ColorScheme.Dark else "tiliaLight"
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         if event is None:
@@ -136,12 +137,13 @@ class TiliaMainWindow(QMainWindow):
         if not success:
             return
 
-        if result != widget.sceneRect().width():
+        original_zoom = get(Get.CURRENT_ZOOM)
+        needs_resize = result != widget.sceneRect().width()
+        if needs_resize:
             margins = 2 * get(Get.LEFT_MARGIN_X)
-            zoom_level = (result - margins) / (widget.sceneRect().width() - margins)
-            commands.execute("view.zoom.in", zoom_level)
-        else:
-            zoom_level = 1.0
+            commands.execute(
+                "view.zoom.set", (result - margins) / get(Get.ZOOM_REFERENCE_WIDTH)
+            )
 
         image = QPixmap(widget.sceneRect().size().toSize())
         painter = QPainter(image)
@@ -150,11 +152,50 @@ class TiliaMainWindow(QMainWindow):
         del painter
         del image
 
-        if zoom_level != 1.0:
-            commands.execute("view.zoom.out", zoom_level)
+        if needs_resize:
+            commands.execute("view.zoom.set", original_zoom)
+
+
+class FileDropEventFilter(QObject):
+    """Handles file drag/drop events for the main window."""
+
+    _DRAG_EVENT_TYPES = (
+        QEvent.Type.DragEnter,
+        QEvent.Type.DragMove,
+        QEvent.Type.Drop,
+    )
+
+    @staticmethod
+    def _is_file_droppable(urls: list[QUrl]):
+        if len(urls) != 1 or not urls[0].isLocalFile():
+            return False
+        ext = Path(urls[0].toLocalFile()).suffix[1:].lower()
+        return ext in {tilia.constants.FILE_EXTENSION}.union(
+            tilia.media.constants.ALL_SUPPORTED_MEDIA_FORMATS
+        )
+
+    @staticmethod
+    def _dispatch_dropped_path(path: str) -> None:
+        if Path(path).suffix[1:].lower() == tilia.constants.FILE_EXTENSION:
+            commands.execute("file.open", path)
+        else:
+            post(Post.APP_MEDIA_LOAD, path)
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if event.type() not in self._DRAG_EVENT_TYPES:
+            return False
+        if not self._is_file_droppable(event.mimeData().urls()):
+            return False
+        if event.type() == QEvent.Type.Drop:
+            path = event.mimeData().urls()[0].toLocalFile()
+            self._dispatch_dropped_path(path)
+        event.acceptProposedAction()
+        return True
 
 
 class QtUI:
+    DEFAULT_WINDOW_TITLE = f"untitled.tla - {tilia.constants.APP_NAME}"
+
     def __init__(self, q_application: QApplication, mw: TiliaMainWindow):
         self.app = None
         self.q_application = q_application
@@ -167,6 +208,11 @@ class QtUI:
         self._setup_dialog_manager()
         self._setup_menus()
         self._setup_windows()
+        # Must run after every register() call: parents all QActions to the
+        # main window so their shortcuts can fire from context menus, and
+        # resolves shared shortcuts (e.g. range + hierarchy both bind "e"
+        # and "s") into one application-level QShortcut per chord.
+        commands.setup_shortcuts(self.main_window)
 
         self.is_error = False
 
@@ -177,6 +223,14 @@ class QtUI:
     def timeline_width(self):
         return self.playback_area_width + 2 * self.playback_area_margin
 
+    @property
+    def window_title(self):
+        return self.main_window.windowTitle()
+
+    @window_title.setter
+    def window_title(self, value: str):
+        self.main_window.setWindowTitle(value)
+
     def _setup_sizes(self):
         self.playback_area_width = tilia.ui.timelines.constants.PLAYBACK_AREA_WIDTH
         self.playback_area_margin = tilia.ui.timelines.constants.PLAYBACK_AREA_MARGIN
@@ -184,13 +238,16 @@ class QtUI:
     def _setup_requests(self):
         LISTENS = {
             (Post.APP_FILE_LOADED, self.on_file_loaded),
+            (Post.APP_SETUP_FILE, self.on_file_setup),
+            (Post.FILE_SAVED, self.on_file_saved),
+            (Post.MEDIA_METADATA_TITLE_UPDATED, self.on_metadata_title_set_done),
             (Post.PLAYBACK_AREA_SET_WIDTH, self.on_timeline_set_width),
             (Post.WINDOW_OPEN, self.on_window_open),
             (Post.WINDOW_CLOSE, self.on_window_close),
             (Post.WINDOW_CLOSE_DONE, self.on_window_close_done),
             (Post.REQUEST_CLEAR_UI, self.on_clear_ui),
-            (Post.TIMELINE_KIND_INSTANCED, self.on_timeline_kind_change),
-            (Post.TIMELINE_KIND_NOT_INSTANCED, self.on_timeline_kind_change),
+            (Post.TIMELINE_TYPE_INSTANCED, self.on_timeline_type_change),
+            (Post.TIMELINE_TYPE_NOT_INSTANCED, self.on_timeline_type_change),
             (Post.DISPLAY_ERROR, display_error),
             (Post.UI_EXIT, self.exit),
         }
@@ -251,6 +308,9 @@ class QtUI:
 
     def _setup_main_window(self, mw: TiliaMainWindow):
         self.main_window = mw
+        if os.environ.get("ENVIRONMENT") != "test":
+            self.main_window.install_drop_filter()
+        self._reset_window_title()
 
     @staticmethod
     def _setup_fonts():
@@ -268,17 +328,10 @@ class QtUI:
         self._setup_dynamic_menus()
 
     def _setup_dynamic_menus(self):
-        menu_info = {
-            (TlKind.MARKER_TIMELINE, MarkerMenu),
-            (TlKind.HIERARCHY_TIMELINE, HierarchyMenu),
-            (TlKind.BEAT_TIMELINE, BeatMenu),
-            (TlKind.HARMONY_TIMELINE, HarmonyMenu),
-            (TlKind.PDF_TIMELINE, PdfMenu),
-            (TlKind.SCORE_TIMELINE, ScoreMenu),
-        }
         self.kind_to_dynamic_menus = {
-            kind: self.menu_bar.get_menu(TimelinesMenu).get_submenu(menu_class)
-            for kind, menu_class in menu_info
+            kind: self.menu_bar.get_menu(TimelinesMenu).get_submenu(kind.menu_class)
+            for kind in TimelineUI.__subclasses__()
+            if kind.menu_class
         }
         self.update_dynamic_menus()
 
@@ -292,27 +345,25 @@ class QtUI:
         }
 
     def update_dynamic_menus(self):
-        instanced_kinds = [tlui.TIMELINE_KIND for tlui in get(Get.TIMELINE_UIS)]
-        for kind in [
-            TlKind.HIERARCHY_TIMELINE,
-            TlKind.BEAT_TIMELINE,
-            TlKind.MARKER_TIMELINE,
-            TlKind.HARMONY_TIMELINE,
-            TlKind.PDF_TIMELINE,
-            TlKind.SCORE_TIMELINE,
-        ]:
-            if kind in instanced_kinds:
-                self.show_dynamic_menus(kind)
+        # `kind_to_dynamic_menus` is keyed by UI class, but the running
+        # collection knows about backend classes — bridge through
+        # `ui_cls.timeline_class` so the comparison is backend-vs-backend.
+        instanced_backends = {tlui.timeline_class for tlui in get(Get.TIMELINE_UIS)}
+        for ui_cls in TimelineUI.__subclasses__():
+            if ui_cls.menu_class is None:
+                continue
+            if ui_cls.timeline_class in instanced_backends:
+                self.show_dynamic_menus(ui_cls)
             else:
-                self.hide_dynamic_menus(kind)
+                self.hide_dynamic_menus(ui_cls)
 
-    def show_dynamic_menus(self, kind: TlKind):
-        self.kind_to_dynamic_menus[kind].menuAction().setVisible(True)
+    def show_dynamic_menus(self, ui_cls: type[TimelineUI]):
+        self.kind_to_dynamic_menus[ui_cls].menuAction().setVisible(True)
 
-    def hide_dynamic_menus(self, kind: TlKind):
-        self.kind_to_dynamic_menus[kind].menuAction().setVisible(False)
+    def hide_dynamic_menus(self, ui_cls: type[TimelineUI]):
+        self.kind_to_dynamic_menus[ui_cls].menuAction().setVisible(False)
 
-    def on_timeline_kind_change(self, _: TlKind):
+    def on_timeline_type_change(self, _: type[Timeline]):
         self.update_dynamic_menus()
 
     def on_timeline_set_width(self, value: int) -> None:
@@ -336,20 +387,62 @@ class QtUI:
     def get_window_state(self):
         return self.main_window.saveState()
 
+    def _set_window_title(self, title: str) -> None:
+        self.window_title = f"{title} - {tilia.constants.APP_NAME}"
+
+    def _reset_window_title(self) -> None:
+        self.window_title = self.DEFAULT_WINDOW_TITLE
+
+    def _set_window_title_from_metadata_title(self) -> None:
+        title = get(Get.MEDIA_METADATA).get("title")
+        if not title or title == MediaMetadata.REQUIRED_FIELDS.get("title"):
+            # If there is no title, or title is the default, take title from file name
+            title = Path(get(Get.FILE_PATH)).stem
+
+        if not title:
+            self._reset_window_title()  # pragma: no cover
+        else:
+            self._set_window_title(str(title))
+
+    def on_metadata_title_set_done(self, title: str) -> None:
+        if title:
+            self._set_window_title(title)
+        elif path := get(Get.FILE_PATH):
+            self._set_window_title(Path(path).stem)
+        else:
+            self._reset_window_title()
+
+    def on_file_saved(self, path: Path | str) -> None:
+        self._set_window_title_from_metadata_title()
+
+    def on_file_setup(self) -> None:
+        self._reset_window_title()
+
     def on_file_loaded(self, file: TiliaFile) -> None:
-        geometry, state = settings.get_geometry_and_state_from_path(file.file_path)
+        geometry, state = settings.get_file_geometry(file.file_path)
         if geometry and state:
             self.main_window.restoreGeometry(geometry)
             self.main_window.restoreState(state)
 
+        self._set_window_title_from_metadata_title()
+
     def _setup_widgets(self):
-        self.timeline_toolbars = QToolBar()
         self.timeline_uis = TimelineUIs(self.main_window)
         self.player_toolbar = PlayerToolbar()
         self.options_toolbar = OptionsToolbar()
 
         self.main_window.addToolBar(self.player_toolbar)
         self.main_window.addToolBar(self.options_toolbar)
+
+        self._long_op_toolbar = LongOperationToolbar()
+        self.main_window.addToolBar(
+            Qt.ToolBarArea.BottomToolBarArea, self._long_op_toolbar
+        )
+
+        self._zoom_toolbar = ZoomToolbar()
+        self.main_window.addToolBar(
+            Qt.ToolBarArea.BottomToolBarArea, self._zoom_toolbar
+        )
 
     def on_window_open(self, kind: WindowKind):
         """Open a window of 'kind', if there is no window of that kind open.
@@ -434,10 +527,12 @@ class QtUI:
             if window is not None:
                 window.close()
         self.main_window.setFocus()
+        self._reset_window_title()
+        commands.execute("view.zoom.set", 1.0)
 
     @staticmethod
     def on_open_website_help():
-        QDesktopServices.openUrl(QUrl(f"{constants.WEBSITE_URL}/help"))
+        QDesktopServices.openUrl(QUrl(f"{tilia.constants.WEBSITE_URL}/help"))
 
     @staticmethod
     def show_crash_dialog(exception_info):

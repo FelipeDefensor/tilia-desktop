@@ -3,7 +3,9 @@ import tilia.ui.timelines.copy_paste
 from tilia.requests import Get, Post, get, listen, post
 from tilia.settings import settings
 from tilia.timelines.component_kinds import ComponentKind
-from tilia.timelines.timeline_kinds import TimelineKind
+from tilia.timelines.hierarchy.timeline import HierarchyTimeline
+from tilia.ui import commands
+from tilia.ui.menus import HierarchyMenu
 from tilia.ui.timelines.base.timeline import (
     TimelineUI,
     with_elements,
@@ -27,10 +29,11 @@ from tilia.ui.timelines.hierarchy.key_press_manager import (
 class HierarchyTimelineUI(TimelineUI):
     TOOLBAR_CLASS = HierarchyTimelineToolbar
     ELEMENT_CLASS = HierarchyUI
-    TIMELINE_KIND = TimelineKind.HIERARCHY_TIMELINE
     ACCEPTS_HORIZONTAL_ARROWS = True
     ACCEPTS_VERTICAL_ARROWS = True
     MIN_MARGIN = 10
+    timeline_class = HierarchyTimeline
+    menu_class = HierarchyMenu
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -51,17 +54,23 @@ class HierarchyTimelineUI(TimelineUI):
                 "c",
                 "hierarchy-create-child",
             ),
+            # decrease_level / increase_level: shortcut field is empty
+            # because Ctrl+Up / Ctrl+Down are dispatched via
+            # Post.TIMELINE_KEY_PRESS_CTRL_UP/DOWN (see TimelineView and
+            # TimelineUIs.on_ctrl_arrow_press) instead of being attached
+            # to the QAction. Registering the same shortcut here as well
+            # would produce a Qt "Ambiguous shortcut" warning.
             (
                 "decrease_level",
                 "Move down a level",
-                "Ctrl+Down",
+                "",
                 "hierarchy-level-down",
             ),
             ("group", "Group", "g", "hierarchy-create-parent"),
             (
                 "increase_level",
                 "Move up a level",
-                "Ctrl+Up",
+                "",
                 "hierarchy-level-up",
             ),
             ("merge", "Merge", "e", "hierarchy-merge"),
@@ -92,6 +101,13 @@ class HierarchyTimelineUI(TimelineUI):
                 shortcut=shortcut,
                 icon=icon,
             )
+
+        cls.register_timeline_command(
+            collection,
+            "add",
+            cls.on_add,
+            TimelineSelector.FIRST,
+        )
 
     def on_settings_updated(self, updated_settings):
         if "hierarchy_timeline" in updated_settings:
@@ -239,6 +255,14 @@ class HierarchyTimelineUI(TimelineUI):
     def on_vertical_arrow_press(self, arrow: str):
         HierarchyTimelineUIKeyPressManager(self).on_vertical_arrow_press(arrow)
 
+    def on_ctrl_vertical_arrow_press(self, direction: str) -> None:
+        cmd = (
+            "timeline.hierarchy.increase_level"
+            if direction == "up"
+            else "timeline.hierarchy.decrease_level"
+        )
+        commands.execute(cmd)
+
     def get_max_hierarchy_height(self):
         max_level = max(
             self.timeline.component_manager.get_existing_values_for_attr(
@@ -262,7 +286,7 @@ class HierarchyTimelineUI(TimelineUI):
 
         post(
             Post.TIMELINE_ELEMENT_COPY_DONE,
-            {"components": component_data, "timeline_kind": self.timeline.KIND},
+            {"components": component_data, "timeline_type": self.timeline_class},
         )
 
         return True
@@ -316,6 +340,12 @@ class HierarchyTimelineUI(TimelineUI):
             self._adjust_timeline_height()
         return success
 
+    def on_add(self, start: float, end: float, level: int, **kwargs):
+        component, _ = self.timeline.create_component(
+            ComponentKind.HIERARCHY, start=start, end=end, level=level, **kwargs
+        )
+        return bool(component)
+
     def on_split(self, time: float | None = None):
         if time is None:
             time = get(Get.SELECTED_TIME)
@@ -347,7 +377,13 @@ class HierarchyTimelineUI(TimelineUI):
 
     @with_elements
     def on_add_pre_start(self, elements: list[HierarchyUI]):
-        accept, value = get(Get.FROM_USER_FLOAT, "Add pre-start", "Pre-start length")
+        accept, value = get(
+            Get.FROM_USER_FLOAT,
+            "Add pre-start",
+            "Pre-start length",
+            minValue=HierarchyUI.MIN_FRAME_LENGTH,
+            maxValue=min(elm.get_data("start") for elm in elements),
+        )
         if not accept:
             return False
 
@@ -356,7 +392,14 @@ class HierarchyTimelineUI(TimelineUI):
 
     @with_elements
     def on_add_post_end(self, elements: list[HierarchyUI]):
-        accept, value = get(Get.FROM_USER_FLOAT, "Add post-end", "Post-end length")
+        accept, value = get(
+            Get.FROM_USER_FLOAT,
+            "Add post-end",
+            "Post-end length",
+            minValue=HierarchyUI.MIN_FRAME_LENGTH,
+            maxValue=get(Get.MEDIA_DURATION)
+            - max(elm.get_data("end") for elm in elements),
+        )
         if not accept:
             return False
 
@@ -390,8 +433,8 @@ class HierarchyTimelineUI(TimelineUI):
     @with_elements
     def on_export_audio(self, elements: list[HierarchyUI]) -> bool:
         for elm in elements:
-            post(
-                Post.PLAYER_EXPORT_AUDIO,
+            commands.execute(
+                "media.export_audio",
                 segment_name=elm.full_name,
                 start_time=elm.get_data("start"),
                 end_time=elm.get_data("end"),

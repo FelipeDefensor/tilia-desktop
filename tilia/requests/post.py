@@ -1,9 +1,52 @@
+import functools
 import os
 import weakref
 from enum import Enum, auto
 from typing import Any, Callable
 
 from tilia.log import logger
+
+
+class LongOperation(Enum):
+    STARTED = auto()  # args: (label: str)  — bar starts indeterminate
+    PROGRESS = auto()  # args: (value: int, maximum: int)  — promotes bar to determinate
+    DONE = auto()  # args: ()
+
+
+def long_operation(label: str):
+    """Decorator that wraps a function with LongOperation STARTED/DONE posts.
+
+    Indeterminate (duration unknown) — animated bar for the full duration:
+
+        @long_operation("Loading file...")
+        def load(path): ...
+
+    Determinate (total steps known) — bar transitions to a progress bar on
+    the first PROGRESS post:
+
+        @long_operation("Creating beats...")
+        def fill(items):
+            for i, item in enumerate(items):
+                process(item)
+                post(Post.LONG_OPERATION, LongOperation.PROGRESS, i + 1, len(items))
+
+    DONE is always posted in a finally block, even if the function raises.
+    Operations may nest: each call pushes onto a stack; the toolbar stays
+    visible until the stack empties.
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            post(Post.LONG_OPERATION, LongOperation.STARTED, label)
+            try:
+                return func(*args, **kwargs)
+            finally:
+                post(Post.LONG_OPERATION, LongOperation.DONE)
+
+        return wrapper
+
+    return decorator
 
 
 class Post(Enum):
@@ -22,6 +65,7 @@ class Post(Enum):
     ELEMENT_DRAG_END = auto()
     ELEMENT_DRAG_START = auto()
     FILE_MEDIA_DURATION_CHANGED = auto()
+    FILE_SAVED = auto()
     HARMONY_TIMELINE_COMPONENTS_DESERIALIZED = auto()
     HIERARCHY_DESELECTED = auto()
     HIERARCHY_MERGE_SPLIT_DONE = auto()
@@ -31,27 +75,24 @@ class Post(Enum):
     INSPECTABLE_ELEMENT_DESELECTED = auto()
     INSPECTABLE_ELEMENT_SELECTED = auto()
     INSPECTOR_FIELD_EDITED = auto()
+    LONG_OPERATION = auto()
     LOOP_IGNORE_COMPONENT = auto()
     MEDIA_METADATA_FIELD_ADD = auto()
     MEDIA_METADATA_FIELD_SET = auto()
+    MEDIA_METADATA_TITLE_UPDATED = auto()
     METADATA_UPDATE_FIELDS = auto()
     PLAYBACK_AREA_SET_WIDTH = auto()
     PLAYER_CANCEL_LOOP = auto()
     PLAYER_CURRENT_LOOP_CHANGED = auto()
     PLAYER_CURRENT_TIME_CHANGED = auto()
     PLAYER_DURATION_AVAILABLE = auto()
-    PLAYER_EXPORT_AUDIO = auto()
-    PLAYER_PLAYBACK_RATE_TRY = auto()
-    PLAYER_SEEK = auto()
-    PLAYER_SEEK_IF_NOT_PLAYING = auto()
     PLAYER_STOPPED = auto()
     PLAYER_TOGGLE_LOOP = auto()
-    PLAYER_TOGGLE_PLAY_PAUSE = auto()
     PLAYER_UI_UPDATE = auto()
     PLAYER_UPDATE_CONTROLS = auto()
     PLAYER_URL_CHANGED = auto()
-    PLAYER_VOLUME_CHANGE = auto()
-    PLAYER_VOLUME_MUTE = auto()
+    RANGE_TIMELINE_CLICKED = auto()
+    RANGE_TIMELINE_CREATED = auto()
     REQUEST_CLEAR_UI = auto()
     REQUEST_IMPORT_MEDIA_METADATA_FROM_PATH = auto()
     REQUEST_SAVE_TO_PATH = auto()
@@ -60,6 +101,7 @@ class Post(Enum):
     SELECTION_BOX_DESELECT_ITEM = auto()
     SELECTION_BOX_SELECT_ITEM = auto()
     SETTINGS_UPDATED = auto()
+    SHARED_SHORTCUT_FIRED = auto()
     SLIDER_DRAG = auto()
     SLIDER_DRAG_END = auto()
     SLIDER_DRAG_START = auto()
@@ -75,18 +117,22 @@ class Post(Enum):
     TIMELINE_DELETE_FROM_CLI = auto()
     TIMELINE_DELETE_DONE = auto()
     TIMELINE_ELEMENT_COPY_DONE = auto()
+    TIMELINE_KEY_PRESS_CTRL_DOWN = auto()
+    TIMELINE_KEY_PRESS_CTRL_UP = auto()
     TIMELINE_KEY_PRESS_DOWN = auto()
     TIMELINE_KEY_PRESS_LEFT = auto()
     TIMELINE_KEY_PRESS_RIGHT = auto()
     TIMELINE_KEY_PRESS_UP = auto()
-    TIMELINE_KIND_INSTANCED = auto()
-    TIMELINE_KIND_NOT_INSTANCED = auto()
+    TIMELINE_TYPE_INSTANCED = auto()
+    TIMELINE_TYPE_NOT_INSTANCED = auto()
     TIMELINE_SET_DATA_DONE = auto()
+    TIMELINE_UI_SELECTED = auto()
     TIMELINE_VIEW_DOUBLE_LEFT_CLICK = auto()
     TIMELINE_VIEW_LEFT_BUTTON_DRAG = auto()
     TIMELINE_VIEW_LEFT_BUTTON_RELEASE = auto()
     TIMELINE_VIEW_LEFT_CLICK = auto()
     TIMELINE_VIEW_RIGHT_CLICK = auto()
+    TIMELINE_UIS_VIEW_FOCUS_OUT = auto()
     TIMELINE_WIDTH_SET_DONE = auto()
     UNDO_MANAGER_SET_IS_RECORDING = auto()
     WINDOW_OPEN = auto()
@@ -95,6 +141,7 @@ class Post(Enum):
     WINDOW_CLOSE_DONE = auto()
     WINDOW_UPDATE_REQUEST = auto()
     WINDOW_UPDATE_STATE = auto()
+    ZOOM_TOOLBAR_UPDATE = auto()
 
 
 _posts_to_listeners: weakref.WeakKeyDictionary[Post, Any] = weakref.WeakKeyDictionary(

@@ -4,7 +4,7 @@ import functools
 from enum import Enum, auto
 from typing import Any, Callable, cast
 
-from PySide6.QtCore import QKeyCombination, Qt
+from PySide6.QtCore import QKeyCombination, QSize, Qt
 from PySide6.QtWidgets import (
     QComboBox,
     QDockWidget,
@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QLabel,
     QLineEdit,
+    QMainWindow,
     QSizePolicy,
     QSpinBox,
     QStackedWidget,
@@ -45,11 +46,13 @@ RowInfo = tuple[str, InspectRowKind, Callable[[], Any | None]]
 class Inspect(QDockWidget):
     KIND = WindowKind.INSPECT
 
-    def __init__(self, main_window) -> None:
+    def __init__(self, main_window: QMainWindow) -> None:
         super().__init__(main_window)
+        self._main_window = main_window
         self.setObjectName("inspector")
         self.setWindowTitle("Inspector")
         self.setMinimumWidth(250)
+        self._auto_width = 250
         self.setFeatures(
             QDockWidget.DockWidgetFeature.DockWidgetMovable
             | QDockWidget.DockWidgetFeature.DockWidgetClosable
@@ -66,7 +69,9 @@ class Inspect(QDockWidget):
 
         self.inspect_widget = QWidget(self.stack_widget)
         self.inspect_layout = QFormLayout(self.inspect_widget)
-        self.inspect_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        self.inspect_layout.setFieldGrowthPolicy(
+            QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
+        )
         self.inspect_widget.setLayout(self.inspect_layout)
 
         self.empty_label = QLabel("<h2> No element selected.</h2>")
@@ -83,6 +88,10 @@ class Inspect(QDockWidget):
 
     def __str__(self):
         return get_tilia_class_string(self)
+
+    def sizeHint(self):
+        hint = super().sizeHint()
+        return QSize(self._auto_width, hint.height())
 
     def _setup_requests(self):
         LISTENS = {
@@ -211,6 +220,17 @@ class Inspect(QDockWidget):
 
     def update_values(self, field_values: dict[str, str], element_id: int):
         self.element_id = element_id
+        for field_name, items in field_values.pop("__items_update", {}).items():
+            widget = self.field_name_to_widgets[field_name][1]
+            if isinstance(widget, QComboBox):
+                current_data = widget.currentData()
+                widget.blockSignals(True)
+                widget.clear()
+                for label, data in items:
+                    widget.addItem(str(label), data)
+                idx = widget.findData(current_data)
+                widget.setCurrentIndex(idx if idx != -1 else widget.count() - 1)
+                widget.blockSignals(False)
         for field_name, value in field_values.items():
             widget = self.field_name_to_widgets[field_name][1]
 
@@ -223,16 +243,28 @@ class Inspect(QDockWidget):
 
     @staticmethod
     def set_widget_value(widget, value):
-        if isinstance(widget, (QLineEdit, QLabel)):
-            if widget.text() != value:
-                widget.setText(value)
-        elif isinstance(widget, QTextEdit):
-            if widget.toPlainText() != value:
-                widget.setText(value)
-        elif isinstance(widget, QComboBox):
-            widget.setCurrentIndex(widget.findData(value))
-        elif isinstance(widget, QSpinBox):
-            widget.setValue(value)
+        # Block signals while writing programmatically: setText / setValue
+        # / setCurrentIndex would otherwise fire textChanged etc., which the
+        # inspector connects to its on_*_changed handlers. Those handlers
+        # post INSPECTOR_FIELD_EDITED, which the still-selected element's
+        # listener interprets as a user edit and writes back to the
+        # component — clobbering data that was just set programmatically
+        # (e.g. merging ranges, deselect cascades that re-display a stale
+        # snapshot from inspected_objects_stack).
+        widget.blockSignals(True)
+        try:
+            if isinstance(widget, (QLineEdit, QLabel)):
+                if widget.text() != value:
+                    widget.setText(value)
+            elif isinstance(widget, QTextEdit):
+                if widget.toPlainText() != value:
+                    widget.setText(value)
+            elif isinstance(widget, QComboBox):
+                widget.setCurrentIndex(widget.findData(value))
+            elif isinstance(widget, QSpinBox):
+                widget.setValue(value)
+        finally:
+            widget.blockSignals(False)
 
     def hide_or_show_field(self, field_name, value):
         if value == HIDE_FIELD:
@@ -243,13 +275,21 @@ class Inspect(QDockWidget):
             self.field_name_to_widgets[field_name][1].show()
 
     def clear_widgets(self):
+        # Block signals while clearing programmatically — see set_widget_value
+        # for the full rationale. Without this, setText("") fires textChanged
+        # → INSPECTOR_FIELD_EDITED → state record. The phantom record
+        # discards the redo stack, so a later edit.redo finds nothing.
         for _, widget in self.field_name_to_widgets.values():
-            if isinstance(widget, (QLineEdit, QLabel, QTextEdit)):
-                widget.setText("")
-            elif isinstance(widget, QComboBox):
-                widget.setCurrentIndex(0)
-            elif isinstance(widget, QSpinBox):
-                widget.setValue(widget.minimum())
+            widget.blockSignals(True)
+            try:
+                if isinstance(widget, (QLineEdit, QLabel, QTextEdit)):
+                    widget.setText("")
+                elif isinstance(widget, QComboBox):
+                    widget.setCurrentIndex(0)
+                elif isinstance(widget, QSpinBox):
+                    widget.setValue(widget.minimum())
+            finally:
+                widget.blockSignals(False)
 
     def delete_all_rows(self):
         for _ in range(self.inspect_layout.rowCount()):
@@ -342,3 +382,13 @@ class Inspect(QDockWidget):
             self.field_name_to_widgets[name] = (left_widget, right_widget)
 
         self.setFocusProxy(self.inspect_layout.itemAt(1).widget())
+
+        self.setMinimumWidth(self.inspect_widget.minimumSizeHint().width())
+
+        preferred_width = self.inspect_widget.sizeHint().width()
+        if preferred_width > self._auto_width:
+            self._auto_width = preferred_width
+            if not self.isFloating():
+                self._main_window.resizeDocks(
+                    [self], [self._auto_width], Qt.Orientation.Horizontal
+                )

@@ -164,6 +164,74 @@ class TesttimelinesChangeWhileOpen:
     # Much more could be tested here.
 
 
+class TestClearButtonIsEnabled:
+    """Regression tests for #435 — Clear button should be disabled when
+    the selected timeline has nothing to clear, and should react to
+    components being added or removed underneath the open window."""
+
+    def test_disabled_when_empty(self, marker_tlui):
+        with manage_timelines() as mt:
+            assert not mt.clear_button.isEnabled()
+
+    def test_enabled_when_non_empty(self, marker_tlui):
+        commands.execute("timeline.marker.add")
+        with manage_timelines() as mt:
+            assert mt.clear_button.isEnabled()
+
+    def test_updates_when_component_added_while_open(self, marker_tlui):
+        with manage_timelines() as mt:
+            assert not mt.clear_button.isEnabled()
+            commands.execute("timeline.marker.add")
+            assert mt.clear_button.isEnabled()
+
+    def test_updates_when_component_removed_while_open(self, marker_tlui, tilia_state):
+        commands.execute("timeline.marker.add")
+        with manage_timelines() as mt:
+            assert mt.clear_button.isEnabled()
+            marker_tlui.select_all_elements()
+            commands.execute("timeline.component.delete")
+            assert not mt.clear_button.isEnabled()
+
+
+class TestButtonsDisabledWhenHidden:
+    """Regression tests — Clear and Delete buttons should be disabled
+    when the selected timeline is hidden."""
+
+    def test_clear_disabled_when_hidden(self, marker_tlui):
+        commands.execute("timeline.marker.add")
+        commands.execute("timeline.set_is_visible", marker_tlui, False)
+        with manage_timelines() as mt:
+            mt.list_widget.setCurrentRow(0)
+            assert not mt.clear_button.isEnabled()
+
+    def test_delete_disabled_when_hidden(self, marker_tlui):
+        commands.execute("timeline.set_is_visible", marker_tlui, False)
+        with manage_timelines() as mt:
+            mt.list_widget.setCurrentRow(0)
+            assert not mt.delete_button.isEnabled()
+
+    def test_buttons_enabled_when_visible(self, marker_tlui):
+        commands.execute("timeline.marker.add")
+        commands.execute("timeline.set_is_visible", marker_tlui, True)
+        with manage_timelines() as mt:
+            mt.list_widget.setCurrentRow(0)
+            assert mt.clear_button.isEnabled()
+            assert mt.delete_button.isEnabled()
+
+    def test_buttons_update_when_visibility_toggled_via_checkbox(self, marker_tlui):
+        commands.execute("timeline.marker.add")
+        commands.execute("timeline.set_is_visible", marker_tlui, True)
+        with manage_timelines() as mt:
+            mt.list_widget.setCurrentRow(0)
+            assert mt.clear_button.isEnabled()
+            assert mt.delete_button.isEnabled()
+
+            QTest.mouseClick(mt.checkbox, Qt.MouseButton.LeftButton)
+
+            assert not mt.clear_button.isEnabled()
+            assert not mt.delete_button.isEnabled()
+
+
 class TestDeleteTimeline:
     def delete_selected_timeline(self, mt):
         with patch_yes_or_no_dialog(True):

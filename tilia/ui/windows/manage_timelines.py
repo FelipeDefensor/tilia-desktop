@@ -20,7 +20,7 @@ from tilia.requests import (
     stop_serving_all,
 )
 from tilia.timelines.base.timeline import TimelineFlag
-from tilia.timelines.timeline_kinds import TimelineKind
+from tilia.timelines.slider.timeline import SliderTimeline
 from tilia.ui import commands
 from tilia.ui.timelines.base.timeline import TimelineUI
 from tilia.ui.windows import WindowKind
@@ -32,9 +32,23 @@ class ManageTimelines(QDialog):
         self.setWindowTitle("Manage Timelines")
         self._setup_widgets()
         self._setup_checkbox()
+        self._setup_requests()
         self.show()
 
         post(Post.WINDOW_OPEN_DONE, WindowKind.MANAGE_TIMELINES)
+
+    def _setup_requests(self):
+        # Refresh the per-timeline action buttons when the selected
+        # timeline's emptiness can change underneath us (#435).
+        for post_ in (
+            Post.TIMELINE_COMPONENT_CREATED,
+            Post.TIMELINE_COMPONENT_DELETED,
+            Post.APP_STATE_RESTORE,
+        ):
+            listen(self, post_, self._refresh_buttons)
+
+    def _refresh_buttons(self, *_):
+        self.on_list_current_item_changed(self.list_widget.currentItem())
 
     def _setup_widgets(self):
         layout = QHBoxLayout()
@@ -78,14 +92,22 @@ class ManageTimelines(QDialog):
             return
 
         timeline = get(Get.TIMELINE, item.timeline_ui.id)
+        is_visible = timeline.get_data("is_visible")
 
         self.checkbox.setCheckState(
-            Qt.CheckState.Checked
-            if timeline.get_data("is_visible")
-            else Qt.CheckState.Unchecked
+            Qt.CheckState.Checked if is_visible else Qt.CheckState.Unchecked
         )
-        self.delete_button.setEnabled(TimelineFlag.NOT_DELETABLE not in timeline.FLAGS)
-        self.clear_button.setEnabled(TimelineFlag.NOT_CLEARABLE not in timeline.FLAGS)
+        self.delete_button.setEnabled(
+            is_visible and TimelineFlag.NOT_DELETABLE not in timeline.FLAGS
+        )
+        self.clear_button.setEnabled(
+            is_visible
+            and TimelineFlag.NOT_CLEARABLE not in timeline.FLAGS
+            and not timeline.is_empty
+        )
+        if not is_visible:
+            self.delete_button.setToolTip("Timeline is hidden; cannot delete.")
+            self.clear_button.setToolTip("Timeline is hidden; cannot clear.")
 
     def on_checkbox_state_changed(self, state):
         item = self.list_widget.currentItem()
@@ -94,6 +116,7 @@ class ManageTimelines(QDialog):
         timeline_ui = item.timeline_ui
         if timeline_ui.get_data("is_visible") != bool(state):
             commands.execute("timeline.set_is_visible", timeline_ui, bool(state))
+            self.on_list_current_item_changed(item)
 
     def get_current_timeline_ui(self):
         return self.list_widget.currentItem().timeline_ui
@@ -113,7 +136,7 @@ class TimelineListItem(QListWidgetItem):
 
     @staticmethod
     def get_timeline_ui_str(timeline_ui: TimelineUI):
-        if timeline_ui.TIMELINE_KIND == TimelineKind.SLIDER_TIMELINE:
+        if timeline_ui.timeline_class == SliderTimeline:
             return "Slider"
         return timeline_ui.get_data("name")
 

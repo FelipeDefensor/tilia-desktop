@@ -4,9 +4,9 @@ from PySide6.QtWidgets import (
     QGraphicsItem,
 )
 
-from tilia.requests import Post, post
 from tilia.settings import settings
 from tilia.timelines.score.components.note import pitch
+from tilia.ui import commands
 from tilia.ui.color import get_tinted_color
 from tilia.ui.consts import TINT_FACTOR_ON_SELECTION
 from tilia.ui.coords import time_x_converter
@@ -300,7 +300,7 @@ class NoteUI(TimelineUIElement):
         return [self.body]
 
     def on_double_left_click(self, _):
-        post(Post.PLAYER_SEEK, self.seek_time)
+        commands.execute("media.seek", self.seek_time)
 
     def on_select(self) -> None:
         self.body.on_select()

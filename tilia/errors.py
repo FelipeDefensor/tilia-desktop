@@ -45,10 +45,6 @@ MEDIA_LOAD_FAILED = Error(
 )
 YOUTUBE_URL_INVALID = Error("Invalid YouTube URL", "{} is not a valid URL.")
 EXPORT_AUDIO_FAILED = Error("Export Audio", "{}")
-INVALID_HARMONY_INVERSION = Error(
-    "Invalid harmony inversion",
-    "Can't set inversion '{}' on a letter of type '{}'. Please select a valid inversion for this letter type.",
-)
 ADD_MODE_FAILED = Error("Add key failed", "Adding key failed: {}.")
 ADD_HARMONY_FAILED = Error("Add harmony failed", "{}")
 ADD_PDF_MARKER_FAILED = Error("Add page marker failed", "Can't add page marker: {}")
@@ -95,6 +91,10 @@ CLI_CREATE_TIMELINE_WITHOUT_DURATION = Error(
     "Cannot create timeline",
     "No media loaded and no duration set. Load a media file with 'load-media' or set a duration with 'metadata set-media-length'.",
 )
+CLI_ADD_TIMELINE_ARG_NOT_APPLICABLE = Error(
+    "Invalid argument",
+    "'{}' is not valid for timeline kind '{}'.",
+)
 OPEN_FILE_NOT_FOUND = Error("File not found", "File '{}' not found.")
 OPEN_FILE_INVALID_TLA = Error(
     "Invalid file type", "File '{}' is not a valid .tla file. {}"
@@ -123,6 +123,15 @@ SCORE_STAFF_ID_ERROR = Error(
 )
 INVALID_ID = Error(
     "Error parsing id", "'{}' is not parsable as a valid id. Using generated id."
+)
+RANGE_DRAG_INVALID_HANDLE = Error(
+    "Range drag error", "Could not start drag: unrecognized handle item."
+)
+RANGE_INVALID_ROW_COLOR = Error("Invalid row color", "'{}' is not a valid color.")
+AMBIGUOUS_SHORTCUT = Error(
+    "Ambiguous keyboard shortcut",
+    "Two or more commands are bound to the same key combination. "
+    "Qt could not decide which to fire. Please report this:\n\n{}",
 )
 
 

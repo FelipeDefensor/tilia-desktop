@@ -89,12 +89,11 @@ class TestMarkerSelected:
 
 
 class TestDoubleClick:
-    def test_posts_seek(self, marker_tlui):
+    def test_posts_seek(self, marker_tlui, tilia_state):
         marker_tlui.create_marker(10)
-        with PatchPost("tilia.ui.timelines.marker.element", Post.PLAYER_SEEK) as mock:
-            marker_tlui[0].on_double_left_click(None)
+        marker_tlui[0].on_double_left_click(None)
 
-        mock.assert_called_with(Post.PLAYER_SEEK, 10)
+        assert tilia_state.current_time == 10
 
     def test_does_not_trigger_drag(self, marker_tlui):
         marker_tlui.create_marker(0)

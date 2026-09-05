@@ -3,6 +3,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QAbstractSlider, QGraphicsView
 
+from tilia.requests import Post, post
 from tilia.ui import commands
 from tilia.ui.smooth_scroll import setup_smooth, smooth
 
@@ -11,6 +12,10 @@ class TimelineUIsView(QGraphicsView):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Defer file drops to the main window: QGraphicsView accepts drops by
+        # default, which would swallow them before they reach the window's
+        # drop filter.
+        self.setAcceptDrops(False)
         self._update_scroll_margins()
         setup_smooth(self)
 
@@ -79,3 +84,7 @@ class TimelineUIsView(QGraphicsView):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._update_scroll_margins()
+
+    def focusOutEvent(self, event):
+        post(Post.TIMELINE_UIS_VIEW_FOCUS_OUT)
+        return super().focusOutEvent(event)

@@ -3,7 +3,7 @@ The test suite is written in pytest. Below are some things to keep in my mind wh
 `pip install --group testing`
 ## How to simulate interaction with the UI?
 - The `user_actions` fixture can be used to trigger actions on the UI. This is equivalent to pressing buttons on the UI. We should also check that the actions are available in the UI where we expect them.
-- The `tilia_state` fixture can be used to make certain changes to state simulating user input (e.g. `tilia_state.current_time = 10`).
+- The `tilia_state` fixture can be used to make certain changes to state simulating user input (e.g. `tilia_state.duration = 10`.)
 - The `press_key` and `type_string` functions can be used to simulate keyboard input.
 
 ### Modal dialogs
@@ -26,7 +26,7 @@ Some known modal dialogs:
 An alternative to mocking modal dialogs would be appreciated. Experiments with mocking modal dialogs (to date) have not worked.
 
 ## How to simulate interaction with timelines?
-We shouldn't use methods of the `Timeline` or the `TimelineUI` classes, but instead try to simulate user input. This makes for tests that are more resilient to changes in implementation. For instance, this:
+We shouldn't use methods of the `Timeline` or the `TimelineUI` classes, but instead try to simulate user input or use commands. This makes for tests that are more resilient to changes in implementation. For instance, this:
 ```python
 def test_me(tlui, marker_tlui):
     tlui.create_marker(0)
@@ -36,12 +36,35 @@ def test_me(tlui, marker_tlui):
 can be rewritten as:
 
 ```python
-def test_me(marker_tlui, tilia_state):
-    tilia_state.current_time = 0
+def test_me(marker_tlui):
+    commands.execute("media.seek", 0)
     commands.execute("marker_add")
     assert not len(marker_tlui) == 1
 ```
 You will find many examples of the former in the test suite, though. Refactors are welcome.
+
+## Use helpers in `tests.utils`
+
+Prefer existing helpers in `tests/utils.py` over inlining the same setup or assertion patterns. If you find yourself repeating a sequence across tests, add a helper rather than copy-pasting.
+
+Commonly useful helpers:
+
+- **`save_and_reopen(tmp_path)`** — save the current state, clear, and reopen. Use for save/load round-trip tests instead of inlining `file.save_as` + `file.new` + `file.open`. `save_tilia_to_tmp_path(tmp_path)` returns the saved path without reopening.
+- **`undoable()`** (context manager) — wrap a `commands.execute(...)` call to assert undoing restores the prior state and redoing returns to the post-action state. Cover every state-changing command with at least one `undoable()` test.
+- **`reloadable(save_path)`** (decorator) — same idea applied to a `checks()` function: runs checks, saves, reopens, runs checks again.
+- **`load_local_media(path)`** / **`load_youtube_media(url)`** — patch the file dialog / URL prompt and run the corresponding `media.load.*` command.
+- **`assert_timeline_ui_update(tlui, attr)`** (context manager) — spy on `update_<attr>` and assert it ran during the wrapped block.
+- **Menu / command discovery:** `get_command_action(menu, command_name)`, `get_command_from_toolbar(tlui, command_name)`, `get_command_names(menu)`, `get_submenu(menu, name)`, `get_main_window_menu(qtui, name)`, `get_context_menu(tlui, x, y)`, `get_actions_in_menu(menu)`. `get_command_action` walks ribbon-style toolbars where commands are wrapped in `QWidgetAction` containers.
+- **Modal-dialog patches** (in `tests.mock`): `patch_file_dialog`, `patch_ask_for_string_dialog` — context managers that drive modals, as covered in the modal-dialogs section above.
+
+## Index timelines and UI elements directly
+
+Index `*_tlui` and timeline collections directly: `range_tlui[0]`, not `list(range_tlui)[0]`. Likewise `len(range_tlui)` over `len(list(range_tlui))`. UI elements are kept sorted by their components' `ORDERING_ATTRS`, so positional indexing is well-defined.
+
+Prefer UI-layer access over backend access in tests: `range_tlui[0].get_data("joined_right")` exercises the same path the user does. Drop into the backend (`.timeline`, `.rows`, `.components`) only when the data isn't reachable from the UI side.
+
+## How to test code that depends on settings?
+The `use_test_settings` fixture (auto-applied via the `qtui` fixture) routes settings reads and writes to a dedicated test QSettings store, so production settings are never touched. Tests that depend on a specific value should set it explicitly with `settings.set("group", "name", value)` and not rely on the default — settings persist across tests within a module, so reading "the current value" before mutating gives you the value the previous test left behind, not the default.
 
 ## How to test the right actions are available in the UI?
 The `get_submenu`, `get_action` and `get_qaction` in the `tests.ui.utils` module should help.

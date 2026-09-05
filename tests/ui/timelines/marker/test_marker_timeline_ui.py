@@ -33,8 +33,8 @@ from tilia.ui.windows import WindowKind
 
 
 class TestCreateDelete:
-    def test_create(self, marker_tlui, tluis, tilia_state):
-        tilia_state.current_time = 11
+    def test_create_at_selected_time(self, marker_tlui, tluis):
+        commands.execute("media.seek", 11)
         commands.execute("timeline.marker.add")
 
         assert len(marker_tlui) == 1
@@ -54,9 +54,9 @@ class TestCreateDelete:
             commands.execute("timeline.component.delete")
             assert len(marker_tlui) == 0
 
-    def test_delete_multiple(self, marker_tlui, tilia_state):
+    def test_delete_multiple(self, marker_tlui):
         commands.execute("timeline.marker.add")
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         commands.execute("timeline.marker.add")
 
         click_marker_ui(marker_tlui[0])
@@ -82,9 +82,9 @@ class TestSetResetColor:
             self.set_color_on_all_markers(marker_tlui)
             assert marker_tlui[0].get_data("color") == self.TEST_COLOR
 
-    def test_set_color_multiple_markers(self, marker_tlui, tilia_state):
+    def test_set_color_multiple_markers(self, marker_tlui):
         commands.execute("timeline.marker.add")
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         commands.execute("timeline.marker.add")
         with undoable():
             self.set_color_on_all_markers(marker_tlui)
@@ -99,9 +99,9 @@ class TestSetResetColor:
             commands.execute("timeline.component.reset_color")
             assert marker_tlui[0].get_data("color") is None
 
-    def test_reset_color_multiple_markers(self, marker_tlui, tilia_state):
+    def test_reset_color_multiple_markers(self, marker_tlui):
         commands.execute("timeline.marker.add")
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         commands.execute("timeline.marker.add")
         self.set_color_on_all_markers(marker_tlui)
 
@@ -110,7 +110,7 @@ class TestSetResetColor:
             for marker in marker_tlui:
                 assert marker.get_data("color") is None
 
-    def test_cancel_color_dialog(self, marker_tlui, tilia_state):
+    def test_cancel_color_dialog(self, marker_tlui):
         commands.execute("timeline.marker.add")
         click_marker_ui(marker_tlui[0])
         with patch.object(QColorDialog, "getColor", return_value=QColor("invalid")):
@@ -120,18 +120,18 @@ class TestSetResetColor:
 
 
 class TestCopyPaste:
-    def test_shortcut(self, marker_tlui, tilia_state):
+    def test_shortcut(self, marker_tlui):
         marker_tlui.create_marker(0)
         click_marker_ui(marker_tlui[0])
         press_key("c", modifier=Qt.KeyboardModifier.ControlModifier)
         click_timeline_ui(marker_tlui, 50)
 
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         press_key("v", modifier=Qt.KeyboardModifier.ControlModifier)
 
         assert len(marker_tlui) == 2
 
-    def test_paste_single_into_timeline(self, marker_tlui, tilia_state):
+    def test_paste_single_into_timeline(self, marker_tlui):
         marker_tlui.create_marker(0, label="copy me")
         # Must record explicitly, as there is no command to set a component's label
         post(Post.APP_STATE_RECORD, "set marker label")
@@ -139,7 +139,7 @@ class TestCopyPaste:
         click_marker_ui(marker_tlui[0])
         commands.execute("timeline.component.copy")
 
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         click_timeline_ui(marker_tlui, 50)
 
         with undoable():
@@ -149,9 +149,9 @@ class TestCopyPaste:
         assert marker_tlui[1].get_data("time") == 10
         assert marker_tlui[1].get_data("label") == "copy me"
 
-    def test_paste_single_into_selected_element(self, marker_tlui, tilia_state):
+    def test_paste_single_into_selected_element(self, marker_tlui):
         commands.execute("timeline.marker.add")
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         commands.execute("timeline.marker.add")
 
         click_marker_ui(marker_tlui[0])
@@ -166,9 +166,9 @@ class TestCopyPaste:
             assert len(marker_tlui) == 2
             assert marker_tlui[1].get_data("label") == "copy me"
 
-    def test_paste_multiple_into_timeline(self, marker_tlui, tilia_state):
+    def test_paste_multiple_into_timeline(self, marker_tlui):
         for time, label in [(0, "first"), (10, "second"), (20, "third")]:
-            tilia_state.current_time = time
+            commands.execute("media.seek", time)
             commands.execute("timeline.marker.add")
             click_marker_ui(marker_tlui[-1])
             commands.execute("timeline.element.inspect")
@@ -180,7 +180,7 @@ class TestCopyPaste:
         commands.execute("timeline.component.copy")
 
         click_timeline_ui(marker_tlui, 100)  # deselect markers
-        tilia_state.current_time = 50
+        commands.execute("media.seek", 50)
 
         with undoable():
             commands.execute("timeline.component.paste")
@@ -194,9 +194,9 @@ class TestCopyPaste:
             assert marker_tlui[index].get_data("time") == time
             assert marker_tlui[index].get_data("label") == label
 
-    def test_paste_multiple_into_selected_element(self, marker_tlui, tilia_state):
+    def test_paste_multiple_into_selected_element(self, marker_tlui):
         for time, label in [(0, "first"), (10, "second"), (20, "third")]:
-            tilia_state.current_time = time
+            commands.execute("media.seek", time)
             commands.execute("timeline.marker.add")
             click_marker_ui(marker_tlui[-1])
             commands.execute("timeline.element.inspect")
@@ -267,7 +267,7 @@ class TestSelect:
 class TestDrag:
     def test_drag(self, marker_tlui, tluis, tilia_state):
         tilia_state.duration = 100
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         commands.execute("timeline.marker.add")
 
         click_marker_ui(marker_tlui[0])
@@ -278,7 +278,7 @@ class TestDrag:
 
     def test_drag_beyond_start(self, marker_tlui, tluis, tilia_state):
         tilia_state.duration = 100
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         commands.execute("timeline.marker.add")
 
         click_marker_ui(marker_tlui[0])
@@ -289,7 +289,7 @@ class TestDrag:
 
     def test_drag_beyond_end(self, marker_tlui, tluis, tilia_state):
         tilia_state.duration = 100
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         commands.execute("timeline.marker.add")
 
         click_marker_ui(marker_tlui[0])
@@ -298,9 +298,35 @@ class TestDrag:
             drag_mouse_in_timeline_view(time_x_converter.get_x_by_time(100) + 200, 0)
             assert marker_tlui[0].get_data("time") == 100
 
+    def test_delete_mid_drag_does_not_leak_listener(
+        self, marker_tlui, tluis, tilia_state
+    ):
+        # Regression test for #515: clicking a marker arms a DragManager
+        # listener that was only torn down on mouse-release. Deleting the
+        # marker before release left a stale listener that crashed the
+        # next drag with a KeyError.
+        tilia_state.duration = 100
+        tilia_state.current_time = 10
+        commands.execute("timeline.marker.add")
+        click_marker_ui(marker_tlui[0])
+        assert marker_tlui[0].drag_manager is not None  # arm precondition
+
+        # Without the fix, this dispatches into the deleted element's
+        # DragManager and raises KeyError on set_data("time", ...).
+        post(
+            Post.TIMELINE_VIEW_LEFT_BUTTON_DRAG,
+            int(time_x_converter.get_x_by_time(20)),
+            0,
+        )
+        commands.execute("timeline.component.delete")
+
+        post(Post.TIMELINE_VIEW_LEFT_BUTTON_RELEASE)
+
+        assert marker_tlui.is_empty
+
 
 class TestElementContextMenu:
-    def test_is_shown_on_right_click(self, marker_tlui, tluis, tilia_state):
+    def test_is_shown_on_right_click(self, marker_tlui, tluis):
         marker_tlui.create_marker(0)
 
         with patch.object(MarkerContextMenu, "exec") as mock:
@@ -308,7 +334,7 @@ class TestElementContextMenu:
 
         mock.assert_called_once()
 
-    def test_has_the_right_options(self, marker_tlui, tluis, tilia_state):
+    def test_has_the_right_options(self, marker_tlui, tluis):
         marker_tlui.create_marker(0)
 
         context_menu = marker_tlui[0].CONTEXT_MENU_CLASS((marker_tlui[0]))
@@ -329,15 +355,15 @@ class TestElementContextMenu:
 class TestTimelineUIContextMenu:
     @staticmethod
     def get_context_menu(tluis, tl_index=0):
-        return tluis[tl_index].CONTEXT_MENU_CLASS(tluis[tl_index])
+        return tluis[tl_index].CONTEXT_MENU_CLASS(tluis[tl_index], 0, 0)
 
-    def test_is_shown_on_right_click(self, marker_tlui, tluis, tilia_state):
+    def test_is_shown_on_right_click(self, tluis, marker_tlui):
         with patch.object(MarkerTimelineUIContextMenu, "exec") as mock:
             click_timeline_ui(marker_tlui, 50, button="right")
 
         mock.assert_called_once()
 
-    def test_has_no_height_set_action(self, marker_tlui, tluis, tilia_state):
+    def test_has_no_height_set_action(self, marker_tlui, tluis):
         context_menu = self.get_context_menu(tluis)
 
         assert get_qaction("timeline.set_height") not in context_menu.actions()
@@ -364,7 +390,7 @@ class TestTimelineUIContextMenu:
         assert "timeline.move_up" not in action_commands
         assert "timeline.move_down" in action_commands
 
-    def test_has_the_right_actions(self, marker_tlui, tluis, tilia_state):
+    def test_has_the_right_actions(self, marker_tlui, tluis):
         context_menu = self.get_context_menu(tluis)
 
         # As each context menu creates its own QActions,
@@ -430,6 +456,24 @@ class TestTimelineUIContextMenu:
                 delete_action.trigger()
 
         assert marker_tlui.is_empty
+
+    def test_clear_action_is_disabled_when_timeline_is_empty(self, marker_tlui, tluis):
+        # #435: clearing an empty timeline is a no-op; the menu action
+        # should be disabled to make that clear to the user.
+        context_menu = self.get_context_menu(tluis)
+        clear_action = get_command_action(context_menu, "timeline.clear")
+
+        assert not clear_action.isEnabled()
+
+    def test_clear_action_is_enabled_when_timeline_has_components(
+        self, marker_tlui, tluis
+    ):
+        commands.execute("timeline.marker.add")
+
+        context_menu = self.get_context_menu(tluis)
+        clear_action = get_command_action(context_menu, "timeline.clear")
+
+        assert clear_action.isEnabled()
 
 
 class TestInspect:
@@ -513,8 +557,9 @@ class TestInspect:
     def test_set_attribute_with_multiple_selected(
         self, marker_tlui, tluis, tilia_state
     ):
+        tilia_state.current_time = 0
         commands.execute("timeline.marker.add")
-        tilia_state.current_time = 10
+        commands.execute("media.seek", 10)
         commands.execute("timeline.marker.add")
 
         click_marker_ui(marker_tlui[0])
@@ -570,7 +615,7 @@ class TestMoveInTimelineOrder:
             with Serve(Get.FROM_USER_STRING, (True, name)):
                 commands.execute("timelines.add.marker")
 
-        context_menu = tluis[1].CONTEXT_MENU_CLASS(tluis[1])
+        context_menu = tluis[1].CONTEXT_MENU_CLASS(tluis[1], 0, 0)
         action = get_command_action(context_menu, "timeline.move_up")
         with undoable():
             action.trigger()
@@ -585,7 +630,7 @@ class TestMoveInTimelineOrder:
             with Serve(Get.FROM_USER_STRING, (True, name)):
                 commands.execute("timelines.add.marker")
 
-        context_menu = tluis[1].CONTEXT_MENU_CLASS(tluis[1])
+        context_menu = tluis[1].CONTEXT_MENU_CLASS(tluis[1], 0, 0)
         action = get_command_action(context_menu, "timeline.move_down")
         assert action
         with undoable():
@@ -607,9 +652,9 @@ def test_timeline_menu_has_right_actions(tluis, qtui, marker_tlui, tilia_state):
         assert get_qaction(a) in marker_submenu.actions()
 
 
-def test_clear(tluis, qtui, marker_tlui, tilia_state):
+def test_clear(tluis, qtui, marker_tlui):
     for i in range(10):
-        tilia_state.current_time = i
+        commands.execute("media.seek", i)
         commands.execute("timeline.marker.add")
 
     with patch_yes_or_no_dialog(True):
@@ -618,7 +663,7 @@ def test_clear(tluis, qtui, marker_tlui, tilia_state):
     assert len(marker_tlui) == 0
 
 
-def test_delete(tluis, qtui, marker_tlui, tilia_state):
+def test_delete(tluis, qtui, marker_tlui):
     with patch_yes_or_no_dialog(True):
         commands.execute("timeline.delete", marker_tlui)
 

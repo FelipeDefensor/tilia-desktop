@@ -10,6 +10,7 @@ class Get(Enum):
     TIMELINE_ELEMENTS_SELECTED = auto()
     CLIPBOARD_CONTENTS = auto()
     FIRST_TIMELINE_UI_IN_SELECT_ORDER = auto()
+    FILE_PATH = auto()
     FROM_USER_ADD_TIMELINE_WITHOUT_MEDIA = auto()
     FROM_USER_BEAT_PATTERN = auto()
     FROM_USER_BEAT_TIMELINE_FILL_METHOD = auto()
@@ -29,6 +30,7 @@ class Get(Enum):
     FROM_USER_SHOULD_SAVE_CHANGES = auto()
     FROM_USER_STRING = auto()
     FROM_USER_TILIA_FILE_PATH = auto()
+    FROM_USER_UNKNOWN_TIMELINE_KIND_ACTION = auto()
     FROM_USER_YES_OR_NO = auto()
     ID = auto()
     IS_FILE_MODIFIED = auto()
@@ -62,6 +64,8 @@ class Get(Enum):
     VERIFIED_PATH = auto()
     WINDOW_GEOMETRY = auto()
     WINDOW_STATE = auto()
+    CURRENT_ZOOM = auto()
+    ZOOM_REFERENCE_WIDTH = auto()
 
 
 _requests_to_callbacks: weakref.WeakKeyDictionary[
@@ -92,6 +96,15 @@ def serve(replier: Any, request: Get, callback: Callable) -> None:
     """
     Attaches a callback to a request.
     """
+
+    # If a different server already owns this request, remove it from that
+    # server's tracking set so stop_serving_all(old_server) won't later pop
+    # the new server's callback.
+    old_replier, _ = server(request)
+    if old_replier is not None and old_replier is not replier:
+        _servers_to_requests[old_replier].discard(request)
+        if not _servers_to_requests[old_replier]:
+            _servers_to_requests.pop(old_replier)
 
     _requests_to_callbacks[request] = callback
     if replier not in _servers_to_requests.keys():

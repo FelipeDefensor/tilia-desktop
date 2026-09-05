@@ -8,7 +8,8 @@ from PySide6.QtWidgets import QMenu
 
 from tilia.requests.post import Post, listen, post
 from tilia.settings import settings
-from tilia.timelines.timeline_kinds import TimelineKind, get_timeline_name
+from tilia.timelines.base.timeline import Timeline
+from tilia.timelines.slider.timeline import SliderTimeline
 from tilia.ui import commands
 from tilia.ui.commands import get_qaction
 from tilia.ui.enums import WindowState
@@ -134,9 +135,9 @@ class AddTimelinesMenu(TiliaMenu):
 
     def __init__(self):
         commands = [
-            f"timelines.add.{get_timeline_name(kind)}"
-            for kind in TimelineKind
-            if kind != TimelineKind.SLIDER_TIMELINE
+            f"timelines.add.{cls.type_name().lower()}"
+            for cls in Timeline.subclasses()
+            if cls is not SliderTimeline
         ]
         self.items = [(MenuItemKind.COMMAND, command) for command in sorted(commands)]
         super().__init__()
@@ -170,6 +171,11 @@ class PdfMenu(TiliaMenu):
     items = [(MenuItemKind.COMMAND, "timelines.import.pdf")]
 
 
+class RangeMenu(TiliaMenu):
+    menu_title = "Ra&nge"
+    items = [(MenuItemKind.COMMAND, "timelines.import.range")]
+
+
 class ScoreMenu(TiliaMenu):
     menu_title = "&Score"
     items = [(MenuItemKind.COMMAND, "timelines.import.score")]
@@ -186,6 +192,7 @@ class TimelinesMenu(TiliaMenu):
         (MenuItemKind.SUBMENU, BeatMenu),
         (MenuItemKind.SUBMENU, HarmonyMenu),
         (MenuItemKind.SUBMENU, PdfMenu),
+        (MenuItemKind.SUBMENU, RangeMenu),
         (MenuItemKind.SUBMENU, ScoreMenu),
     ]
 
