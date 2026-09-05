@@ -3,10 +3,18 @@ from unittest.mock import mock_open, patch
 from tests.conftest import parametrize_tlui
 from tests.constants import EXAMPLE_MEDIA_PATH
 from tests.mock import Serve
-from tests.utils import get_actions_in_menu, get_main_window_menu
+from tests.utils import (
+    get_actions_in_menu,
+    get_main_window_menu,
+    get_tmp_file_with_dummy_timeline,
+)
 from tilia.requests import Get, Post, post
+from tilia.settings import settings
 from tilia.timelines.timeline_kinds import TimelineKind
+from tilia.ui import commands
 from tilia.ui.commands import get_qaction
+from tilia.ui.timelines.base.timeline import TimelineUI
+from tilia.ui.timelines.hierarchy import HierarchyTimelineUI
 from tilia.ui.timelines.marker import MarkerTimelineUI
 from tilia.ui.windows import WindowKind
 
@@ -105,6 +113,11 @@ def is_toolbar_visible(qtui, toolbar_class):
     return not toolbar[0].isHidden() if toolbar else False
 
 
+def open_file(path):
+    with Serve(Get.FROM_USER_SHOULD_SAVE_CHANGES, (True, False)):
+        commands.execute("file.open", path)
+
+
 class TestTimelineToolbars:
     @parametrize_tlui
     def test_is_visible_when_timeline_is_instantiated(self, qtui, tlui, request):
@@ -155,6 +168,39 @@ class TestTimelineToolbars:
         tls.set_timeline_data(marker_tl.id, "is_visible", True)
 
         assert is_toolbar_visible(qtui, MarkerTimelineUI.TOOLBAR_CLASS)
+
+    def test_is_visible_when_window_state_stored_for_file_hides_it(
+        self, qtui, tilia, tmp_path
+    ):
+        # Opening a file restores the window state stored under its path, which
+        # includes toolbar visibility. That state can be stale or, before toolbars
+        # had unique object names, belong to another timeline kind. The timelines
+        # in the file decide which toolbars are shown.
+        tmp_file = get_tmp_file_with_dummy_timeline(tmp_path)
+        open_file(tmp_file)
+
+        get_toolbars_of_class(qtui, HierarchyTimelineUI.TOOLBAR_CLASS)[0].hide()
+        settings.update_recent_files(
+            tmp_file, qtui.get_window_geometry(), qtui.get_window_state()
+        )
+
+        open_file(tmp_file)
+
+        assert is_toolbar_visible(qtui, HierarchyTimelineUI.TOOLBAR_CLASS)
+
+    def test_object_name_is_unique_across_toolbar_classes(self, qtui):
+        # QMainWindow.restoreState matches saved entries to live toolbars by object
+        # name. Duplicate names make it restore one kind's state onto another.
+        toolbar_classes = {
+            timeline_ui_class.TOOLBAR_CLASS
+            for timeline_ui_class in TimelineUI.subclasses()
+            if timeline_ui_class.TOOLBAR_CLASS
+        }
+        object_names = {
+            toolbar_class().objectName() for toolbar_class in toolbar_classes
+        }
+
+        assert len(object_names) == len(toolbar_classes)
 
 
 class TestMenus:
