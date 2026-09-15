@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "TiLiA"
-version = "0.6.4"
+version = "89.9.8"
 description = "A GUI for creating and visualizing annotations over audio and video files."
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
@@ -43,7 +43,7 @@ tilia = "tilia.__main__:main"
 
 [project.urls]
 Homepage = "https://tilia-app.com"
-Repository = "https://github.com/TimeLineAnnotator/desktop"
+Repository = "https://github.com/FelipeDefensor/tilia-desktop"
 
 [dependency-groups]
 build = [
