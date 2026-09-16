@@ -495,16 +495,6 @@ class TestScaleCropTimeline:
         expected_right = time_x_converter.get_x_by_time(50) - HierarchyUI.X_OFFSET
         assert body_right == pytest.approx(expected_right)
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "R130: scale_timeline_components (tilia/timelines/collection/"
-            "collection.py:323-325) posts no done-signal after rescaling,"
-            " unlike crop_timeline_components (same file, :327-330) which"
-            " posts Post.TIMELINES_CROP_DONE -- so update_time_on_elements()"
-            " never redraws components at their new, rescaled positions."
-        ),
-    )
     def test_R130_scale_triggers_element_redraw(self, hierarchy_tlui, tilia_state):
         # R130: manual QA found that after loading a shorter media and
         # choosing to scale (not crop), component drawings are not updated
