@@ -10,6 +10,7 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QToolButton, QWidgetAction
 
 from tests.mock import patch_ask_for_string_dialog, patch_file_dialog
+from tilia import dirs
 from tilia.requests import Get, Post, get, post
 from tilia.ui import commands
 from tilia.ui.commands import CommandQAction
@@ -18,6 +19,22 @@ from tilia.ui.timelines.base.timeline import TimelineUI
 
 EXAMPLE_VIDEO_FILENAME = "example.mp4"
 EXAMPLE_YOUTUBE_URL = "https://www.youtube.com/watch?v=wBfVsucRe1w"
+
+
+def simulate_launch_dir(monkeypatch, tmp_path: Path) -> None:
+    """
+    Simulates launching TiLiA from `tmp_path`: chdirs into it and then runs
+    the real `setup_dirs()`, with the data/autosave/log directories
+    redirected under `tmp_path` so the real platformdirs locations are never
+    touched. Use this to exercise relative-path handling the way it actually
+    happens at boot.
+    """
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(dirs, "_SITE_DATA_DIR", tmp_path / "site_data")
+    monkeypatch.setattr(dirs, "_USER_DATA_DIR", tmp_path / "user_data")
+    monkeypatch.setattr(dirs, "autosaves_path", dirs.autosaves_path)
+    monkeypatch.setattr(dirs, "logs_path", dirs.logs_path)
+    dirs.setup_dirs()
 
 
 def load_local_media(path: str | Path):
