@@ -245,6 +245,9 @@ class TimelineUI(ABC):  # noqa: B024
         self.scene.set_playback_line_pos(
             time_x_converter.get_x_by_time(get(Get.SELECTED_TIME))
         )
+        self.update_loop_box_position()
+
+    def update_loop_box_position(self) -> None:
         (loop_start, loop_end) = get(Get.LOOP_TIME)
         self.scene.set_loop_box_position(
             time_x_converter.get_x_by_time(loop_start),
