@@ -137,19 +137,6 @@ class TestMediaLoadInteraction:
 
         mock_refresh.assert_called()
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "R190: creating/refreshing an AudioWave timeline over a loaded"
-            " audio file raises TypeError. In"
-            " tilia/timelines/audiowave/timeline.py:55,"
-            " `self.audio.blocks(self.audio.frames // divisions)` -- `divisions`"
-            " (tilia/timelines/audiowave/timeline.py:49) is `min(PLAYBACK_AREA_WIDTH,"
-            " max_divisions, frames)`, and PLAYBACK_AREA_WIDTH is a float, so when"
-            " it is the smallest of the three the `//` result stays a float and"
-            " soundfile.blocks() rejects it as a blocksize."
-        ),
-    )
     def test_r190_loading_audio_while_media_loaded_refreshes_waveform(
         self, qtui, tluis, resources
     ):
