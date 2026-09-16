@@ -56,6 +56,11 @@ AUDIOWAVE_INVALID_FILE = Error(
 BEAT_DISTRIBUTION_ERROR = Error(
     "Distribute measure", "Cannot distribute beats on last measure."
 )
+BEAT_AMOUNT_EXCEEDS_REMAINING_BEATS = Error(
+    "Change beats in measure",
+    "Cannot set {} beats: only {} beats remain from this measure to the end of "
+    "the timeline.",
+)
 BEAT_PATTERN_ERROR = Error(
     "Insert beat pattern", "Beat pattern must be one or more numbers."
 )

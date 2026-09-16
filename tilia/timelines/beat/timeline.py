@@ -625,6 +625,15 @@ class BeatTimeline(Timeline):
         post(Post.BEAT_TIMELINE_MEASURE_NUMBER_CHANGE_DONE, self.id, measure_index)
 
     def set_beat_amount_in_measure(self, measure_index: int, beat_amount: int) -> None:
+        remaining_beats = sum(self.beats_in_measure[measure_index:])
+        if beat_amount > remaining_beats:
+            tilia.errors.display(
+                tilia.errors.BEAT_AMOUNT_EXCEEDS_REMAINING_BEATS,
+                beat_amount,
+                remaining_beats,
+            )
+            return
+
         self.clear_cached_metric_positions()
         new_beats_in_measure = self.beats_in_measure.copy()
         new_beats_in_measure[measure_index] = beat_amount
