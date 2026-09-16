@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -113,3 +114,37 @@ class TestGetSetupParser:
         args = setup_parser()
 
         assert args.file == win_path
+
+
+class TestRelativeLaunchPath:
+    def test_relative_file_argument_survives_setup_dirs(self, monkeypatch, tmp_path):
+        """
+        Regression test: setup_parser() (and
+        its get_initial_file validation) runs while cwd is still the launch
+        directory, but setup_dirs() used to chdir into the tilia package
+        before the file was actually opened, so a relative positional file
+        argument would pass argument parsing and then fail with "File not
+        found" once the app tried to open it.
+        """
+        from tilia import dirs
+
+        monkeypatch.chdir(tmp_path)
+        sub_dir = tmp_path / "repro"
+        sub_dir.mkdir()
+        (sub_dir / "x.tla").touch()
+        relative_path = os.path.join("repro", "x.tla")
+
+        sys.argv = ["main.py", relative_path]
+        args = setup_parser()
+        assert args.file == relative_path
+
+        # setup_dirs() writes to the real platformdirs locations; redirect
+        # them under tmp_path so this test never touches the real ones.
+        monkeypatch.setattr(dirs, "_SITE_DATA_DIR", tmp_path / "site_data")
+        monkeypatch.setattr(dirs, "_USER_DATA_DIR", tmp_path / "user_data")
+        monkeypatch.setattr(dirs, "autosaves_path", dirs.autosaves_path)
+        monkeypatch.setattr(dirs, "logs_path", dirs.logs_path)
+
+        dirs.setup_dirs()
+
+        assert os.path.isfile(args.file)

@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
+from tests.utils import simulate_launch_dir
 from tilia import dirs
 
 
@@ -55,3 +56,15 @@ def test_create_autosaves_dir(test_dir):
     dirs.create_autosaves_dir(test_dir)
 
     assert os.path.exists(Path(test_dir, "autosaves"))
+
+
+def test_setup_dirs_does_not_change_cwd(monkeypatch, tmp_path):
+    """
+    Regression test: setup_dirs() used to
+    os.chdir() into the tilia package directory whenever ENVIRONMENT !=
+    "prod" (the case during tests), which broke every relative path handed
+    to TiLiA on launch.
+    """
+    simulate_launch_dir(monkeypatch, tmp_path)
+
+    assert Path(os.getcwd()).resolve() == tmp_path.resolve()
