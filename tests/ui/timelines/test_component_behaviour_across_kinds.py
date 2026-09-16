@@ -486,24 +486,7 @@ DRAG_PASTE_KINDS = [
     pytest.param(
         "mode", id=_id("mode", "paste-single-into-timeline-while-dragging", "R233")
     ),
-    pytest.param(
-        "beat",
-        id=_id("beat", "paste-single-into-timeline-while-dragging"),
-        marks=pytest.mark.xfail(
-            strict=True,
-            reason=(
-                "R0xx: BeatTimelineUI.paste_multiple_into_timeline reads "
-                "Get.MEDIA_CURRENT_TIME (tilia/ui/timelines/beat/timeline.py:245), "
-                "the actual player position which is only updated on drag "
-                "release, instead of the live Get.SELECTED_TIME that "
-                "TimelineUIs.on_slider_drag keeps updated during the drag itself "
-                "(tilia/ui/timelines/collection/collection.py:1491-1493). Every "
-                "other pasteable kind's paste_multiple_into_timeline reads "
-                "Get.SELECTED_TIME, so a beat pasted mid-drag lands at the "
-                "pre-drag time instead of the slider's current position."
-            ),
-        ),
-    ),
+    pytest.param("beat", id=_id("beat", "paste-single-into-timeline-while-dragging")),
     pytest.param("range", id=_id("range", "paste-single-into-timeline-while-dragging")),
 ]
 
