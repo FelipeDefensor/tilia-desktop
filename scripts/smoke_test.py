@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import os
 import platform
+import plistlib
 import re
 import subprocess
 import sys
@@ -96,6 +97,12 @@ class ProcResult:
 
 
 def _terminate(proc: subprocess.Popen) -> None:
+    if os.name == "nt":
+        # Onefile builds run the app as a child of the launched bootstrap;
+        # kill the whole tree so no instance outlives the check.
+        subprocess.run(
+            ["taskkill", "/T", "/F", "/PID", str(proc.pid)], capture_output=True
+        )
     try:
         proc.terminate()
         proc.wait(timeout=5)
@@ -442,15 +449,7 @@ def resolve_executable(path: Path) -> Path:
     """
     path = Path(path)
     if path.suffix == ".app":
-        macos_dir = path / "Contents" / "MacOS"
-        candidates = (
-            [p for p in macos_dir.iterdir() if p.is_file() and os.access(p, os.X_OK)]
-            if macos_dir.is_dir()
-            else []
-        )
-        if not candidates:
-            raise FileNotFoundError(f"No executable found under {macos_dir}")
-        return candidates[0]
+        return _bundle_executable(path)
     if path.exists():
         return path
     exe_variant = path.with_name(path.name + ".exe")
@@ -459,16 +458,47 @@ def resolve_executable(path: Path) -> Path:
     raise FileNotFoundError(f"Executable not found: {path} (also tried {exe_variant})")
 
 
+def _bundle_executable(bundle: Path) -> Path:
+    """The binary a macOS .app launches, per CFBundleExecutable in Info.plist.
+
+    Contents/MacOS also holds Qt libraries with the executable bit set, so
+    "an executable file in there" is not reliably the app itself.
+    """
+    macos_dir = bundle / "Contents" / "MacOS"
+    info = bundle / "Contents" / "Info.plist"
+    if info.is_file():
+        with info.open("rb") as f:
+            name = plistlib.load(f).get("CFBundleExecutable")
+        if name and (macos_dir / name).is_file():
+            return macos_dir / name
+    candidates = (
+        [p for p in macos_dir.iterdir() if p.is_file() and os.access(p, os.X_OK)]
+        if macos_dir.is_dir()
+        else []
+    )
+    if len(candidates) != 1:
+        raise FileNotFoundError(
+            f"Can't tell which file under {macos_dir} is the app: no usable "
+            f"CFBundleExecutable in {info}, {len(candidates)} executable candidates"
+        )
+    return candidates[0]
+
+
 def resource_root(
     original_path: Path, product: str, version: str | None
 ) -> Path | None:
     """Where deploy.py's onefile-tempdir-spec ('{CACHE_DIR}/{PRODUCT}/v{VERSION}')
     resolves to for this OS, or the macOS .app's Contents/MacOS (which
-    already holds the files with no separate extraction step).
+    already holds the files with no separate extraction step). The path may
+    be the .app itself or the binary inside it, as the build workflow passes.
     """
     original_path = Path(original_path)
-    if original_path.suffix == ".app":
-        macos_dir = original_path / "Contents" / "MacOS"
+    bundle = next(
+        (p for p in (original_path, *original_path.parents) if p.suffix == ".app"),
+        None,
+    )
+    if bundle is not None:
+        macos_dir = bundle / "Contents" / "MacOS"
         return macos_dir if macos_dir.is_dir() else None
     if not version:
         return None
