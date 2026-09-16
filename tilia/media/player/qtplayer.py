@@ -53,6 +53,7 @@ def wait_for_signal(signal: SignalInstance, value):
 
 class QtPlayer(Player):
     MEDIA_TYPE = ""
+    KEEPS_MEDIA_WHEN_LOAD_FAILS = True
 
     def __init__(self):
         super().__init__()
@@ -78,18 +79,27 @@ class QtPlayer(Player):
         self.audio_output.setDevice(QAudioDevice())
 
     def _engine_load_media(self, media_path: str) -> bool:
+        previous_source = self.player.source()
+        previous_position = self.player.position()
+
         @wait_for_signal(
             self.player.mediaStatusChanged, QMediaPlayer.MediaStatus.LoadedMedia
         )
-        def load_media(media_path):
+        def set_source(source: QUrl):
             self._engine_stop()  # Must be _engine_stop() instead of player.stop() to avoid freeze.
-            self.player.setSource(QUrl.fromLocalFile(media_path))
+            self.player.setSource(source)
             return True
 
-        success = load_media(media_path)
+        success = set_source(QUrl.fromLocalFile(media_path))
         if success:
             # Divides by 1000 as durations is expected to be in miliseconds
             self.on_media_duration_available(self.player.duration() / 1000)
+        elif not previous_source.isEmpty():
+            # setSource() above already swapped the engine onto the (invalid)
+            # candidate, so without this a failed load leaves no media loaded
+            # at all. Reload what was there before so it stays playable.
+            if set_source(previous_source):
+                self._engine_seek(previous_position / 1000)
         return success
 
     def _engine_get_current_time(self):
