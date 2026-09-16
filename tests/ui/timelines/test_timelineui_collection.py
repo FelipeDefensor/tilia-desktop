@@ -510,16 +510,6 @@ class TestLoop:
         commands.execute("edit.redo")
         assert get(Get.LOOP_TIME) == (0, 0)
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "R140: SliderTimelineUI.set_width (tilia/ui/timelines/slider/"
-            "timeline.py:124-127) overrides TimelineUI.set_width without"
-            " repositioning scene.loop_box the way the base implementation"
-            " (tilia/ui/timelines/base/timeline.py:248-252) does, so only the"
-            " slider timeline's loop shading is left behind on zoom."
-        ),
-    )
     def test_R140_zoom_updates_slider_loop_shading(self, tilia_state, slider_tlui):
         # R140: manual QA found that zooming with the mouse wheel (Ctrl+wheel
         # goes through the same commands.execute("view.zoom.in"/"out") as the
