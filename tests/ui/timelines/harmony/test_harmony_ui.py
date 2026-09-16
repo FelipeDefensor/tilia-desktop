@@ -394,18 +394,6 @@ class TestInvalidInversionInspectorEdit:
         commands.execute("timeline.element.inspect")
         return qtui._windows[WindowKind.INSPECT]
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "R245: an invalid inversion is silently discarded with no "
-            "user-facing error. tilia/ui/timelines/base/timeline.py "
-            "on_inspector_field_edited calls element.set_data(attr, value) "
-            "and ignores the (value, success) tuple it returns, so "
-            "validate_set_data()==False in "
-            "tilia/timelines/base/component/base.py never reaches "
-            "errors.display()/Post.DISPLAY_ERROR."
-        ),
-    )
     def test_invalid_inversion_is_refused_with_error_R245(
         self, qtui, harmony_tlui, tilia_errors
     ):
@@ -422,16 +410,6 @@ class TestInvalidInversionInspectorEdit:
         assert harmony.get_data("inversion") == 0  # refused, not applied
         tilia_errors.assert_error()
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "R245: no error is ever shown for an invalid inversion (see "
-            "test_invalid_inversion_is_refused_with_error_R245), so the "
-            "wording can't be checked either. The checklist note says the "
-            "historical message read '...for this letter type', which "
-            "should say 'chord quality' instead."
-        ),
-    )
     def test_invalid_inversion_error_mentions_chord_quality_R245(
         self, qtui, harmony_tlui, tilia_errors
     ):
