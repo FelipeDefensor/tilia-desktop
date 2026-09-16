@@ -64,6 +64,11 @@ BEAT_DISTRIBUTION_ERROR = Error(
 BEAT_FILL_INVALID_INTERVAL = Error(
     "Fill with beats", "Interval must be greater than zero. Got {}."
 )
+BEAT_AMOUNT_EXCEEDS_REMAINING_BEATS = Error(
+    "Change beats in measure",
+    "Cannot set {} beats: only {} beats remain from this measure to the end of "
+    "the timeline.",
+)
 BEAT_PATTERN_ERROR = Error(
     "Insert beat pattern", "Beat pattern must be one or more numbers."
 )
