@@ -33,6 +33,9 @@ class Player(ABC):
     UPDATE_INTERVAL = 100
     E = UPDATE_INTERVAL / 500
     MEDIA_TYPE = None
+    # Whether _engine_load_media leaves the current media loaded, at its
+    # position, when loading new media fails.
+    KEEPS_MEDIA_WHEN_LOAD_FAILS: bool = False
 
     def __init__(self):
         super().__init__()
@@ -95,13 +98,28 @@ class Player(ABC):
         initial_duration: float = False,
     ) -> bool:
         # Initial_duration is only used by YouTube player
-        if self.is_playing:
-            self.stop()
+        was_playing = self.is_playing
+        if was_playing:
+            # Stopping for real waits until the new media has loaded, so that a
+            # failed load can leave playback, the loop and the controls as they
+            # were. Only the time updates pause while the engine swaps media.
+            self.stop_play_loop()
 
         success = self._engine_load_media(path)
         if not success:
             tilia.errors.display(tilia.errors.MEDIA_LOAD_FAILED, path)
+            if was_playing:
+                if self.KEEPS_MEDIA_WHEN_LOAD_FAILS:
+                    self._engine_play()
+                    self.start_play_loop()
+                else:
+                    self.stop()
             return False
+
+        if was_playing:
+            # stop() seeks to playback_start, which must refer to the new media.
+            self.playback_start = start
+            self.stop()
         self.on_media_load_done(path, start, end)
         return True
 

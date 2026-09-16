@@ -25,7 +25,7 @@ from tests.utils import (
 )
 from tilia.file.migration import find_unknown_timeline_kinds
 from tilia.media.player import QtAudioPlayer, YouTubePlayer
-from tilia.requests import Get, Post, get, post
+from tilia.requests import Get, Post, get, listen, post, stop_listening
 from tilia.settings import settings
 from tilia.timelines.component_kinds import ComponentKind
 from tilia.timelines.marker.timeline import MarkerTimeline
@@ -385,15 +385,6 @@ class TestMediaLoad:
             marker_tl[0].get_data("time") == 50 * EXAMPLE_MEDIA_DURATION / prev_duration
         )
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "R117: Player.load_media (tilia/media/player/base.py:98-99) calls"
-            " self.stop() whenever is_playing is True before attempting the new"
-            " load, so a load that ultimately fails still stops playback of the"
-            " media that remains current."
-        ),
-    )
     def test_R117_load_invalid_media_with_media_playing_keeps_it_playing(
         self, tilia_state, tilia_errors, tmp_path
     ):
@@ -408,12 +399,27 @@ class TestMediaLoad:
         self._load_media(EXAMPLE_MEDIA_PATH)
         tilia_state.player.is_playing = True
 
-        nonexisting_media = tmp_path / "nothere.mp3"
-        self._load_media(str(nonexisting_media))
+        listener = type(
+            "Listener", (), {}
+        )()  # listen() needs a weak-referenceable listener
+        stopping_posts = (Post.PLAYER_STOPPED, Post.PLAYER_CANCEL_LOOP)
+        posted = []
+        for stopping_post in stopping_posts:
+            listen(
+                listener, stopping_post, lambda *_, p=stopping_post: posted.append(p)
+            )
+        try:
+            nonexisting_media = tmp_path / "nothere.mp3"
+            self._load_media(str(nonexisting_media))
+        finally:
+            for stopping_post in stopping_posts:
+                stop_listening(listener, stopping_post)
 
         tilia_errors.assert_error()
         assert tilia_state.media_path == EXAMPLE_MEDIA_PATH
         assert tilia_state.player.is_playing
+        # The controls and the loop must not be told that playback stopped.
+        assert posted == []
 
 
 class TestScaleCropTimeline:
