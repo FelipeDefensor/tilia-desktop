@@ -10,6 +10,7 @@ Nuitka build. All waits are kept at or under 1 second.
 """
 
 import os
+import plistlib
 import sys
 import textwrap
 from pathlib import Path
@@ -300,6 +301,29 @@ def test_resolve_executable_unwraps_macos_app_bundle(tmp_path):
     assert resolved == binary
 
 
+def test_resolve_executable_uses_bundle_executable_from_info_plist(tmp_path):
+    contents = tmp_path / "tilia.app" / "Contents"
+    macos_dir = contents / "MacOS"
+    macos_dir.mkdir(parents=True)
+    for name in ("QtCore", "TiLiA-v0.6.4-macos-silicon", "QtGui"):
+        (macos_dir / name).write_text("fake binary", encoding="utf-8")
+        (macos_dir / name).chmod(0o755)
+    with (contents / "Info.plist").open("wb") as f:
+        plistlib.dump({"CFBundleExecutable": "TiLiA-v0.6.4-macos-silicon"}, f)
+    resolved = smoke_test.resolve_executable(tmp_path / "tilia.app")
+    assert resolved == macos_dir / "TiLiA-v0.6.4-macos-silicon"
+
+
+def test_resolve_executable_ambiguous_bundle_without_info_plist_raises(tmp_path):
+    macos_dir = tmp_path / "tilia.app" / "Contents" / "MacOS"
+    macos_dir.mkdir(parents=True)
+    for name in ("QtCore", "tilia"):
+        (macos_dir / name).write_text("fake binary", encoding="utf-8")
+        (macos_dir / name).chmod(0o755)
+    with pytest.raises(FileNotFoundError):
+        smoke_test.resolve_executable(tmp_path / "tilia.app")
+
+
 def test_resolve_executable_missing_raises(tmp_path):
     with pytest.raises(FileNotFoundError):
         smoke_test.resolve_executable(tmp_path / "nothing_here")
@@ -326,6 +350,15 @@ def test_resource_root_macos_app_bundle(tmp_path):
     macos_dir = tmp_path / "tilia.app" / "Contents" / "MacOS"
     macos_dir.mkdir(parents=True)
     root = smoke_test.resource_root(tmp_path / "tilia.app", "TiLiA", None)
+    assert root == macos_dir
+
+
+def test_resource_root_binary_inside_macos_app_bundle(tmp_path):
+    macos_dir = tmp_path / "tilia.app" / "Contents" / "MacOS"
+    macos_dir.mkdir(parents=True)
+    root = smoke_test.resource_root(
+        macos_dir / "TiLiA-v0.6.4-macos-silicon", "TiLiA", "0.6.4"
+    )
     assert root == macos_dir
 
 
