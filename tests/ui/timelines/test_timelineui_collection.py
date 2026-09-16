@@ -492,6 +492,116 @@ class TestLoop:
         assert not tluis.loop_elements
         assert not tilia_state.player.is_looping
 
+    def test_R124_group_keeps_loop(self):
+        # R124: grouping a looped hierarchy must not affect the loop.
+        # HierarchyTimeline.group (tilia/timelines/hierarchy/timeline.py)
+        # only creates a new, higher-level wrapping component -- it never
+        # deletes/recreates the grouped units, so the looped element (and
+        # therefore the loop) is untouched.
+        commands.execute("timeline.hierarchy.add", start=10, end=20, level=1)
+        self.tlui.select_all_elements()
+        post(Post.PLAYER_TOGGLE_LOOP, True)
+        assert get(Get.LOOP_TIME) == (10, 20)
+
+        commands.execute("timeline.hierarchy.group")
+        assert get(Get.LOOP_TIME) == (10, 20)
+
+    def test_R128_loading_new_media_cancels_loop(self, tilia_state, tluis, resources):
+        # R128: loading new media while a loop is active must cancel the
+        # loop.
+        post(Post.APP_MEDIA_LOAD, EXAMPLE_MEDIA_PATH, scale_timelines="yes")
+        commands.execute("timeline.hierarchy.add", start=1, end=5, level=1)
+        self.tlui.select_all_elements()
+        post(Post.PLAYER_TOGGLE_LOOP, True)
+        assert get(Get.LOOP_TIME) == (1, 5)
+
+        post(
+            Post.APP_MEDIA_LOAD,
+            str((resources / "example.wav").resolve()),
+            scale_timelines="yes",
+        )
+
+        assert get(Get.LOOP_TIME) == (0, 0)
+        assert not tluis.loop_elements
+        assert not tilia_state.player.is_looping
+
+    def test_R135_loop_new_hierarchy_after_media_load_cancelled_loop(
+        self, tilia_state, tluis, resources
+    ):
+        # R135: once a loop has been cancelled by loading new media (R128),
+        # selecting a (new) hierarchy and looping again must loop that
+        # hierarchy.
+        post(Post.APP_MEDIA_LOAD, EXAMPLE_MEDIA_PATH, scale_timelines="yes")
+        commands.execute("timeline.hierarchy.add", start=1, end=5, level=1)
+        self.tlui.select_all_elements()
+        post(Post.PLAYER_TOGGLE_LOOP, True)
+        assert get(Get.LOOP_TIME) == (1, 5)
+
+        post(
+            Post.APP_MEDIA_LOAD,
+            str((resources / "example.wav").resolve()),
+            scale_timelines="yes",
+        )
+
+        commands.execute("timeline.hierarchy.add", start=6, end=8, level=1)
+        self.tlui.deselect_all_elements()
+        self.tlui.select_element(self.tlui[1])
+        post(Post.PLAYER_TOGGLE_LOOP, True)
+
+        assert get(Get.LOOP_TIME) == (6, 8)
+
+    def test_R152_loop_redo_of_invalidating_change_cancels(self):
+        # R152: sibling of test_loop_undo_manager_cancels above (R153, which
+        # passes) -- redoing a change that invalidates the active loop must
+        # cancel it too, just like undoing one does. Delete the looped
+        # hierarchy, undo the delete (bringing it back), re-loop over it,
+        # then redo the delete so the hierarchy vanishes again.
+        commands.execute("timeline.hierarchy.add", start=10, end=20, level=1)
+        self.tlui.select_all_elements()
+        commands.execute("timeline.component.delete")
+        commands.execute("edit.undo")
+
+        self.tlui.select_all_elements()
+        post(Post.PLAYER_TOGGLE_LOOP, True)
+        assert get(Get.LOOP_TIME) == (10, 20)
+
+        commands.execute("edit.redo")
+        assert get(Get.LOOP_TIME) == (0, 0)
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "R140: SliderTimelineUI.set_width (tilia/ui/timelines/slider/"
+            "timeline.py:124-127) overrides TimelineUI.set_width without"
+            " repositioning scene.loop_box the way the base implementation"
+            " (tilia/ui/timelines/base/timeline.py:248-252) does, so only the"
+            " slider timeline's loop shading is left behind on zoom."
+        ),
+    )
+    def test_R140_zoom_updates_slider_loop_shading(self, tilia_state, slider_tlui):
+        # R140: manual QA found that zooming with the mouse wheel (Ctrl+wheel
+        # goes through the same commands.execute("view.zoom.in"/"out") as the
+        # toolbar -- see TimelineUIsView.wheelEvent) while a loop is active
+        # does not move the slider timeline's loop-shading box.
+        # TimelineUI.set_width (ui/timelines/base/timeline.py) repositions
+        # scene.loop_box after a width change, but SliderTimelineUI.set_width
+        # (ui/timelines/slider/timeline.py) overrides set_width without doing
+        # the same, so only the slider timeline's loop shading is left behind
+        # at its pre-zoom position.
+        tilia_state.duration = 100
+        commands.execute("timeline.hierarchy.add", start=10, end=50, level=1)
+        self.tlui.select_element(self.tlui[0])
+        post(Post.PLAYER_TOGGLE_LOOP, True)
+        assert get(Get.LOOP_TIME) == (10, 50)
+
+        commands.execute("view.zoom.in")
+
+        loop_box_rect = slider_tlui.scene.loop_box.rect()
+        assert loop_box_rect.left() == pytest.approx(time_x_converter.get_x_by_time(10))
+        assert loop_box_rect.right() == pytest.approx(
+            time_x_converter.get_x_by_time(50)
+        )
+
 
 class TestClearAllTimelines:
     def test_none(self, tilia, tluis):
