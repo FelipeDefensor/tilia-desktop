@@ -242,7 +242,7 @@ class BeatTimelineUI(TimelineUI):
         self.create_pasted_beats(
             paste_data,
             reference_time,
-            get(Get.MEDIA_CURRENT_TIME),
+            get(Get.SELECTED_TIME),
         )
 
     def create_pasted_beats(
