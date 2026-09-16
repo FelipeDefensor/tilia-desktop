@@ -10,6 +10,7 @@ from tilia.requests import Get, Post, post
 from tilia.settings import settings
 from tilia.timelines.beat.timeline import BeatTimeline
 from tilia.ui import commands
+from tilia.ui.commands import get_qaction
 from tilia.ui.coords import time_x_converter
 from tilia.ui.timelines.beat.context_menu import BeatContextMenu
 from tilia.ui.windows import WindowKind
@@ -871,3 +872,10 @@ class TestDragBeatLimits:
         with undoable():
             drag_mouse_in_timeline_view(time_x_converter.get_x_by_time(0) - 200, 0)
             assert beat_tlui[0].get_data("time") == 0
+
+
+class TestTimelineUIContextMenu:
+    def test_r183_has_no_height_set_action(self, beat_tlui, tluis):
+        context_menu = beat_tlui.CONTEXT_MENU_CLASS(beat_tlui, 0, 0)
+
+        assert get_qaction("timeline.set_height") not in context_menu.actions()
