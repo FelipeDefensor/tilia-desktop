@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import music21
 
+import tilia.errors
 from tilia.timelines.base.component import PointLikeTimelineComponent
 from tilia.timelines.base.validators import validate_string, validate_time
 from tilia.timelines.component_kinds import ComponentKind
@@ -116,7 +117,12 @@ class Harmony(PointLikeTimelineComponent):
 
     def validate_set_data(self, attr: str, value: Any) -> bool:
         if attr == "inversion":
-            return validate_inversion(value, self.quality)
+            is_valid = validate_inversion(value, self.quality)
+            if not is_valid:
+                tilia.errors.display(
+                    tilia.errors.INVALID_HARMONY_INVERSION, value, self.quality
+                )
+            return is_valid
         return super().validate_set_data(attr, value)
 
     def set_data(self, attr: str, value: Any):
