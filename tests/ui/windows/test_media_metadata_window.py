@@ -161,16 +161,6 @@ def test_R114_remove_several_fields(media_metadata_window, tilia_state):
     assert "r114_remove2" not in tilia_state.metadata
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "R115: renaming a custom field resets its value to '' instead of "
-        "preserving it. tilia/file/file_manager.py:317-319 "
-        "(on_update_media_metadata_fields) looks the value up under the NEW "
-        "field name (or its lowercase form) only, with no old-name mapping, "
-        "so a rename is indistinguishable from remove-old+add-new."
-    ),
-)
 def test_R115_replace_a_field_rename(media_metadata_window, tilia_state):
     _set_custom_fields(media_metadata_window, ["r115_oldname"])
     media_metadata_window.metadata["r115_oldname"].setText("some value")
@@ -182,3 +172,36 @@ def test_R115_replace_a_field_rename(media_metadata_window, tilia_state):
     assert "r115_oldname" not in tilia_state.metadata
     assert "r115_newname" in tilia_state.metadata
     assert tilia_state.metadata["r115_newname"] == "some value"
+
+
+@pytest.mark.parametrize(
+    "new_fields",
+    [
+        pytest.param(["r115_b", "r115_c"], id="R113-remove-the-first-field"),
+        pytest.param(
+            ["r115_new", "r115_a", "r115_b", "r115_c"], id="R109-add-a-field-first"
+        ),
+        pytest.param(["r115_c", "r115_a", "r115_b"], id="reorder-fields"),
+    ],
+)
+def test_editing_fields_keeps_each_value_under_its_own_name(
+    media_metadata_window, tilia_state, new_fields
+):
+    # Renames are told apart from removals and additions by comparing the old
+    # and new field lists; shifted positions must not move values between fields.
+    old_fields = ["r115_a", "r115_b", "r115_c"]
+    _set_custom_fields(media_metadata_window, old_fields)
+    for name in old_fields:
+        media_metadata_window.metadata[name].setText(f"{name} value")
+    media_metadata_window.apply_fields()
+
+    _set_custom_fields(media_metadata_window, new_fields)
+
+    for name in old_fields:
+        if name in new_fields:
+            assert tilia_state.metadata[name] == f"{name} value"
+    assert all(
+        tilia_state.metadata[name] == ""
+        for name in new_fields
+        if name not in old_fields
+    )
