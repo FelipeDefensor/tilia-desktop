@@ -81,6 +81,17 @@ jobs:
         run: |
           echo "python scripts/deploy.py ${{github.ref_name}} ${{matrix.os}}" | bash
 
+      - name: Smoke test executable
+        continue-on-error: true
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            EXE="${{ steps.build-exe.outputs.out-filepath }}"
+          else
+            EXE="${{ steps.build-exe.outputs.out-filepath }}/${{ steps.build-exe.outputs.out-binary-name }}"
+          fi
+          python scripts/smoke_test.py "$EXE" --wait 10 --file tests/resources/tla/many_beats.tla
+
       - name: Test installer [mac]
         if: runner.os == 'macOS'
         shell: bash
@@ -249,6 +260,14 @@ jobs:
       QT_DEBUG_PLUGINS: 1
       QT_QPA_PLATFORM: offscreen
     steps:
+      - name: Checkout (for smoke_test.py)
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.11
+
       - name: Download Velopack packages
         uses: actions/download-artifact@v8
         with:
@@ -276,16 +295,7 @@ jobs:
               BINARY="$PORTABLE"
             fi
             chmod ugo+x "$BINARY"
-            echo "Starting GUI..."
-            start=$(date +%s)
-            timeout 10 "$BINARY" || true
-            if (($(date +%s) - $start < 10)); then
-              echo "Linux didn't work... Check libraries with previous step?";
-            else
-              echo "Linux started in a clean environment!";
-            fi
-            echo "Starting CLI..."
-            timeout 10 "$BINARY" --user-interface=cli || true
+            python "$GITHUB_WORKSPACE/scripts/smoke_test.py" "$BINARY" --wait 10 --profile linux-clean-env
           fi
 
       - name: Upload
