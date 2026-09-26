@@ -88,8 +88,8 @@ class ProcResult:
 
 def _terminate(proc: subprocess.Popen) -> None:
     if os.name == "nt":
-        # Onefile builds run the app as a child of the launched bootstrap;
-        # kill the whole tree so no instance outlives the check.
+        # Qt's multimedia backend and other helpers can spawn their own child
+        # processes; kill the whole tree so no instance outlives the check.
         subprocess.run(
             ["taskkill", "/T", "/F", "/PID", str(proc.pid)], capture_output=True
         )
@@ -284,11 +284,14 @@ def check_cli(
     expected_substring: str = CLI_INVALID_CHOICE_MARKER,
 ) -> CheckResult:
     """
-    Today's known (frozen-build) behaviour for ``--user-interface=cli`` is
-    to exit almost immediately, non-zero, with an argparse "invalid choice:
-    'cli'" message -- because the packaged build's parser only accepts 'qt'.
-    This asserts that exact behaviour, not a working CLI; a hang or a
-    different message is a FAIL.
+    A packaged build's ``tilia.nuitka-package.config.yml`` rewrites
+    ``tilia.boot``'s argparse choices down to just ``qt`` and drops the
+    ``cli`` branch entirely (see the ``tilia.boot`` anti-bloat entry there --
+    the CLI is source-only, per CLAUDE.md). So today's known (frozen-build)
+    behaviour for ``--user-interface=cli`` is to exit almost immediately,
+    non-zero, with an argparse "invalid choice: 'cli'" message. This asserts
+    that exact behaviour, not a working CLI; a hang or a different message is
+    a FAIL.
     """
     result = run_and_capture(
         cmd + ["--user-interface=cli"], wait, env=env, log_path=log_path
@@ -333,11 +336,11 @@ def check_file_arg(
     log_dir_candidates: list[Path] | None = None,
 ) -> CheckResult:
     """
-    Running with a positional .tla path (tilia/boot.py::setup_parser)
-    should survive ``wait`` seconds without a traceback. We only assert the
-    file was actually opened when that's observable without app changes:
-    setting LOG_REQUESTS=1 makes every Post (including APP_FILE_LOADED) land
-    in TiLiA's own log file, so we look for that marker there.
+    Running with a positional .tla path (tilia/boot.py::setup_parser) should
+    survive ``wait`` seconds without a traceback. We only assert the file was
+    actually opened when that's observable without app changes: setting
+    LOG_REQUESTS=1 makes every Post (including APP_FILE_LOADED) land in
+    TiLiA's own log file, so we look for that marker there.
     """
     if file_path is None:
         return _result(
@@ -393,10 +396,11 @@ def check_resources(
     check_name: str, root: Path | str | None, filenames: list[str]
 ) -> CheckResult:
     """
-    Packaging checks -- confirm specific non-.py resource files shipped
-    inside the extracted onefile cache dir (or, on macOS, inside the .app
-    bundle's Contents/MacOS). Searches recursively under ``root`` since the
-    exact nesting of the extracted tree isn't part of the public contract.
+    Packaging check -- confirm specific non-.py resource files shipped
+    inside the built app (a Nuitka standalone dist dir, a macOS .app
+    bundle's Contents/MacOS, or an extracted Linux AppImage payload).
+    Searches recursively under ``root`` since the exact nesting of that tree
+    isn't part of the public contract.
     """
     if root is None:
         return _result(
@@ -419,22 +423,12 @@ def check_resources(
 # Path helpers
 # --------------------------------------------------------------------------
 
-_VERSION_RE = re.compile(r"-v([0-9][^-]*)")
-
-
-def extract_version(stem: str) -> str | None:
-    """Pull the version out of a deploy.py-generated filename stem, e.g.
-    'TiLiA-v0.6.4-windows' or 'TiLiA-v0.6.4-some-branch-windows' -> '0.6.4'.
-    """
-    m = _VERSION_RE.search(stem)
-    return m.group(1) if m else None
-
 
 def resolve_executable(path: Path) -> Path:
     """Resolve the actual binary to run: unwraps a macOS .app bundle, and
     tries appending '.exe' if the given path doesn't exist as-is (Nuitka
     enforces that suffix on Windows even though deploy.py's recorded
-    out-filepath/out-filename outputs don't include it).
+    out-filepath/out-binary-name outputs don't include it).
     """
     path = Path(path)
     if path.suffix == ".app":
@@ -473,34 +467,62 @@ def _bundle_executable(bundle: Path) -> Path:
     return candidates[0]
 
 
-def resource_root(
-    original_path: Path, product: str, version: str | None
-) -> Path | None:
-    """Where deploy.py's onefile-tempdir-spec ('{CACHE_DIR}/{PRODUCT}/v{VERSION}')
-    resolves to for this OS, or the macOS .app's Contents/MacOS (which
-    already holds the files with no separate extraction step). The path may
-    be the .app itself or the binary inside it, as the build workflow passes.
+def resource_root(binary: Path, original_path: Path) -> Path | None:
+    """Where packaged, non-.py resources live for this build.
+
+    deploy.py builds with Nuitka ``--mode=app`` (macOS) or
+    ``--mode=standalone`` (Windows/Linux) -- never ``--mode=onefile`` -- so
+    there's no runtime extraction step to locate on Windows or a raw Linux
+    standalone build: resources sit right beside the executable, in
+    whatever directory holds it (the Nuitka ``tilia.dist`` dir, Velopack's
+    installed ``current/`` dir on Windows, or the macOS .app bundle's
+    Contents/MacOS, which already holds the files with no separate
+    extraction step). ``binary``/``original_path`` may be the .app itself or
+    the binary inside it, as the build workflow passes either.
+
+    The one exception is a Linux .AppImage: its payload is a compressed,
+    self-mounting image, so it's unpacked with the AppImage's own
+    ``--appimage-extract`` to inspect it without depending on FUSE being
+    available. The exact directory layout Velopack's AppImage produces
+    inside that payload isn't verified here (that needs a real build to
+    check) -- only that extraction itself works; check_resources() searches
+    recursively, so the nesting doesn't matter as long as extraction
+    succeeded.
     """
-    original_path = Path(original_path)
     bundle = next(
-        (p for p in (original_path, *original_path.parents) if p.suffix == ".app"),
+        (
+            p
+            for p in (original_path, *original_path.parents, binary, *binary.parents)
+            if p.suffix == ".app"
+        ),
         None,
     )
     if bundle is not None:
         macos_dir = bundle / "Contents" / "MacOS"
         return macos_dir if macos_dir.is_dir() else None
-    if not version:
+    if binary.suffix.lower() == ".appimage":
+        return _extract_appimage(binary)
+    return binary.parent
+
+
+def _extract_appimage(appimage: Path) -> Path | None:
+    """Best-effort extraction of a Linux .AppImage's payload. Returns None
+    (the caller treats that as "can't tell" / SKIP) if extraction isn't
+    possible in this environment.
+    """
+    extract_dir = Path(tempfile.mkdtemp(prefix="tilia_smoke_appimage_"))
+    try:
+        subprocess.run(
+            [str(appimage), "--appimage-extract"],
+            cwd=extract_dir,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=60,
+        )
+    except (OSError, subprocess.TimeoutExpired):
         return None
-    system = platform.system()
-    if system == "Windows":
-        base = os.environ.get("LOCALAPPDATA")
-        if not base:
-            return None
-        return Path(base) / product / f"v{version}"
-    # Linux and any other POSIX runner in this fleet.
-    xdg_cache = os.environ.get("XDG_CACHE_HOME")
-    base = Path(xdg_cache) if xdg_cache else Path.home() / ".cache"
-    return base / product / f"v{version}"
+    squashfs_root = extract_dir / "squashfs-root"
+    return squashfs_root if squashfs_root.is_dir() else None
 
 
 # --------------------------------------------------------------------------
@@ -569,11 +591,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "Omit to skip that check.",
     )
     parser.add_argument("--product-name", default="TiLiA")
-    parser.add_argument(
-        "--app-version",
-        default=None,
-        help="Version used to locate the onefile cache dir. Default: parsed from the executable's filename.",
-    )
     parser.add_argument(
         "--profile",
         choices=["full", "linux-clean-env"],
@@ -649,8 +666,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
 
-        version = args.app_version or extract_version(binary.stem)
-        root = resource_root(exe_input, args.product_name, version)
+        root = resource_root(binary, exe_input)
         results.append(check_resources("resources_about", root, ["LICENSE"]))
         results.append(
             check_resources("resources_youtube", root, ["youtube.html", "youtube.css"])

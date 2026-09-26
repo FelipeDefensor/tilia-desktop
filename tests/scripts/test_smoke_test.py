@@ -261,30 +261,17 @@ def test_report_writes_markdown_table_to_step_summary(tmp_path, monkeypatch):
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "stem, expected",
-    [
-        ("TiLiA-v0.6.4-windows", "0.6.4"),
-        ("TiLiA-v0.6.4-macos-silicon", "0.6.4"),
-        ("TiLiA-v0.6.4-some-branch-ubuntu", "0.6.4"),
-        ("not-a-versioned-name", None),
-    ],
-)
-def test_extract_version(stem, expected):
-    assert smoke_test.extract_version(stem) == expected
-
-
 def test_resolve_executable_appends_exe_suffix_when_needed(tmp_path):
-    real = tmp_path / "TiLiA-v0.6.4-windows.exe"
+    real = tmp_path / "TiLiA.exe"
     real.write_text("fake binary", encoding="utf-8")
-    resolved = smoke_test.resolve_executable(tmp_path / "TiLiA-v0.6.4-windows")
+    resolved = smoke_test.resolve_executable(tmp_path / "TiLiA")
     assert resolved == real
 
 
 def test_resolve_executable_unwraps_macos_app_bundle(tmp_path):
     macos_dir = tmp_path / "tilia.app" / "Contents" / "MacOS"
     macos_dir.mkdir(parents=True)
-    binary = macos_dir / "TiLiA-v0.6.4-macos-silicon"
+    binary = macos_dir / "TiLiA-bin"
     binary.write_text("fake binary", encoding="utf-8")
     binary.chmod(0o755)
     resolved = smoke_test.resolve_executable(tmp_path / "tilia.app")
@@ -295,13 +282,13 @@ def test_resolve_executable_uses_bundle_executable_from_info_plist(tmp_path):
     contents = tmp_path / "tilia.app" / "Contents"
     macos_dir = contents / "MacOS"
     macos_dir.mkdir(parents=True)
-    for name in ("QtCore", "TiLiA-v0.6.4-macos-silicon", "QtGui"):
+    for name in ("QtCore", "TiLiA-bin", "QtGui"):
         (macos_dir / name).write_text("fake binary", encoding="utf-8")
         (macos_dir / name).chmod(0o755)
     with (contents / "Info.plist").open("wb") as f:
-        plistlib.dump({"CFBundleExecutable": "TiLiA-v0.6.4-macos-silicon"}, f)
+        plistlib.dump({"CFBundleExecutable": "TiLiA-bin"}, f)
     resolved = smoke_test.resolve_executable(tmp_path / "tilia.app")
-    assert resolved == macos_dir / "TiLiA-v0.6.4-macos-silicon"
+    assert resolved == macos_dir / "TiLiA-bin"
 
 
 def test_resolve_executable_ambiguous_bundle_without_info_plist_raises(tmp_path):
@@ -319,42 +306,88 @@ def test_resolve_executable_missing_raises(tmp_path):
         smoke_test.resolve_executable(tmp_path / "nothing_here")
 
 
-def test_resource_root_windows(monkeypatch, tmp_path):
-    monkeypatch.setattr(smoke_test.platform, "system", lambda: "Windows")
-    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
-    root = smoke_test.resource_root(
-        tmp_path / "TiLiA-v0.6.4-windows.exe", "TiLiA", "0.6.4"
-    )
-    assert root == tmp_path / "TiLiA" / "v0.6.4"
+# --------------------------------------------------------------------------
+# resource_root -- Nuitka standalone/app builds (no onefile runtime
+# extraction): resources sit right beside the resolved binary, except a
+# macOS .app bundle (Contents/MacOS) and a Linux .AppImage (extracted).
+# --------------------------------------------------------------------------
 
 
-def test_resource_root_linux(monkeypatch, tmp_path):
-    monkeypatch.setattr(smoke_test.platform, "system", lambda: "Linux")
-    monkeypatch.delenv("XDG_CACHE_HOME", raising=False)
-    monkeypatch.setattr(smoke_test.Path, "home", lambda: tmp_path)
-    root = smoke_test.resource_root(tmp_path / "TiLiA-v0.6.4-ubuntu", "TiLiA", "0.6.4")
-    assert root == tmp_path / ".cache" / "TiLiA" / "v0.6.4"
+def test_resource_root_windows_standalone_dir_is_binarys_parent(tmp_path):
+    dist_dir = tmp_path / "tilia.dist"
+    dist_dir.mkdir()
+    binary = dist_dir / "TiLiA.exe"
+    binary.write_text("fake binary", encoding="utf-8")
+    root = smoke_test.resource_root(binary, binary)
+    assert root == dist_dir
+
+
+def test_resource_root_linux_standalone_dir_is_binarys_parent(tmp_path):
+    dist_dir = tmp_path / "tilia.dist"
+    dist_dir.mkdir()
+    binary = dist_dir / "TiLiA"
+    binary.write_text("fake binary", encoding="utf-8")
+    root = smoke_test.resource_root(binary, binary)
+    assert root == dist_dir
 
 
 def test_resource_root_macos_app_bundle(tmp_path):
     macos_dir = tmp_path / "tilia.app" / "Contents" / "MacOS"
     macos_dir.mkdir(parents=True)
-    root = smoke_test.resource_root(tmp_path / "tilia.app", "TiLiA", None)
+    binary = macos_dir / "TiLiA-bin"
+    binary.write_text("fake binary", encoding="utf-8")
+    root = smoke_test.resource_root(binary, tmp_path / "tilia.app")
     assert root == macos_dir
 
 
-def test_resource_root_binary_inside_macos_app_bundle(tmp_path):
+def test_resource_root_macos_uses_bundle_ancestor_of_binary_when_no_app_original(
+    tmp_path,
+):
     macos_dir = tmp_path / "tilia.app" / "Contents" / "MacOS"
     macos_dir.mkdir(parents=True)
-    root = smoke_test.resource_root(
-        macos_dir / "TiLiA-v0.6.4-macos-silicon", "TiLiA", "0.6.4"
-    )
+    binary = macos_dir / "TiLiA-bin"
+    binary.write_text("fake binary", encoding="utf-8")
+    # original_path is already the resolved binary (no .app in it), so the
+    # bundle has to be found by walking the binary's own ancestors instead.
+    root = smoke_test.resource_root(binary, binary)
     assert root == macos_dir
 
 
-def test_resource_root_none_when_version_unknown(monkeypatch, tmp_path):
-    monkeypatch.setattr(smoke_test.platform, "system", lambda: "Linux")
-    root = smoke_test.resource_root(tmp_path / "TiLiA-unversioned", "TiLiA", None)
+@pytest.mark.skipif(
+    os.name == "nt", reason="AppImage extraction is a Linux-only mechanism"
+)
+def test_resource_root_appimage_extracts_via_appimage_extract_flag(tmp_path):
+    fake_appimage = tmp_path / "TiLiA-ubuntu.AppImage"
+    fake_appimage.write_text(
+        textwrap.dedent(
+            """
+            #!/bin/sh
+            if [ "$1" = "--appimage-extract" ]; then
+                mkdir -p squashfs-root/usr/bin
+                echo GPL > squashfs-root/usr/bin/LICENSE
+            fi
+            """
+        ),
+        encoding="utf-8",
+    )
+    fake_appimage.chmod(0o755)
+    root = smoke_test.resource_root(fake_appimage, fake_appimage)
+    assert root is not None
+    assert root.name == "squashfs-root"
+    assert any(root.rglob("LICENSE"))
+
+
+def test_resource_root_appimage_extraction_failure_is_skipped(tmp_path, monkeypatch):
+    fake_appimage = tmp_path / "TiLiA-ubuntu.AppImage"
+    fake_appimage.write_text("not actually runnable", encoding="utf-8")
+    # Don't rely on chmod +x / a real shell: force the subprocess call itself
+    # to fail so this exercises the "extraction not possible here" path.
+    monkeypatch.setattr(
+        smoke_test.subprocess,
+        "run",
+        lambda *a, **k: (_ for _ in ()).throw(OSError("no interpreter")),
+    )
+    root = smoke_test.resource_root(fake_appimage, fake_appimage)
     assert root is None
 
 
