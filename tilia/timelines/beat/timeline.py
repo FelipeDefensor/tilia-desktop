@@ -258,8 +258,14 @@ class BeatTimeline(Timeline):
 
     @beats_in_measure.setter
     def beats_in_measure(self, value):
+        # Recorded before overwriting, so recalculate_measures can tell a
+        # measure that was already complete (and so is done, whatever count
+        # it was just given) from one that is still filling up.
+        prev_last_measure_beat_count = (
+            self._beats_in_measure[-1] if self._beats_in_measure else None
+        )
         self._beats_in_measure = value
-        self.recalculate_measures()
+        self.recalculate_measures(prev_last_measure_beat_count)
         self.component_manager.update_is_first_in_measure_of_subsequent_beats(0)
 
     def should_display_measure_number(self, measure_index):
@@ -401,10 +407,12 @@ class BeatTimeline(Timeline):
         for beat in self:
             beat.clear_cached_metric_position()
 
-    def recalculate_measures(self):
+    def recalculate_measures(
+        self, prev_last_measure_beat_count: int | None = None
+    ) -> None:
         beat_delta = (len(self)) - sum(self.beats_in_measure)
         if beat_delta > 0:
-            self.extend_beats_in_measure(beat_delta)
+            self.extend_beats_in_measure(beat_delta, prev_last_measure_beat_count)
             self.extend_measure_numbers()
         elif beat_delta < 0:
             self.reduce_beats_in_measure(-beat_delta)
@@ -484,16 +492,24 @@ class BeatTimeline(Timeline):
             beats_on_starting_measure=beats_on_starting_measure,
         )
 
-    def extend_beats_in_measure(self, amount: int) -> None:
+    def extend_beats_in_measure(
+        self, amount: int, prev_last_measure_beat_count: int | None = None
+    ) -> None:
         extension = self._get_beats_in_measure_extension(amount)
 
         if not self._beats_in_measure:
             self._beats_in_measure += extension
             return
 
+        if prev_last_measure_beat_count is None:
+            # No count was handed down from before this recalculation, so
+            # there's nothing to distinguish from the list's current last
+            # measure: fall back to it, as before this parameter existed.
+            prev_last_measure_beat_count = self._beats_in_measure[-1]
+
         bp_index = (self.measure_count % len(self.beat_pattern)) - 1
         is_last_measure_complete = (
-            self._beats_in_measure[-1] == self.beat_pattern[bp_index]
+            prev_last_measure_beat_count == self.beat_pattern[bp_index]
         )
 
         if is_last_measure_complete:
