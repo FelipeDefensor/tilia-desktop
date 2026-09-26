@@ -35,6 +35,22 @@ def _write_fake_exe(tmp_path: Path, name: str, body: str) -> list[str]:
 # --------------------------------------------------------------------------
 
 
+@pytest.mark.parametrize(
+    "log, has_problem",
+    [
+        ("2026-09-26 19:10:25,657 ERROR [QtInfoMsg] None:0 - Using FFmpeg", False),
+        ("2026-09-26 19:10:26,371 ERROR [QtWarningMsg] None:0 - No hints", False),
+        ("2026-09-26 19:10:26,368 INFO TIMELINE_CREATE_DONE", False),
+        ("2026-09-26 19:10:27,000 ERROR Could not load media", True),
+        ("2026-09-26 19:10:27,000 CRITICAL Unhandled exception", True),
+        ("Traceback (most recent call last):\n  File ...", True),
+    ],
+    ids=["qt-info", "qt-warning", "info", "app-error", "critical", "traceback"],
+)
+def test_app_log_problems_ignore_qt_messages(log, has_problem):
+    assert smoke_test._log_has_problem(log) is has_problem
+
+
 def test_check_gui_healthy_process_passes(tmp_path):
     cmd = _write_fake_exe(tmp_path, "gui_healthy.py", "import time\ntime.sleep(5)\n")
     result = smoke_test.check_gui(cmd, 0.3, log_path=tmp_path / "out.log")

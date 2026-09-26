@@ -217,7 +217,12 @@ def find_recent_log(
 def _log_has_problem(text: str) -> bool:
     if TRACEBACK_MARKER in text:
         return True
-    return re.search(r"\b(ERROR|CRITICAL)\b", text) is not None
+    # TiLiA logs Qt's own messages (e.g. "ERROR [QtWarningMsg] ...") at ERROR
+    # level whatever their severity; those are expected and not app errors.
+    return (
+        re.search(r"\b(ERROR|CRITICAL)\b(?! \[Qt\w*Msg\])", text, re.MULTILINE)
+        is not None
+    )
 
 
 # --------------------------------------------------------------------------
