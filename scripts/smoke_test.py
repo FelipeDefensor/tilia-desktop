@@ -1,9 +1,12 @@
 """
 Cross-platform, stdlib-only smoke test for a built TiLiA executable.
 
-Turns rows of the manual release checklist into automated assertions that can
-run either as a CI step (see ``.github/workflows/build.yml``) or by hand
-against a local build produced by ``python scripts/deploy.py <ref> <os>``.
+Launches a built executable and checks that it comes up cleanly, that the
+frozen build's CLI option is still rejected the way it's expected to be, that
+a `.tla` file given on the command line opens, and that packaged resources
+made it into the build. Runs either as a CI step (see
+``.github/workflows/build.yml``) or by hand against a local build produced by
+``python scripts/deploy.py <ref> <os>``.
 
 Usage:
     python scripts/smoke_test.py <exe-or-.app> [options]
@@ -30,18 +33,6 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-# Maps a check's name (as used in CheckResult.name) to the manual release
-# checklist row IDs it exercises, so a report can relate rows to checks.
-CHECK_ROWS: dict[str, list[str]] = {
-    "gui": ["R019", "R021", "R023", "R025", "R028"],
-    "cli": ["R020", "R022", "R024", "R026", "R029"],
-    "file_arg": ["R030"],
-    "resources_about": ["R031"],
-    "resources_youtube": ["R032"],
-    "resources_score": ["R033"],
-    "linux_clean_env": ["R027"],
-}
-
 TRACEBACK_MARKER = "Traceback (most recent call last)"
 CLI_INVALID_CHOICE_MARKER = "invalid choice: 'cli'"
 FILE_OPENED_MARKER = "APP_FILE_LOADED"
@@ -58,7 +49,6 @@ DEFAULT_WAIT = 10.0
 class CheckResult:
     name: str
     passed: bool | None  # True = pass, False = fail, None = skipped
-    rows: list[str]
     detail: str
 
     @property
@@ -70,11 +60,11 @@ class CheckResult:
         return "SKIP"
 
     def line(self) -> str:
-        return f"{self.status} {self.name} [{','.join(self.rows)}] - {self.detail}"
+        return f"{self.status} {self.name} - {self.detail}"
 
 
 def _result(name: str, passed: bool | None, detail: str) -> CheckResult:
-    return CheckResult(name=name, passed=passed, rows=CHECK_ROWS[name], detail=detail)
+    return CheckResult(name=name, passed=passed, detail=detail)
 
 
 def tail(text: str, n: int = 40) -> str:
@@ -245,10 +235,10 @@ def check_gui(
     log_dir_candidates: list[Path] | None = None,
 ) -> CheckResult:
     """
-    R019/R021/R023/R025/R028: starting the GUI should still be alive after
-    ``wait`` seconds, with no traceback in its output. Qt warnings (missing
-    plugins, PulseAudio, missing font dirs, etc.) are expected and NOT
-    failures -- only an actual Python traceback counts.
+    Starting the GUI should still be alive after ``wait`` seconds, with no
+    traceback in its output. Qt warnings (missing plugins, PulseAudio,
+    missing font dirs, etc.) are expected and NOT failures -- only an actual
+    Python traceback counts.
     """
     start = time.time()
     result = run_and_capture(cmd, wait, env=env, log_path=log_path)
@@ -294,11 +284,11 @@ def check_cli(
     expected_substring: str = CLI_INVALID_CHOICE_MARKER,
 ) -> CheckResult:
     """
-    R020/R022/R024/R026/R029: today's known (frozen-build) behaviour for
-    ``--user-interface=cli`` is to exit almost immediately, non-zero, with
-    an argparse "invalid choice: 'cli'" message -- because the packaged
-    build's parser only accepts 'qt'. This asserts that exact behaviour, not
-    a working CLI; a hang or a different message is a FAIL.
+    Today's known (frozen-build) behaviour for ``--user-interface=cli`` is
+    to exit almost immediately, non-zero, with an argparse "invalid choice:
+    'cli'" message -- because the packaged build's parser only accepts 'qt'.
+    This asserts that exact behaviour, not a working CLI; a hang or a
+    different message is a FAIL.
     """
     result = run_and_capture(
         cmd + ["--user-interface=cli"], wait, env=env, log_path=log_path
@@ -343,7 +333,7 @@ def check_file_arg(
     log_dir_candidates: list[Path] | None = None,
 ) -> CheckResult:
     """
-    R030: running with a positional .tla path (tilia/boot.py::setup_parser)
+    Running with a positional .tla path (tilia/boot.py::setup_parser)
     should survive ``wait`` seconds without a traceback. We only assert the
     file was actually opened when that's observable without app changes:
     setting LOG_REQUESTS=1 makes every Post (including APP_FILE_LOADED) land
@@ -403,11 +393,10 @@ def check_resources(
     check_name: str, root: Path | str | None, filenames: list[str]
 ) -> CheckResult:
     """
-    R031/R032/R033: packaging checks -- confirm specific non-.py resource
-    files shipped inside the extracted onefile cache dir (or, on macOS,
-    inside the .app bundle's Contents/MacOS). Searches recursively under
-    ``root`` since the exact nesting of the extracted tree isn't part of
-    the public contract.
+    Packaging checks -- confirm specific non-.py resource files shipped
+    inside the extracted onefile cache dir (or, on macOS, inside the .app
+    bundle's Contents/MacOS). Searches recursively under ``root`` since the
+    exact nesting of the extracted tree isn't part of the public contract.
     """
     if root is None:
         return _result(
@@ -538,17 +527,15 @@ def report(results: list[CheckResult]) -> int:
         for r in results:
             if r.passed is False:
                 first_line = r.detail.splitlines()[0] if r.detail else ""
-                print(f"::error::{r.name} [{','.join(r.rows)}] {first_line}")
+                print(f"::error::{r.name} {first_line}")
 
     summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary_path:
         with open(summary_path, "a", encoding="utf-8") as f:
             f.write("\n### TiLiA smoke test\n\n")
-            f.write("| Check | Rows | Status | Detail |\n|---|---|---|---|\n")
+            f.write("| Check | Status | Detail |\n|---|---|---|\n")
             for r in results:
-                f.write(
-                    f"| {r.name} | {', '.join(r.rows)} | {r.status} | {_md_escape(r.detail)} |\n"
-                )
+                f.write(f"| {r.name} | {r.status} | {_md_escape(r.detail)} |\n")
             f.write(
                 f"\n{passed} passed, {failed} failed, {skipped} skipped (of {len(results)})\n"
             )
@@ -563,7 +550,7 @@ def report(results: list[CheckResult]) -> int:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Smoke test a built TiLiA executable against the manual release checklist.",
+        description="Smoke test a built TiLiA executable.",
     )
     parser.add_argument(
         "executable",
@@ -578,8 +565,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--file",
         default=None,
-        help="Path to an existing .tla file for the R030 check (e.g. tests/resources/tla/many_beats.tla). "
-        "Omit to skip R030.",
+        help="Path to an existing .tla file for the file_arg check (e.g. tests/resources/tla/many_beats.tla). "
+        "Omit to skip that check.",
     )
     parser.add_argument("--product-name", default="TiLiA")
     parser.add_argument(
@@ -592,7 +579,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         choices=["full", "linux-clean-env"],
         default="full",
         help="'full' runs gui+cli+file_arg+resource checks (build job). "
-        "'linux-clean-env' runs only gui+cli, tagged as R027 (deploy job's clean-environment step).",
+        "'linux-clean-env' runs only gui+cli, for the deploy job's clean-environment step.",
     )
     parser.add_argument(
         "--log-dir",

@@ -31,28 +31,24 @@ def _write_fake_exe(tmp_path: Path, name: str, body: str) -> list[str]:
 
 
 # --------------------------------------------------------------------------
-# check_gui -- R019/R021/R023/R025/R028
+# check_gui
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("row_id", ["R019"], ids=["R019-gui-alive"])
-def test_check_gui_healthy_process_passes(tmp_path, row_id):
+def test_check_gui_healthy_process_passes(tmp_path):
     cmd = _write_fake_exe(tmp_path, "gui_healthy.py", "import time\ntime.sleep(5)\n")
     result = smoke_test.check_gui(cmd, 0.3, log_path=tmp_path / "out.log")
     assert result.passed is True
-    assert result.rows == smoke_test.CHECK_ROWS["gui"]
 
 
-@pytest.mark.parametrize("row_id", ["R021"], ids=["R021-gui-early-exit"])
-def test_check_gui_early_exit_fails(tmp_path, row_id):
+def test_check_gui_early_exit_fails(tmp_path):
     cmd = _write_fake_exe(tmp_path, "gui_early_exit.py", "import sys\nsys.exit(0)\n")
     result = smoke_test.check_gui(cmd, 0.3, log_path=tmp_path / "out.log")
     assert result.passed is False
     assert "exited early" in result.detail
 
 
-@pytest.mark.parametrize("row_id", ["R023"], ids=["R023-gui-traceback"])
-def test_check_gui_traceback_while_alive_fails(tmp_path, row_id):
+def test_check_gui_traceback_while_alive_fails(tmp_path):
     cmd = _write_fake_exe(
         tmp_path,
         "gui_traceback.py",
@@ -70,12 +66,11 @@ def test_check_gui_traceback_while_alive_fails(tmp_path, row_id):
 
 
 # --------------------------------------------------------------------------
-# check_cli -- R020/R022/R024/R026/R029
+# check_cli
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("row_id", ["R020"], ids=["R020-cli-today-message"])
-def test_check_cli_todays_argparse_error_passes(tmp_path, row_id):
+def test_check_cli_todays_argparse_error_passes(tmp_path):
     cmd = _write_fake_exe(
         tmp_path,
         "cli_today.py",
@@ -92,19 +87,16 @@ def test_check_cli_todays_argparse_error_passes(tmp_path, row_id):
     )
     result = smoke_test.check_cli(cmd, 0.3, log_path=tmp_path / "out.log")
     assert result.passed is True
-    assert result.rows == smoke_test.CHECK_ROWS["cli"]
 
 
-@pytest.mark.parametrize("row_id", ["R022"], ids=["R022-cli-hangs"])
-def test_check_cli_hanging_fails(tmp_path, row_id):
+def test_check_cli_hanging_fails(tmp_path):
     cmd = _write_fake_exe(tmp_path, "cli_hangs.py", "import time\ntime.sleep(5)\n")
     result = smoke_test.check_cli(cmd, 0.2, log_path=tmp_path / "out.log")
     assert result.passed is False
     assert "hung" in result.detail or "did not exit" in result.detail
 
 
-@pytest.mark.parametrize("row_id", ["R024"], ids=["R024-cli-wrong-message"])
-def test_check_cli_missing_expected_message_fails(tmp_path, row_id):
+def test_check_cli_missing_expected_message_fails(tmp_path):
     cmd = _write_fake_exe(
         tmp_path,
         "cli_wrong_message.py",
@@ -127,7 +119,7 @@ def test_check_cli_exit_zero_fails(tmp_path):
 
 
 # --------------------------------------------------------------------------
-# check_file_arg -- R030
+# check_file_arg
 # --------------------------------------------------------------------------
 
 
@@ -145,31 +137,27 @@ def test_check_file_arg_missing_path_fails(tmp_path):
     assert result.passed is False
 
 
-@pytest.mark.parametrize("row_id", ["R030"], ids=["R030-file-arg-alive"])
-def test_check_file_arg_alive_with_existing_file_passes(tmp_path, row_id):
+def test_check_file_arg_alive_with_existing_file_passes(tmp_path):
     cmd = _write_fake_exe(tmp_path, "gui_with_file.py", "import time\ntime.sleep(5)\n")
     tla = tmp_path / "sample.tla"
     tla.write_text("{}", encoding="utf-8")
     result = smoke_test.check_file_arg(cmd, tla, 0.3, log_path=tmp_path / "out.log")
     assert result.passed is True
-    assert result.rows == ["R030"]
 
 
 # --------------------------------------------------------------------------
-# check_resources -- R031/R032/R033
+# check_resources
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("row_id", ["R031"], ids=["R031-resources-about-pass"])
-def test_check_resources_about_pass(tmp_path, row_id):
+def test_check_resources_about_pass(tmp_path):
     (tmp_path / "nested").mkdir()
     (tmp_path / "nested" / "LICENSE").write_text("GPL", encoding="utf-8")
     result = smoke_test.check_resources("resources_about", tmp_path, ["LICENSE"])
     assert result.passed is True
 
 
-@pytest.mark.parametrize("row_id", ["R032"], ids=["R032-resources-youtube-fail"])
-def test_check_resources_youtube_missing_file_fails(tmp_path, row_id):
+def test_check_resources_youtube_missing_file_fails(tmp_path):
     player_dir = tmp_path / "tilia" / "media" / "player"
     player_dir.mkdir(parents=True)
     (player_dir / "youtube.html").write_text("<html></html>", encoding="utf-8")
@@ -181,8 +169,7 @@ def test_check_resources_youtube_missing_file_fails(tmp_path, row_id):
     assert "youtube.css" in result.detail
 
 
-@pytest.mark.parametrize("row_id", ["R033"], ids=["R033-resources-score-pass"])
-def test_check_resources_score_import_pass(tmp_path, row_id):
+def test_check_resources_score_import_pass(tmp_path):
     score_dir = tmp_path / "tilia" / "parsers" / "score"
     score_dir.mkdir(parents=True)
     (score_dir / "svg_maker.html").write_text("<html></html>", encoding="utf-8")
@@ -225,9 +212,11 @@ def test_report_prints_one_line_per_check_and_summary(capsys):
         os.environ.pop(var, None)
     exit_code = smoke_test.report(_sample_results())
     out = capsys.readouterr().out
-    assert "PASS gui [R019,R021,R023,R025,R028]" in out
-    assert "FAIL cli [R020,R022,R024,R026,R029]" in out
-    assert "SKIP resources_about [R031]" in out
+    assert "PASS gui - alive after 10s, no traceback" in out
+    assert "FAIL cli - did not exit within 10s (hung)" in out
+    assert (
+        "SKIP resources_about - skipped: resource root could not be determined" in out
+    )
     assert "SUMMARY: 1 passed, 1 failed, 1 skipped (of 3)" in out
     assert exit_code == 1  # any FAIL -> non-zero exit
 
@@ -246,9 +235,7 @@ def test_report_emits_error_annotations_when_github_actions(capsys, monkeypatch)
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
     smoke_test.report(_sample_results())
     out = capsys.readouterr().out
-    assert (
-        "::error::cli [R020,R022,R024,R026,R029] did not exit within 10s (hung)" in out
-    )
+    assert "::error::cli did not exit within 10s (hung)" in out
     # Only FAILs are annotated, not PASS/SKIP.
     assert "::error::gui" not in out
     assert "::error::resources_about" not in out
@@ -260,10 +247,13 @@ def test_report_writes_markdown_table_to_step_summary(tmp_path, monkeypatch):
     monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary_file))
     smoke_test.report(_sample_results())
     content = summary_file.read_text(encoding="utf-8")
-    assert "| Check | Rows | Status | Detail |" in content
-    assert "| gui | R019, R021, R023, R025, R028 | PASS |" in content
-    assert "| cli | R020, R022, R024, R026, R029 | FAIL |" in content
-    assert "| resources_about | R031 | SKIP |" in content
+    assert "| Check | Status | Detail |" in content
+    assert "| gui | PASS | alive after 10s, no traceback |" in content
+    assert "| cli | FAIL | did not exit within 10s (hung) |" in content
+    assert (
+        "| resources_about | SKIP | skipped: resource root could not be determined |"
+        in content
+    )
 
 
 # --------------------------------------------------------------------------
@@ -369,12 +359,12 @@ def test_resource_root_none_when_version_unknown(monkeypatch, tmp_path):
 
 
 # --------------------------------------------------------------------------
-# R027: reusing check_gui/check_cli for the deploy job's clean-environment step
+# linux-clean-env profile: reusing check_gui/check_cli for the deploy job's
+# clean-environment step
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("row_id", ["R027"], ids=["R027-linux-clean-env-gui-and-cli"])
-def test_linux_clean_env_reuses_gui_and_cli_checks(tmp_path, row_id):
+def test_linux_clean_env_reuses_gui_and_cli_checks(tmp_path):
     gui_cmd = _write_fake_exe(
         tmp_path, "clean_env_gui.py", "import time\ntime.sleep(5)\n"
     )
@@ -395,5 +385,3 @@ def test_linux_clean_env_reuses_gui_and_cli_checks(tmp_path, row_id):
     )
     assert gui_result.passed is True
     assert cli_result.passed is True
-    assert gui_result.rows == ["R027"]
-    assert cli_result.rows == ["R027"]
