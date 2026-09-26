@@ -56,6 +56,9 @@ AUDIOWAVE_INVALID_FILE = Error(
 BEAT_DISTRIBUTION_ERROR = Error(
     "Distribute measure", "Cannot distribute beats on last measure."
 )
+BEAT_FILL_INVALID_INTERVAL = Error(
+    "Fill with beats", "Interval must be greater than zero. Got {}."
+)
 BEAT_PATTERN_ERROR = Error(
     "Insert beat pattern", "Beat pattern must be one or more numbers."
 )

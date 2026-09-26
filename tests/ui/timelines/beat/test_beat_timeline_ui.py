@@ -766,21 +766,7 @@ class TestFillWithBeatsIntervalEdgeCases:
         [
             pytest.param(0, 0.5, id="empty-timeline"),
             pytest.param(1, 0.5, id="non-empty-timeline"),
-            pytest.param(
-                0,
-                0,
-                id="interval-zero",
-                marks=pytest.mark.xfail(
-                    strict=True,
-                    reason=(
-                        "BeatTimeline.fill_with_beats divides the media "
-                        "duration by the interval unconditionally "
-                        "(tilia/timelines/beat/timeline.py:669), so an "
-                        "interval of 0 raises ZeroDivisionError instead of "
-                        "being refused."
-                    ),
-                ),
-            ),
+            pytest.param(0, 0, id="interval-zero"),
         ],
     )
     def test_fill_by_interval(
@@ -798,8 +784,12 @@ class TestFillWithBeatsIntervalEdgeCases:
                 with undoable():
                     commands.execute("timeline.beat.fill")
 
-        amount = int(tilia_state.duration / interval)
-        assert len(beat_tlui) == amount
+        if interval <= 0:
+            # Refused: nothing changes.
+            assert len(beat_tlui) == pre_existing_beats
+        else:
+            amount = int(tilia_state.duration / interval)
+            assert len(beat_tlui) == amount
 
 
 class TestDragBeatLimits:
