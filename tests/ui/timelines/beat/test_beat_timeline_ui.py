@@ -677,17 +677,19 @@ class TestChangeBeatsInMeasureContextMenu:
 
     def test_change_3_to_8_beats_and_undo_redo(self, beat_tlui):
         # A timeline with 3 beats/measure; change one measure from 3 to 8
-        # beats and undo/redo it. Regression test for a previously reported
-        # crash on undo.
+        # beats and undo/redo it (it used to crash on undo). There are
+        # enough beats for 8, so the change is allowed; a sibling test below
+        # covers changes the remaining beats can't satisfy.
         beat_tlui.timeline.beat_pattern = [3]
-        for t in range(6):
+        for t in range(12):
             commands.execute("timeline.beat.add", time=t)
-        assert beat_tlui.timeline.beats_in_measure == [3, 3]
+        assert beat_tlui.timeline.beats_in_measure == [3, 3, 3, 3]
 
         beat_tlui.select_element(beat_tlui[0])
         with undoable():
             commands.execute("timeline.beat.set_amount_in_measure", amount=8)
-        assert beat_tlui.timeline.beats_in_measure == [6]
+        assert beat_tlui.timeline.beats_in_measure[0] == 8
+        assert sum(beat_tlui.timeline.beats_in_measure) == 12
 
 
 class TestDistributeBeatsErrors:
@@ -722,25 +724,19 @@ class TestDistributeBeatsErrors:
 
 
 class TestSetBeatAmountInMeasureEdgeCases:
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "Setting a measure's beat amount above the total beats "
-            "remaining after it leaves the last tracked measure's count "
-            "higher than the beat_pattern value for that slot. The next "
-            "beat creation calls recalculate_measures() ->  "
-            "extend_beats_in_measure() -> get_extension_from_beat_pattern(), "
-            "whose `beats_on_starting_measure > beats` branch "
-            "(tilia/timelines/beat/timeline.py:423-426) unconditionally "
-            "raises ValueError instead of handling the overflow."
-        ),
-    )
-    def test_add_beat_after_oversized_measure_change(self, beat_tlui):
+    def test_add_beat_after_oversized_measure_change(self, beat_tlui, tilia_errors):
         for t in range(8):
             beat_tlui.create_beat(t)  # pattern [4] -> measures [4, 4]
 
         beat_tlui.select_element(beat_tlui[0])
         commands.execute("timeline.beat.set_amount_in_measure", amount=100)
+
+        # The change can't be satisfied (100 beats requested, only 8 remain
+        # from this measure onward), so it's refused: an error is shown and
+        # nothing changes.
+        tilia_errors.assert_error()
+        tilia_errors.assert_in_error_title("Change beats in measure")
+        assert beat_tlui.timeline.beats_in_measure == [4, 4]
 
         commands.execute("timeline.beat.add", time=8)
         assert len(beat_tlui) == 9
