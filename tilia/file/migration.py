@@ -52,6 +52,22 @@ def _to_0_1_1_display_position_to_ordinal(data: dict) -> dict:
     return data
 
 
+def _to_0_6_0_harmony_display_mode_letter(data: dict) -> dict:
+    """Rename the harmony ``display_mode`` value ``"chord"`` to ``"letter"``.
+
+    0.6.0 renamed the mode without a migration, so harmonies saved by 0.5.x
+    failed to load with "Invalid display mode.".
+    """
+    for timeline in data.get("timelines", {}).values():
+        for component in timeline.get("components", {}).values():
+            if (
+                component.get("kind") == "HARMONY"
+                and component.get("display_mode") == "chord"
+            ):
+                component["display_mode"] = "letter"
+    return data
+
+
 def normalize_kind_string(kind: str) -> str:
     """Shorten a serialized timeline ``kind``.
 
@@ -72,6 +88,7 @@ def _to_0_7_0_timeline_kind(data: dict) -> dict:
 # Ascending by target version. See module docstring before editing.
 MIGRATIONS: list[tuple[str, Migration]] = [
     ("0.1.1", _to_0_1_1_display_position_to_ordinal),
+    ("0.6.0", _to_0_6_0_harmony_display_mode_letter),
     ("0.7.0", _to_0_7_0_timeline_kind),
 ]
 
