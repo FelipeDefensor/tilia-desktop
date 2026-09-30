@@ -537,8 +537,7 @@ class TestLoop:
         post(Post.PLAYER_TOGGLE_LOOP, True)
         assert get(Get.LOOP_TIME) == (10, 50)
 
-        with Serve(Get.FROM_USER_FLOAT, (True, 5)):
-            commands.execute("timeline.hierarchy.add_pre_start")
+        commands.execute("timeline.hierarchy.add_pre_start", length=5)
 
         assert get(Get.LOOP_TIME) == (5, 50)
 
@@ -549,8 +548,7 @@ class TestLoop:
         post(Post.PLAYER_TOGGLE_LOOP, True)
         assert get(Get.LOOP_TIME) == (10, 50)
 
-        with Serve(Get.FROM_USER_FLOAT, (True, 20)):
-            commands.execute("timeline.hierarchy.add_post_end")
+        commands.execute("timeline.hierarchy.add_post_end", length=20)
 
         assert get(Get.LOOP_TIME) == (10, 70)
 
