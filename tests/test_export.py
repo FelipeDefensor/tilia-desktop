@@ -149,8 +149,7 @@ class TestExportJSON:
 class TestExportImage:
     @staticmethod
     def _add_timeline():
-        with patch_ask_for_string_dialog(True, "test"):
-            commands.execute("timelines.add.hierarchy")
+        commands.execute("timelines.add.hierarchy", name="test")
 
     @pytest.mark.parametrize("scale_factor", [1.0, 0.5, 2.0])
     def test_image_export(self, qtui, monkeypatch, tmp_path, scale_factor):

@@ -252,8 +252,7 @@ class TestSetTimelineName:
         assert tluis[0].displayed_name == "this"
 
     def test_set_undo(self, tls, tluis):
-        with Serve(Get.FROM_USER_STRING, (True, "pure")):
-            commands.execute("timelines.add.marker")
+        commands.execute("timelines.add.marker", name="pure")
         with Serve(Get.FROM_USER_STRING, (True, "tainted")):
             commands.execute("timeline.set_name", tluis[0])
 
@@ -263,8 +262,7 @@ class TestSetTimelineName:
         assert tluis[0].displayed_name == "pure"
 
     def test_set_redo(self, tls, tluis):
-        with Serve(Get.FROM_USER_STRING, (True, "pure")):
-            commands.execute("timelines.add.marker")
+        commands.execute("timelines.add.marker", name="pure")
         with Serve(Get.FROM_USER_STRING, (True, "tainted")):
             commands.execute("timeline.set_name", tluis[0])
 

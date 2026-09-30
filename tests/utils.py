@@ -73,8 +73,7 @@ def get_blank_file_data():
 def save_file_with_hierarchy_timeline(tmp_path: Path) -> Path:
     """Saves a file with an empty hierarchy timeline, then starts a new
     file, so the saved one can be opened as a different file."""
-    with patch_ask_for_string_dialog(True, "test"):
-        commands.execute("timelines.add.hierarchy")
+    commands.execute("timelines.add.hierarchy", name="test")
     file_path = Path(save_tilia_to_tmp_path(tmp_path, "hierarchy"))
     commands.execute("file.new")
 

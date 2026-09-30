@@ -12,7 +12,6 @@ from tests.constants import EXAMPLE_MEDIA_DURATION, EXAMPLE_MEDIA_PATH
 from tests.mock import (
     PatchPost,
     Serve,
-    patch_ask_for_string_dialog,
     patch_file_dialog,
     patch_yes_no_or_cancel_mb,
     patch_yes_or_no_dialog,
@@ -512,8 +511,7 @@ class TestScaleCropTimeline:
 def save_and_reopen_file_without_slider_timeline(tilia_state, tmp_path) -> None:
     commands.execute("file.new")
     tilia_state.duration = 100
-    with patch_ask_for_string_dialog(True, "test"):
-        commands.execute("timelines.add.hierarchy")
+    commands.execute("timelines.add.hierarchy", name="test")
     slider_ui = get(Get.TIMELINE_UI_BY_ATTR, "timeline_class", SliderTimeline)
     with patch_yes_or_no_dialog(True):
         commands.execute("timeline.delete", slider_ui)
@@ -566,8 +564,7 @@ def get_file_data_with_unknown_timeline_kind():
 
 class TestOpen:
     def test_open_with_timeline(self, qtui, tls, tmp_path):
-        with patch_ask_for_string_dialog(True, "test"):
-            commands.execute("timelines.add.hierarchy")
+        commands.execute("timelines.add.hierarchy", name="test")
         for start, end, level in [(0, 1, 1), (1, 2, 1), (2, 3, 2)]:
             commands.execute(
                 "timeline.hierarchy.add", start=start, end=end, level=level
@@ -841,8 +838,7 @@ class TestOpen:
     def _save_file_with_marker_then_add_marker(tilia_state, tmp_path) -> Path:
         # Leaves the app with an unsaved change: a marker added after saving.
         tilia_state.duration = 100
-        with patch_ask_for_string_dialog(True, "test"):
-            commands.execute("timelines.add.marker")
+        commands.execute("timelines.add.marker", name="test")
         previous_path = tmp_path / "previous.tla"
         with patch_file_dialog(True, [str(previous_path)]):
             commands.execute("file.save_as")
@@ -906,8 +902,7 @@ class TestOpen:
 
 class TestUndoRedo:
     def test_undo_fails(self, tilia, qtui, tluis, tilia_errors):
-        with Serve(Get.FROM_USER_STRING, (True, "test")):
-            commands.execute("timelines.add.marker")
+        commands.execute("timelines.add.marker", name="test")
 
         # this will record an invalid state that will raise an exception when
         # we try to restore it
@@ -929,8 +924,7 @@ class TestUndoRedo:
         tilia_errors.assert_error()
 
     def test_redo_fails(self, tilia, qtui, tluis, tilia_state, tilia_errors):
-        with Serve(Get.FROM_USER_STRING, (True, "test")):
-            commands.execute("timelines.add.marker")
+        commands.execute("timelines.add.marker", name="test")
 
         # this will record an invalid state that will raise an exception when
         # we try to restore it
