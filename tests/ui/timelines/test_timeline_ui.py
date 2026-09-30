@@ -253,8 +253,7 @@ class TestSetTimelineName:
 
     def test_set_undo(self, tls, tluis):
         commands.execute("timelines.add.marker", name="pure")
-        with Serve(Get.FROM_USER_STRING, (True, "tainted")):
-            commands.execute("timeline.set_name", tluis[0])
+        commands.execute("timeline.set_name", tluis[0], name="tainted")
 
         commands.execute("edit.undo")
 
@@ -263,8 +262,7 @@ class TestSetTimelineName:
 
     def test_set_redo(self, tls, tluis):
         commands.execute("timelines.add.marker", name="pure")
-        with Serve(Get.FROM_USER_STRING, (True, "tainted")):
-            commands.execute("timeline.set_name", tluis[0])
+        commands.execute("timeline.set_name", tluis[0], name="tainted")
 
         commands.execute("edit.undo")
         commands.execute("edit.redo")
@@ -274,6 +272,7 @@ class TestSetTimelineName:
 
     def test_set_empty_string(self, tls, tluis):
         tls.create_timeline(MarkerTimeline, name="change me")
+        # name="" can't skip the prompt: on_timeline_set_name checks `if not name`.
         with Serve(Get.FROM_USER_STRING, (True, "")):
             commands.execute("timeline.set_name", tluis[0])
 

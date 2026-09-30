@@ -155,15 +155,11 @@ class TestFileLoad:
 
         # save tilia file
         tla_path = tmp_path / "test.tla"
-        with patch_file_dialog(True, [str(tla_path)]):
-            commands.execute("file.save_as")
+        commands.execute("file.save_as", str(tla_path))
 
         # open tilia file
-        with (
-            patch_file_dialog(True, [str(tla_path)]),
-            patch_yes_no_or_cancel_mb(False),
-        ):
-            commands.execute("file.open")
+        with patch_yes_no_or_cancel_mb(False):
+            commands.execute("file.open", str(tla_path))
 
         assert tilia_state.is_undo_manager_cleared
         assert tilia_state.media_path == ""
@@ -175,14 +171,10 @@ class TestFileLoad:
         tilia_state.duration = 0
         load_local_media(tmp_path / "nothere.mp3")
         tla_path = tmp_path / "test.tla"
-        with patch_file_dialog(True, [str(tla_path)]):
-            commands.execute("file.save_as")
+        commands.execute("file.save_as", str(tla_path))
 
-        with (
-            patch_file_dialog(True, [str(tla_path)]),
-            patch_yes_or_no_dialog(False),  # do no try to load another media
-        ):
-            commands.execute("file.open")
+        with patch_yes_or_no_dialog(False):  # do no try to load another media
+            commands.execute("file.open", str(tla_path))
 
         assert tilia_state.is_undo_manager_cleared
         assert tilia_state.media_path == ""
@@ -192,10 +184,8 @@ class TestFileLoad:
         tmp_file = tmp_path / "test_file_load.tla"
         load_local_media(EXAMPLE_MEDIA_PATH)
 
-        with patch_file_dialog(True, [str(tmp_file)]):
-            commands.execute("file.save_as")
-        with Serve(Get.FROM_USER_TILIA_FILE_PATH, (True, tmp_file)):
-            commands.execute("file.open")
+        commands.execute("file.save_as", str(tmp_file))
+        commands.execute("file.open", tmp_file)
 
         assert tilia_state.is_undo_manager_cleared
         assert tilia_state.media_path == EXAMPLE_MEDIA_PATH
@@ -226,8 +216,7 @@ class TestFileLoad:
             load_youtube_media(url)
             tilia_state.duration = duration
             path = tmp_path / tmp_name
-            with patch_file_dialog(True, [str(path)]):
-                commands.execute("file.save_as")
+            commands.execute("file.save_as", str(path))
             return path
 
         file_a = save_file(
@@ -506,8 +495,7 @@ def save_and_reopen_file_without_slider_timeline(tilia_state, tmp_path) -> None:
     tilia_state.duration = 100
     commands.execute("timelines.add.hierarchy", name="test")
     slider_ui = get(Get.TIMELINE_UI_BY_ATTR, "timeline_class", SliderTimeline)
-    with patch_yes_or_no_dialog(True):
-        commands.execute("timeline.delete", slider_ui)
+    commands.execute("timeline.delete", slider_ui, confirm=False)
     save_and_reopen(tmp_path)
 
 
@@ -759,8 +747,7 @@ class TestOpen:
             commands.execute("file.open", open_path)
 
         save_path = tmp_path / "resaved.tla"
-        with patch_file_dialog(True, [str(save_path)]):
-            commands.execute("file.save_as")
+        commands.execute("file.save_as", str(save_path))
 
         saved_data = json.loads(save_path.read_text())
         assert saved_data["timelines"][UNKNOWN_TIMELINE_ID]["kind"] == (
@@ -833,8 +820,7 @@ class TestOpen:
         tilia_state.duration = 100
         commands.execute("timelines.add.marker", name="test")
         previous_path = tmp_path / "previous.tla"
-        with patch_file_dialog(True, [str(previous_path)]):
-            commands.execute("file.save_as")
+        commands.execute("file.save_as", str(previous_path))
         commands.execute("timeline.marker.add")
         return previous_path
 
@@ -1013,8 +999,7 @@ class TestRelativePaths:
         load_local_media(old_media.resolve())
 
         # save tla
-        with patch_file_dialog(True, [str(old_tla.resolve())]):
-            commands.execute("file.save_as")
+        commands.execute("file.save_as", str(old_tla.resolve()))
 
         tilia.on_clear()  # unload media
 
@@ -1026,8 +1011,7 @@ class TestRelativePaths:
         new_media = old_media.rename(new_folder / media)
 
         # open file at new folder
-        with patch_file_dialog(True, [str(new_tla)]):
-            commands.execute("file.open")
+        commands.execute("file.open", str(new_tla))
 
         assert tilia.player.media_path == str(new_media)
 
@@ -1040,8 +1024,7 @@ class TestSave:
         assert get(Get.MEDIA_PATH) == url
 
         save_path = tmp_path / "test.tla"
-        with patch_file_dialog(True, [str(save_path.resolve())]):
-            commands.execute("file.save_as")
+        commands.execute("file.save_as", str(save_path.resolve()))
 
         with open(save_path) as f:
             contents = json.load(f)
