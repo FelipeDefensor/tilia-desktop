@@ -685,6 +685,10 @@ class BeatTimeline(Timeline):
 
     @long_operation("Creating beats...")
     def fill_with_beats(self, method: BeatTimeline.FillMethod, value: int | float):
+        if method == BeatTimeline.FillMethod.BY_INTERVAL and value <= 0:
+            tilia.errors.display(tilia.errors.BEAT_FILL_INVALID_INTERVAL, value)
+            return
+
         duration = get(Get.MEDIA_DURATION)
         self.component_manager.compute_is_first_in_measure = False
         # only compute at end
