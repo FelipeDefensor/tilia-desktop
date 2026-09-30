@@ -24,7 +24,7 @@ from tests.utils import (
     save_tilia_to_tmp_path,
 )
 from tilia.file.migration import find_unknown_timeline_kinds
-from tilia.media.player import QtAudioPlayer, YouTubePlayer
+from tilia.media.player import QtAudioPlayer
 from tilia.requests import Get, Post, get, post
 from tilia.settings import settings
 from tilia.timelines.component_kinds import ComponentKind
@@ -202,10 +202,9 @@ class TestFileLoad:
         assert tilia_state.duration == EXAMPLE_MEDIA_DURATION
 
     def test_media_path_is_youtube_url(self, tilia_state, qtui, tmp_path):
-        with Serve(Get.PLAYER_CLASS, YouTubePlayer):
-            load_youtube_media(EXAMPLE_YOUTUBE_URL)
-            tilia_state.duration = 101
-            save_and_reopen(tmp_path)
+        load_youtube_media(EXAMPLE_YOUTUBE_URL)
+        tilia_state.duration = 101
+        save_and_reopen(tmp_path)
 
         assert tilia_state.is_undo_manager_cleared
         assert tilia_state.media_path == EXAMPLE_YOUTUBE_URL
@@ -224,8 +223,7 @@ class TestFileLoad:
         # duration of the (unrelated) now-open file.
         def save_file(tmp_name: str, url: str, duration: float):
             commands.execute("file.new")
-            with Serve(Get.PLAYER_CLASS, YouTubePlayer):
-                load_youtube_media(url)
+            load_youtube_media(url)
             tilia_state.duration = duration
             path = tmp_path / tmp_name
             with patch_file_dialog(True, [str(path)]):
@@ -240,16 +238,11 @@ class TestFileLoad:
         )
         commands.execute("file.new")
 
-        with (
-            Serve(Get.FROM_USER_TILIA_FILE_PATH, (True, file_a)),
-            Serve(Get.PLAYER_CLASS, YouTubePlayer),
-        ):
-            commands.execute("file.open")
+        commands.execute("file.open", file_a)
         video_id_a = tilia.player.video_id
         assert tilia_state.duration == 100
 
-        with Serve(Get.FROM_USER_TILIA_FILE_PATH, (True, file_b)):
-            commands.execute("file.open")
+        commands.execute("file.open", file_b)
         video_id_b = tilia.player.video_id
         assert video_id_b != video_id_a
         assert tilia_state.duration == 200
