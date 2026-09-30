@@ -2,10 +2,12 @@ import functools
 from unittest.mock import patch
 
 import pytest
+from PySide6.QtCore import QCoreApplication, QEvent
 
 from tests.constants import EXAMPLE_MEDIA_DURATION, EXAMPLE_MEDIA_PATH
 from tests.mock import Serve, patch_yes_or_no_dialog
 from tests.ui.timelines.interact import click_timeline_ui, drag_mouse_in_timeline_view
+from tests.ui.timelines.marker.interact import click_marker_ui
 from tests.utils import save_and_reopen, save_tilia_to_tmp_path
 from tilia.file.common import are_tilia_data_equal
 from tilia.media.player.base import MediaTimeChangeReason
@@ -541,6 +543,39 @@ class TestClearAllTimelines:
             commands.execute("timelines.clear_all")
 
         assert all(tl.is_empty for tl in tluis[0])
+
+
+class TestSelectionBoxes:
+    def test_click_after_reopening_file_with_selection_does_not_crash(
+        self, tluis, marker_tlui, tilia_state, tmp_path
+    ):
+        # Reopening deletes the timeline scenes. The collection used to keep the
+        # selection box, and the next click raised "Internal C++ object
+        # (SelectionBoxQt) already deleted".
+        tilia_state.duration = 100
+        commands.execute("timeline.marker.add")
+        click_marker_ui(marker_tlui[0])
+        assert tluis.selection_boxes
+
+        save_and_reopen(tmp_path)
+
+        post(Post.TIMELINE_VIEW_LEFT_BUTTON_RELEASE)
+
+    def test_click_after_deleting_timeline_with_selection_does_not_crash(
+        self, tluis, marker_tlui, tilia_state
+    ):
+        tilia_state.duration = 100
+        commands.execute("timeline.marker.add")
+        click_marker_ui(marker_tlui[0])
+        assert tluis.selection_boxes
+
+        with patch_yes_or_no_dialog(True):
+            commands.execute("timeline.delete", marker_tlui)
+        # The scene is only scheduled for deletion; an event loop would delete
+        # it right away, so do that here.
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+
+        post(Post.TIMELINE_VIEW_LEFT_BUTTON_RELEASE)
 
 
 class TestZoom:
