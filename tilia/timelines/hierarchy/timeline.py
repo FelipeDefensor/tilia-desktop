@@ -238,6 +238,8 @@ class HierarchyTLComponentManager(TimelineComponentManager):
             start=start_time,
             end=end_time,
             level=grouping_unit_level,
+            pre_start=min(unit.pre_start for unit in hierarchies),
+            post_end=max(unit.post_end for unit in hierarchies),
         )
 
         if not grouping_unit:

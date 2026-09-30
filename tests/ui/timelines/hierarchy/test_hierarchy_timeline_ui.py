@@ -203,16 +203,6 @@ class TestActions:
 
         assert len(tlui) == 3
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "ComponentManager.group (tilia/timelines/hierarchy/timeline.py"
-            ":236-241) creates the grouping unit with only start/end/level, so"
-            " Hierarchy.__init__ (tilia/timelines/hierarchy/components.py:83-84)"
-            " defaults pre_start/post_end to that start/end instead of the"
-            " outermost pre_start/post_end of the grouped units."
-        ),
-    )
     def test_group_inherits_outermost_pre_start_and_post_end(self, tlui):
         commands.execute(
             "timeline.hierarchy.add", start=1, end=2, level=1, pre_start=0.5
