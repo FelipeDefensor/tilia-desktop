@@ -799,6 +799,20 @@ class TestCreateChild:
             assert len(tlui) == 2
 
 
+class TestSetHeight:
+    # Through the dialog, whose minimum is the height the levels need.
+    def test_set_height(self, hierarchy_tlui):
+        commands.execute("timeline.hierarchy.add", start=0, end=1, level=1)
+        with Serve(Get.FROM_USER_INT, (True, 200)):
+            commands.execute("timeline.set_height", hierarchy_tlui)
+        assert hierarchy_tlui.get_data("height") == 200
+
+    def test_set_height_of_empty_timeline(self, hierarchy_tlui):
+        with Serve(Get.FROM_USER_INT, (True, 200)):
+            commands.execute("timeline.set_height", hierarchy_tlui)
+        assert hierarchy_tlui.get_data("height") == 200
+
+
 class TestClear:
     def test_initial_hierarchy_doesnt_trigger_confirmation(self, tlui, tilia_state):
         commands.execute(
