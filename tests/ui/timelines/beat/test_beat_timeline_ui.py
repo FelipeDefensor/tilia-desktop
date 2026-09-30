@@ -512,8 +512,7 @@ class TestSetBeatAmountInMeasure:
     @staticmethod
     def _set_amount_in_measure(amount):
         """Assumes a beat in the target measure is selected"""
-        with Serve(Get.FROM_USER_INT, (True, amount)):
-            commands.execute("timeline.beat.set_amount_in_measure")
+        commands.execute("timeline.beat.set_amount_in_measure", amount=amount)
 
     @staticmethod
     def _create_two_full_measures(beat_tlui):
