@@ -4,6 +4,7 @@ import time
 from unittest.mock import patch
 
 import pytest
+import shiboken6
 from PySide6.QtWidgets import QApplication
 
 from tests.constants import EXAMPLE_MEDIA_PATH
@@ -104,9 +105,43 @@ def process_events_for(seconds: float) -> None:
         time.sleep(0.01)
 
 
-class TestReplacePlayerWhilePlaying:
-    # Loading local video over local audio, or audio over video, replaces the
-    # player with one of the other kind. These play real media, muted.
+def process_events_until(condition, timeout: float = 5.0) -> bool:
+    end = time.monotonic() + timeout
+    while not condition() and time.monotonic() < end:
+        QApplication.processEvents()
+        time.sleep(0.01)
+    return condition()
+
+
+KEEPS_TIME_OF_PAUSED_MEDIA = pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Player.on_media_load_done doesn't reset current_time, so media loaded"
+        " over paused media of its own kind, which keeps the player, starts"
+        " with the paused media's time."
+    ),
+)
+
+
+def load_cases():
+    """Local audio or video, loaded over nothing, or over audio or video that
+    is stopped (loaded and never played), playing or paused."""
+    for kind in ("audio", "video"):
+        yield pytest.param(kind, None, None, id=f"{kind}-over-nothing")
+        for before in ("audio", "video"):
+            for state in ("stopped", "playing", "paused"):
+                marks = []
+                if (before, state) == (kind, "paused"):
+                    marks.append(KEEPS_TIME_OF_PAUSED_MEDIA)
+                yield pytest.param(
+                    kind, before, state, id=f"{kind}-over-{state}-{before}", marks=marks
+                )
+
+
+class TestLoadLocalMedia:
+    # Loads local audio or video over nothing, or over audio or video that is
+    # stopped, playing or paused, then plays what it loaded. Media of the
+    # other kind replaces the player. These play real media, muted.
 
     @pytest.fixture
     def uncaught(self, monkeypatch):
@@ -117,26 +152,61 @@ class TestReplacePlayerWhilePlaying:
         monkeypatch.setattr(sys, "excepthook", lambda *info: exceptions.append(info[1]))
         return exceptions
 
-    @pytest.mark.parametrize(
-        "first,second",
-        [("audio", "video"), ("video", "audio")],
-        ids=["video-over-playing-audio", "audio-over-playing-video"],
-    )
-    def test_loading_the_other_kind_while_playing(
-        self, tilia, qtui, resources, uncaught, first, second
-    ):
-        paths = {
-            "audio": EXAMPLE_MEDIA_PATH,
-            "video": str((resources / EXAMPLE_VIDEO_FILENAME).resolve()),
-        }
-        load_local_media(paths[first])
-        tilia.player.audio_output.setMuted(True)
-        commands.execute("media.toggle_play", True)
-        process_events_for(0.3)
+    @pytest.fixture
+    def paths(self, resources):
+        # A file of each kind to load first, and a different one to load
+        # over it.
+        def path(name):
+            return str((resources / name).resolve())
 
-        load_local_media(paths[second])
-        process_events_for(0.5)  # several ticks of any play loop left running
+        return {
+            "audio": (EXAMPLE_MEDIA_PATH, path("example.wav")),
+            "video": (path(EXAMPLE_VIDEO_FILENAME), path("example2.mp4")),
+        }
+
+    @pytest.fixture(autouse=True)
+    def stop_playback_at_end(self, tilia):
+        yield
+        tilia.player.stop()
+
+    @pytest.mark.parametrize("kind,before,state", list(load_cases()))
+    def test_new_media_loads_and_plays(
+        self, tilia, qtui, tilia_errors, paths, uncaught, kind, before, state
+    ):
+        play = qtui.player_toolbar.play_toggle_action
+        if before:
+            load_local_media(paths[before][0])
+            tilia.player.audio_output.setMuted(True)
+            if state in ("playing", "paused"):
+                play.trigger()
+                assert process_events_until(
+                    lambda: tilia.player.current_time > 0
+                ), "the first media didn't play"
+            if state == "paused":
+                play.trigger()
+        video_window_before = getattr(tilia.player, "widget", None)
+
+        load_local_media(paths[kind][1])
+        process_events_for(0.3)  # several ticks of any play loop left running
 
         assert uncaught == []
-        assert tilia.player.MEDIA_TYPE == second
+        tilia_errors.assert_no_error()
+        assert tilia.player.MEDIA_TYPE == kind
+        assert tilia.player.media_path == paths[kind][1]
+        # Video shows in a window, which goes away when audio replaces it.
+        if kind == "video":
+            assert tilia.player.widget.isVisible()
+        elif video_window_before is not None:
+            assert not shiboken6.isValid(video_window_before)
         assert not tilia.player.is_playing
+        assert not play.isChecked()
+        assert tilia.player.current_time == 0
+
+        tilia.player.audio_output.setMuted(True)  # a new player isn't muted
+        play.trigger()
+
+        assert process_events_until(
+            lambda: tilia.player.current_time > 0
+        ), "the new media didn't play"
+        assert tilia.player.is_playing
+        assert uncaught == []
