@@ -125,6 +125,7 @@ class SliderTimelineUI(TimelineUI):
         self.scene.set_width(int(width))
         self.view.setFixedWidth(int(width))
         self.update_items_position()
+        self.update_loop_box_position()
 
     def on_left_click(self, item_id: int, double: bool, x: int, *_, **__) -> None:
         if item_id == self.line:
