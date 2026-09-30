@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from tests.mock import Serve, patch_yes_or_no_dialog
-from tests.utils import undoable
+from tests.utils import save_and_reopen, undoable
 from tilia.requests import Get, Post, post
 from tilia.settings import settings
 from tilia.timelines.beat.timeline import BeatTimeline
@@ -508,6 +508,65 @@ class TestSetBeatAmountInMeasure:
             commands.execute("timeline.beat.set_amount_in_measure")
 
         assert [get_displayed_measure_number(b) for b in beat_tlui] == ["1", "", "2"]
+
+    @staticmethod
+    def _set_amount_in_measure(amount):
+        """Assumes a beat in the target measure is selected"""
+        commands.execute("timeline.beat.set_amount_in_measure", amount=amount)
+
+    @staticmethod
+    def _create_two_full_measures(beat_tlui):
+        """Beat pattern defaults to [4], so this fills exactly two measures."""
+        for i in range(8):
+            beat_tlui.create_beat(i)
+
+    def test_shortening_last_measure_starts_a_new_measure_with_leftover_beats(
+        self, beat_tlui
+    ):
+        # Reported bug: shortening the last measure of [4, 4] used to be
+        # silently reverted, since the leftover beats were topped back up to
+        # the beat pattern instead of starting a new measure.
+        self._create_two_full_measures(beat_tlui)
+        assert beat_tlui.timeline.beats_in_measure == [4, 4]
+
+        beat_tlui.select_element(beat_tlui[4])  # first beat of the last measure
+        self._set_amount_in_measure(1)
+
+        assert beat_tlui.timeline.beats_in_measure == [4, 1, 3]
+
+    def test_undo_redo_shortening_last_measure(self, beat_tlui):
+        self._create_two_full_measures(beat_tlui)
+        beat_tlui.select_element(beat_tlui[4])
+        # create_beat bypasses commands and so is not itself undoable; record
+        # a checkpoint so undo below has the two full measures to return to.
+        post(Post.APP_STATE_RECORD, "setup")
+
+        with undoable():
+            self._set_amount_in_measure(1)
+
+        assert beat_tlui.timeline.beats_in_measure == [4, 1, 3]
+
+    def test_shortening_last_measure_survives_save_and_reopen(
+        self, beat_tlui, tluis, tmp_path
+    ):
+        self._create_two_full_measures(beat_tlui)
+        beat_tlui.select_element(beat_tlui[4])
+        self._set_amount_in_measure(1)
+
+        save_and_reopen(tmp_path)
+
+        assert tluis[0].timeline.beats_in_measure == [4, 1, 3]
+
+    def test_beat_added_after_shortening_last_measure_fills_new_measure(
+        self, beat_tlui
+    ):
+        self._create_two_full_measures(beat_tlui)
+        beat_tlui.select_element(beat_tlui[4])
+        self._set_amount_in_measure(1)
+
+        beat_tlui.create_beat(8)
+
+        assert beat_tlui.timeline.beats_in_measure == [4, 1, 4]
 
 
 class TestFillWithBeats:
