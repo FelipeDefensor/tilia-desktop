@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.utils import simulate_launch_dir
 from tilia.ui.path import ensure_tla_extension
 
 
@@ -69,3 +70,17 @@ def test_save_invalid_save_path(cli, tmp_path, tilia_errors):
     path = tmp_path / "invalid" / "file.tla"
     cli.parse_and_run(f'save "{str(path.resolve())}"')
     tilia_errors.assert_error()
+
+
+def test_save_relative_path(cli, monkeypatch, tmp_path):
+    """
+    Regression test: a relative path given to
+    `save` must resolve against the directory TiLiA was launched from, not
+    against the tilia package directory that setup_dirs() used to chdir
+    into.
+    """
+    simulate_launch_dir(monkeypatch, tmp_path)
+
+    cli.parse_and_run('save "relative.tla"')
+
+    assert (tmp_path / "relative.tla").exists()
