@@ -384,20 +384,7 @@ class TestSeek:
         assert ordered[1].get_data("start") == pytest.approx(30)
 
         post(Post.TIMELINE_VIEW_LEFT_BUTTON_RELEASE)
-        # Splitting posts Post.LOOP_IGNORE_COMPONENT unconditionally (see
-        # HierarchyTimeline.component_manager.split), which adds the
-        # replaced unit's id to TimelineUIs.loop_delete_ignore. That set is
-        # only ever pruned from inside on_hierarchy_merge_split, and only
-        # when a loop is active at split time -- so a split with no loop
-        # active (as here) leaves a stale id in a set that lives on the
-        # module-scoped TimelineUIs instance (tests/conftest.py's `qtui`
-        # fixture) for the rest of this test module. Because per-test
-        # id generators restart from the same values (App.on_clear via the
-        # `tilia_state` fixture), a later test's loop bookkeeping can find
-        # that id already present and misbehave. Clear it explicitly so
-        # this test doesn't leak state into whatever runs after it in the
-        # same module.
-        tluis.loop_delete_ignore.clear()
+        assert tluis.loop_delete_ignore == set()
 
 
 class TestLoop:
@@ -416,6 +403,30 @@ class TestLoop:
         self.tlui.select_element(self.tlui[0])
         post(Post.PLAYER_TOGGLE_LOOP, True)
         assert get(Get.LOOP_TIME) == (10, 50)
+
+    def test_split_without_a_loop_leaves_nothing_to_ignore(self, tluis):
+        # Splitting asks the collection to ignore the replaced unit's
+        # deletion so that an active loop survives the replacement. With no
+        # loop running there is nothing to survive, and the id must not be
+        # left behind: a later deletion of a component that reuses it would
+        # then be ignored too, and the loop would keep a gone component.
+        commands.execute("timeline.hierarchy.add", start=10, end=50, level=1)
+        self.tlui.select_element(self.tlui[0])
+
+        commands.execute("timeline.hierarchy.split", time=30)
+
+        assert len(self.tlui) == 2
+        assert tluis.loop_delete_ignore == set()
+
+    def test_split_of_looped_hierarchy_leaves_nothing_to_ignore(self, tluis):
+        commands.execute("timeline.hierarchy.add", start=10, end=50, level=1)
+        self.tlui.select_element(self.tlui[0])
+        post(Post.PLAYER_TOGGLE_LOOP, True)
+
+        commands.execute("timeline.hierarchy.split", time=30)
+
+        assert get(Get.LOOP_TIME) == (10, 50)
+        assert tluis.loop_delete_ignore == set()
 
     def test_loop_hierarchy_move_start_end(self):
         commands.execute("timeline.hierarchy.add", start=10, end=50, level=1)

@@ -1009,8 +1009,12 @@ class TimelineUIs:
         ):
             self.loop_elements.update(new_units)
             self.loop_elements.difference_update(old_units)
-            self.loop_delete_ignore.difference_update(old_units)
             self._update_loop_elements()
+        # The ignored ids only keep the old units' deletion from shrinking the
+        # loop while they are being replaced. Once the merge or split is
+        # through they are spent, whether or not a loop was running, so drop
+        # them here rather than inside the branch above.
+        self.loop_delete_ignore.difference_update(old_units)
 
     def on_harmony_timeline_components_deserialized(self, id):
         from ..harmony import HarmonyTimelineUI
