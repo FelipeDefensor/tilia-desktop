@@ -6,7 +6,12 @@ The script under test is a standalone, stdlib-only file (not part of the
 rather than by installing it. Every process-based check is exercised
 against tiny fake "executables" -- Python scripts run via `sys.executable`
 -- instead of a real TiLiA build, so these tests are fast and don't need a
-Nuitka build. All waits are kept at or under 1 second.
+Nuitka build.
+
+A fake that should stay alive is watched for well under a second. A fake
+that should exit gets WAIT_FOR_EXIT: the checks return as soon as it exits,
+so the long wait costs nothing, and a loaded machine can take more than a
+fraction of a second just to start Python.
 """
 
 import os
@@ -22,6 +27,8 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 import smoke_test  # noqa: E402
+
+WAIT_FOR_EXIT = 30.0
 
 
 def _write_fake_exe(tmp_path: Path, name: str, body: str) -> list[str]:
@@ -59,7 +66,7 @@ def test_check_gui_healthy_process_passes(tmp_path):
 
 def test_check_gui_early_exit_fails(tmp_path):
     cmd = _write_fake_exe(tmp_path, "gui_early_exit.py", "import sys\nsys.exit(0)\n")
-    result = smoke_test.check_gui(cmd, 0.3, log_path=tmp_path / "out.log")
+    result = smoke_test.check_gui(cmd, WAIT_FOR_EXIT, log_path=tmp_path / "out.log")
     assert result.passed is False
     assert "exited early" in result.detail
 
@@ -76,7 +83,8 @@ def test_check_gui_traceback_while_alive_fails(tmp_path):
         time.sleep(5)
         """,
     )
-    result = smoke_test.check_gui(cmd, 0.3, log_path=tmp_path / "out.log")
+    # Long enough for the fake to start and print, well before it stops sleeping.
+    result = smoke_test.check_gui(cmd, 2, log_path=tmp_path / "out.log")
     assert result.passed is False
     assert "traceback" in result.detail.lower()
 
@@ -101,7 +109,7 @@ def test_check_cli_todays_argparse_error_passes(tmp_path):
         sys.exit(1)
         """,
     )
-    result = smoke_test.check_cli(cmd, 0.3, log_path=tmp_path / "out.log")
+    result = smoke_test.check_cli(cmd, WAIT_FOR_EXIT, log_path=tmp_path / "out.log")
     assert result.passed is True
 
 
@@ -122,14 +130,14 @@ def test_check_cli_missing_expected_message_fails(tmp_path):
         sys.exit(1)
         """,
     )
-    result = smoke_test.check_cli(cmd, 0.3, log_path=tmp_path / "out.log")
+    result = smoke_test.check_cli(cmd, WAIT_FOR_EXIT, log_path=tmp_path / "out.log")
     assert result.passed is False
     assert "missing" in result.detail
 
 
 def test_check_cli_exit_zero_fails(tmp_path):
     cmd = _write_fake_exe(tmp_path, "cli_exit_zero.py", "import sys\nsys.exit(0)\n")
-    result = smoke_test.check_cli(cmd, 0.3, log_path=tmp_path / "out.log")
+    result = smoke_test.check_cli(cmd, WAIT_FOR_EXIT, log_path=tmp_path / "out.log")
     assert result.passed is False
     assert "expected non-zero" in result.detail
 
@@ -430,7 +438,7 @@ def test_linux_clean_env_reuses_gui_and_cli_checks(tmp_path):
         gui_cmd, 0.3, name="linux_clean_env", log_path=tmp_path / "gui.log"
     )
     cli_result = smoke_test.check_cli(
-        cli_cmd, 0.3, name="linux_clean_env", log_path=tmp_path / "cli.log"
+        cli_cmd, WAIT_FOR_EXIT, name="linux_clean_env", log_path=tmp_path / "cli.log"
     )
     assert gui_result.passed is True
     assert cli_result.passed is True
