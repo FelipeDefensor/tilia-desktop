@@ -311,6 +311,21 @@ class TestMenus:
         expected = [get_qaction(action) for action in expected]
         assert set(actions) == set(expected)
 
+    def test_paste_complete_is_shown_only_while_a_hierarchy_unit_is_selected(
+        self, qtui, hierarchy_tlui
+    ):
+        # Nothing in this module selects a unit before, so this is how the
+        # Edit menu starts.
+        paste_complete = get_qaction("timeline.component.paste_complete")
+        assert not paste_complete.isVisible()
+
+        commands.execute("timeline.hierarchy.add", start=0, end=1, level=1)
+        hierarchy_tlui.select_element(hierarchy_tlui[0])
+        assert paste_complete.isVisible()
+
+        hierarchy_tlui.deselect_element(hierarchy_tlui[0])
+        assert not paste_complete.isVisible()
+
 
 class TestDynamicTimelinesSubmenus:
     """Per-kind submenus under Timelines should be visible iff at least one
