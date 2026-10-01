@@ -4,13 +4,13 @@ This tutorial shows how the TiLiA CLI can be used to perform some common tasks.
 
 ### Setup
 
-See [README.md](README.md) for instructions on how to clone the repository and install the dependencies.
+See [README.md](../README.md) for instructions on how to clone the repository and install the dependencies.
 
 ### Running the CLI
 
 The CLI can be run from the source code with:
 ```bash
-python -m tilia.main --user-interface cli
+python -m tilia --user-interface cli
 ```
 
 TiLiA CLI is an interactive shell. You'll see ``>>>`` when it's ready for your input.
@@ -21,10 +21,11 @@ For any command, you can get detailed help and examples by typing a command foll
 
 ```bash
 >>> timelines add --help
-usage: main.py timelines add [-h] [--name NAME] [--height HEIGHT] [--beat-pattern BEAT_PATTERN [BEAT_PATTERN ...]] {hierarchy,hrc,marker,mrk,beat,bea,score,sco}
+usage: TiLiA timelines add [-h] [--name NAME] [--height HEIGHT] [--beat-pattern BEAT_PATTERN [BEAT_PATTERN ...]] [--row-height DEFAULT_ROW_HEIGHT]
+                           {hierarchy,hrc,marker,mrk,beat,bea,score,sco,range,rng}
 
 positional arguments:
-  {hierarchy,hrc,marker,mrk,beat,bea,score,sco}
+  {hierarchy,hrc,marker,mrk,beat,bea,score,sco,range,rng}
                         Kind of timeline to add
 
 options:
@@ -33,7 +34,9 @@ options:
   --height HEIGHT, -e HEIGHT
                         Height of the timeline
   --beat-pattern BEAT_PATTERN [BEAT_PATTERN ...], -b BEAT_PATTERN [BEAT_PATTERN ...]
-                        Pattern as space-separated integers indicating beat count in a measure. Pattern will be repeated. Pattern '3 4', for instance, will alternate measures of 3 and 4 beats.
+                        Pattern as space-separated integers indicating beat count in a measure (beat timelines only). Pattern will be repeated. Pattern '3 4', for instance, will alternate measures of 3 and 4 beats. Defaults to [4].
+  --row-height DEFAULT_ROW_HEIGHT
+                        Per-timeline default row height (range timelines only). Defaults to the global setting.
 
 Examples:
   timelines add beat --name "Measures" --beat-pattern 4
@@ -198,7 +201,7 @@ timelines import marker by-time --file "C:/data/cadences.csv" --target-name "Cad
 ```
 When you have beat/measure information, you can import annotations using measure numbers instead of absolute time.
 
-Here we will also be importing beats from a CSV file, but they could come from an existingTiLiA file.
+Here we will also be importing beats from a CSV file, but they could come from an existing TiLiA file.
 
 **beats.csv:**
 ```csv
@@ -235,6 +238,53 @@ timelines import beat --file "C:/data/beats.csv" --target-name "Measures"
 # Now import hierarchies using measure numbers
 timelines import hierarchy by-measure --file "C:/data/form_measures.csv" --target-name "Form" --reference-tl-name "Measures"
 
+```
+
+## Range Timelines
+
+Range timelines hold time ranges organized into named rows, which is useful for annotations that overlap, such as instrumentation or textures.
+
+Add a range timeline and set up its rows:
+
+```bash
+timelines add range --name "Instruments"
+
+# Add rows, optionally with a color
+timelines range row add --tl-name "Instruments" --name "Strings"
+timelines range row add --tl-name "Instruments" --name "Winds" --color "#4a90d9"
+
+# Rows can be renamed, recolored, reordered and removed,
+# using either their name or their 0-based index
+timelines range row rename --tl-name "Instruments" --row-name "Winds" --new-name "Woodwinds"
+timelines range row reorder --tl-name "Instruments" --row-name "Woodwinds" --new-index 0
+timelines range row set-height --tl-name "Instruments" --height 30
+
+# Show the rows and how many ranges each one has
+timelines range row list --tl-name "Instruments"
+```
+
+Run `timelines range row --help` to see all row commands.
+
+Ranges can be imported from CSV. Each line needs a `start`, an `end` and the name of its `row`; `label`, `color`, `comments` and `joined_with_next` are optional. Rows are created from the names in the file, so you don't need to add them first. Note that **the import replaces the timeline's existing rows**.
+
+**instruments.csv:**
+```csv
+start,end,row,label,joined_with_next
+0.0,30.0,Strings,Tutti,true
+30.0,90.0,Strings,Solo violin,
+35.0,65.0,Woodwinds,Flute,
+```
+
+Setting `joined_with_next` to `true` joins a range to the next range on the same row, which must start where it ends.
+
+```bash
+timelines import range by-time --file "C:/data/instruments.csv" --target-name "Instruments"
+```
+
+To import by measure instead, `start` and `end` are measure numbers, with optional `start_fraction` and `end_fraction` columns, and you pass a reference beat timeline:
+
+```bash
+timelines import range by-measure --file "C:/data/instruments_measures.csv" --target-name "Instruments" --reference-tl-name "Measures"
 ```
 
 ## Working with Existing TiLiA files
