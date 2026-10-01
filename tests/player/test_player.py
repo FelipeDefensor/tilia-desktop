@@ -139,16 +139,6 @@ def stop_playback_at_end(tilia):
     tilia.player.stop_play_loop()
 
 
-KEEPS_TIME_OF_PAUSED_MEDIA = pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Player.on_media_load_done doesn't reset current_time, so media loaded"
-        " over paused media of its own kind, which keeps the player, starts"
-        " with the paused media's time."
-    ),
-)
-
-
 def load_cases():
     """Local audio or video, loaded over nothing, or over audio or video that
     is stopped (loaded and never played), playing or paused."""
@@ -156,11 +146,8 @@ def load_cases():
         yield pytest.param(kind, None, None, id=f"{kind}-over-nothing")
         for before in ("audio", "video"):
             for state in ("stopped", "playing", "paused"):
-                marks = []
-                if (before, state) == (kind, "paused"):
-                    marks.append(KEEPS_TIME_OF_PAUSED_MEDIA)
                 yield pytest.param(
-                    kind, before, state, id=f"{kind}-over-{state}-{before}", marks=marks
+                    kind, before, state, id=f"{kind}-over-{state}-{before}"
                 )
 
 

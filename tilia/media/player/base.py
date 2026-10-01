@@ -108,6 +108,8 @@ class Player(ABC):
     def on_media_load_done(self, path, start, end):
         self.media_path = str(path)
         self.playback_start = start
+        # Media loaded over paused media starts at its beginning too.
+        self.current_time = 0.0
 
         post(
             Post.PLAYER_URL_CHANGED,
