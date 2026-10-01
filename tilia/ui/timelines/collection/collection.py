@@ -225,6 +225,9 @@ class TimelineUIs:
             text="Pas&te complete",
             shortcut="Ctrl+Shift+V",
         )
+        # Shown only while a hierarchy unit is selected (see
+        # on_hierarchy_selected), and nothing is selected yet.
+        commands.get_qaction("timeline.component.paste_complete").setVisible(False)
 
         commands.register(
             "timeline.component.delete",
