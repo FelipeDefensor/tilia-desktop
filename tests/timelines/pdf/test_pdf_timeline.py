@@ -1,3 +1,5 @@
+from tests.ui.timelines.interact import click_timeline_ui_element_body
+from tests.utils import undoable
 from tilia.ui import commands
 
 
@@ -50,6 +52,22 @@ class TestPageNumber:
         assert pdf_tlui.current_page == 2
         pdf_tl.delete_components([pdf_tl[1]])
         assert pdf_tlui.current_page == 1
+
+    def test_correct_page_is_displayed_when_several_markers_are_deleted(self, pdf_tlui):
+        for time, page_number in [(0, 1), (10, 2), (20, 3), (30, 4)]:
+            commands.execute("timeline.pdf.add", time=time, page_number=page_number)
+        click_timeline_ui_element_body(pdf_tlui[2])
+        click_timeline_ui_element_body(pdf_tlui[3], modifier="ctrl")
+        assert pdf_tlui.current_page == 4  # clicking a marker seeks to it
+
+        with undoable():
+            commands.execute("timeline.component.delete")
+            assert len(pdf_tlui) == 2
+            assert pdf_tlui.current_page == 2
+
+        commands.execute("edit.undo")
+        assert len(pdf_tlui) == 4
+        assert pdf_tlui.current_page == 4
 
     def test_correct_page_is_displayed_when_current_time_is_same_as_marker(
         self, pdf_tlui, pdf_tl

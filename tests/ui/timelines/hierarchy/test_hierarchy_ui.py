@@ -1,6 +1,8 @@
 from unittest.mock import Mock, patch
 
 import pytest
+from PySide6.QtCore import Qt
+from PySide6.QtTest import QTest
 
 from tests.utils import save_and_reopen, undoable
 from tilia.requests import Post, post
@@ -64,6 +66,17 @@ class TestHierarchyUI:
             tlui[0].on_right_click(0, 0, None)
 
         exec_mock.assert_called_once()
+
+    def test_click_seeks_to_pre_start(self, tlui, tilia_state):
+        commands.execute(
+            "timeline.hierarchy.add", start=10, end=15, level=1, pre_start=5
+        )
+        view = tlui.view
+        pos = view.mapFromScene(tlui[0].body.sceneBoundingRect().center())
+
+        QTest.mouseClick(view.viewport(), Qt.MouseButton.LeftButton, pos=pos)
+
+        assert tilia_state.current_time == 5
 
     def test_drag_start_handle(self, tlui, hierarchy_tlui, tilia_state):
         commands.execute(
@@ -314,6 +327,30 @@ class TestPreStartIndicator:
 
         assert hui.get_data("pre_start") == pytest.approx(2)
 
+    def test_drag_pre_start_handle_onto_start_removes_shared_pre_start_of_parent(
+        self, tlui, tilia_state
+    ):
+        tilia_state.duration = 100
+        commands.execute(
+            "timeline.hierarchy.add", start=10, end=50, level=2, pre_start=5
+        )
+        commands.execute(
+            "timeline.hierarchy.add", start=10, end=30, level=1, pre_start=5
+        )
+        child, parent = tlui[0], tlui[1]
+        tlui.select_element(child)
+        tlui._trigger_left_click_side_effects(
+            child, child.pre_start_handle.vertical_line
+        )
+
+        post(Post.TIMELINE_VIEW_LEFT_BUTTON_DRAG, child.start_x, 0)
+        post(Post.TIMELINE_VIEW_LEFT_BUTTON_RELEASE)
+
+        # Units whose pre-starts are at the same time share the handle, so the
+        # parent's pre-start goes with the child's.
+        assert child.get_data("pre_start") == child.get_data("start")
+        assert parent.get_data("pre_start") == parent.get_data("start")
+
 
 class TestPostEndIndicator:
     def test_has_pre_start_when_element_has_post_end(self, tlui):
@@ -527,6 +564,17 @@ class TestDoubleClick:
         tlui[0].on_double_left_click(None)
 
         assert tilia_state.current_time == 10
+
+    def test_seeks_to_pre_start(self, tlui, tilia_state):
+        commands.execute(
+            "timeline.hierarchy.add", start=10, end=15, level=1, pre_start=5
+        )
+        view = tlui.view
+        pos = view.mapFromScene(tlui[0].body.sceneBoundingRect().center())
+
+        QTest.mouseDClick(view.viewport(), Qt.MouseButton.LeftButton, pos=pos)
+
+        assert tilia_state.current_time == 5
 
     def test_does_not_trigger_drag(self, tlui):
         commands.execute("timeline.hierarchy.add", start=0, end=1, level=1)

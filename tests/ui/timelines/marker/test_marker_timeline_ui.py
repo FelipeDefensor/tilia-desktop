@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QColorDialog, QInputDialog
@@ -297,6 +298,33 @@ class TestDrag:
         with undoable():
             drag_mouse_in_timeline_view(time_x_converter.get_x_by_time(100) + 200, 0)
             assert marker_tlui[0].get_data("time") == 100
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "MarkerUI.after_each_drag (tilia/ui/timelines/marker/element.py:140-141)"
+            " sets the time without the unique-time check that adding a marker"
+            " goes through (Marker.validate_creation, called from"
+            " MarkerTLComponentManager._validate_component_creation), so the"
+            " dragged marker lands on the other marker's time. Undo/redo and file"
+            " loading rebuild markers through that check: redo silently drops one"
+            " of the two markers, and saving and reopening drops it with 'There is"
+            " already a marker component at the selected position.'"
+        ),
+    )
+    def test_drag_onto_another_marker_keeps_times_unique(
+        self, marker_tlui, tluis, tilia_state
+    ):
+        tilia_state.duration = 100
+        commands.execute("timeline.marker.add", time=10)
+        commands.execute("timeline.marker.add", time=20)
+
+        click_marker_ui(marker_tlui[1])
+
+        with undoable():
+            drag_mouse_in_timeline_view(time_x_converter.get_x_by_time(10), 0)
+            assert len(marker_tlui) == 2
+            assert marker_tlui[0].get_data("time") != marker_tlui[1].get_data("time")
 
     def test_delete_mid_drag_does_not_leak_listener(
         self, marker_tlui, tluis, tilia_state
