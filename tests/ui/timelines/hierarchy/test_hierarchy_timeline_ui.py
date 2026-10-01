@@ -3,7 +3,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 
 from tests.mock import Serve, patch_yes_or_no_dialog
-from tests.utils import get_command_names
+from tests.utils import get_command_from_toolbar, get_command_names, undoable
 from tilia.requests import Get, Post, post
 from tilia.settings import settings
 from tilia.timelines.hierarchy.components import Hierarchy
@@ -68,6 +68,30 @@ class TestActions:
         assert tlui[1].get_data("level") == 2
         assert tlui[2].get_data("level") == 2
 
+    def test_increase_level_with_parent_two_levels_above(self, tlui):
+        commands.execute("timeline.hierarchy.add", start=0, end=1, level=3)
+        commands.execute("timeline.hierarchy.add", start=0, end=0.5, level=1)
+        child, parent = tlui[0], tlui[1]
+        tlui.select_element(child)
+        action = get_command_from_toolbar(tlui, "timeline.hierarchy.increase_level")
+
+        with undoable():
+            action.trigger()
+            assert child.get_data("level") == 2
+            assert child.get_data("parent") == parent.tl_component
+
+    def test_increase_level_with_parent_one_level_above_fails(self, tlui, tilia_errors):
+        commands.execute("timeline.hierarchy.add", start=0, end=1, level=2)
+        commands.execute("timeline.hierarchy.add", start=0, end=0.5, level=1)
+        child = tlui[0]
+        tlui.select_element(child)
+
+        get_command_from_toolbar(tlui, "timeline.hierarchy.increase_level").trigger()
+
+        assert child.get_data("level") == 1
+        tilia_errors.assert_error()
+        tilia_errors.assert_in_error_message("would overlap with parent")
+
     def test_decrease_level(self, tlui):
         commands.execute("timeline.hierarchy.add", start=0, end=1, level=2)
         commands.execute("timeline.hierarchy.add", start=1, end=2, level=2)
@@ -107,6 +131,18 @@ class TestActions:
         assert parent.get_data("level") == 2
         tilia_errors.assert_error()
         tilia_errors.assert_in_error_message("overlap")
+
+    def test_decrease_level_with_child_two_levels_below(self, tlui):
+        commands.execute("timeline.hierarchy.add", start=0, end=1, level=3)
+        commands.execute("timeline.hierarchy.add", start=0, end=0.5, level=1)
+        child, parent = tlui[0], tlui[1]
+        tlui.select_element(parent)
+        action = get_command_from_toolbar(tlui, "timeline.hierarchy.decrease_level")
+
+        with undoable():
+            action.trigger()
+            assert parent.get_data("level") == 2
+            assert child.get_data("parent") == parent.tl_component
 
     def test_increase_level_via_keypress(self, tlui):
         commands.execute("timeline.hierarchy.add", start=0, end=1, level=1)
@@ -741,6 +777,17 @@ class TestCreateChild:
 
         assert len(tlui) == 1
         assert tlui[0].get_data("level") == 1
+
+    def test_with_child_one_level_below_fails(self, tlui, tilia_errors):
+        commands.execute("timeline.hierarchy.add", start=0, end=1, level=2)
+        tlui.select_element(tlui[0])
+        commands.execute("timeline.hierarchy.create_child")
+
+        commands.execute("timeline.hierarchy.create_child")
+
+        assert len(tlui) == 2
+        tilia_errors.assert_error()
+        tilia_errors.assert_in_error_message("overlap with existing component")
 
     class TestUserAcceptsNewLevel:
         def test_single_hierarchy(self, tlui):
