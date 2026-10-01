@@ -1,9 +1,12 @@
 import json
+from contextlib import contextmanager
+from unittest.mock import patch
 
 import pytest
 from PySide6.QtGui import QColor
+from PySide6.QtWidgets import QComboBox
 
-from tests.constants import EXAMPLE_MULTISTAFF_MUSICXML_PATH
+from tests.constants import EXAMPLE_MULTISTAFF_MUSICXML_PATH, EXAMPLE_MUSICXML_PATH
 from tests.mock import (
     Serve,
     patch_file_dialog,
@@ -26,6 +29,7 @@ from tilia.timelines.component_kinds import ComponentKind
 from tilia.timelines.score.components import Clef
 from tilia.timelines.score.timeline import ScoreTimeline
 from tilia.ui import commands
+from tilia.ui.dialogs.choose import ChooseDialog
 from tilia.ui.windows import WindowKind
 
 
@@ -457,6 +461,105 @@ def test_import_score_with_no_beat_timeline_shows_error(score_tlui, tilia_errors
     # Importing a score with no beat timeline in the file shows an error.
     commands.execute("timelines.import.score")
     tilia_errors.assert_in_error_title("Import failed")
+
+
+def _add_measures_of_example_scores(beat_tl):
+    # The example scores have measures 0 to 2: numbering the beat timeline's
+    # measures the same way spares the prompt to insert a measure 0.
+    beat_tl.beat_pattern = [1]
+    for i in range(0, 3):
+        beat_tl.create_beat(i)
+    beat_tl.measure_numbers = [0, 1, 2]
+    beat_tl.recalculate_measures()
+
+
+def _import_score(qtui, path):
+    # Timelines > Score > Import from MusicXML, picking path in the file dialog.
+    score_menu = get_submenu(get_main_window_menu(qtui, "Timelines"), "Score")
+    with patch_file_dialog(True, [path]):
+        get_command_action(score_menu, "timelines.import.score").trigger()
+
+
+def _notes(score_tlui):
+    notes = score_tlui.timeline.get_components_by_attr("KIND", ComponentKind.NOTE)
+    return sorted((n.start, n.end, n.staff_index, n.pitch) for n in notes)
+
+
+def test_import_score_over_another_replaces_its_notes_if_user_confirms(
+    qtui, score_tlui, beat_tl
+):
+    # Importing a score into a score timeline that already has one asks
+    # before deleting it; confirming replaces the old notes with the new ones.
+    _add_measures_of_example_scores(beat_tl)
+    _import_score(qtui, EXAMPLE_MUSICXML_PATH)
+    old_notes = _notes(score_tlui)
+    assert len(old_notes) == 4
+
+    with Serve(Get.FROM_USER_YES_OR_NO, True) as confirmation:
+        _import_score(qtui, EXAMPLE_MULTISTAFF_MUSICXML_PATH)
+
+    assert confirmation.called
+    notes = _notes(score_tlui)
+    assert len(notes) == 11
+    assert set(notes).isdisjoint(old_notes)
+
+
+def test_import_score_over_another_keeps_its_notes_if_user_declines(
+    qtui, score_tlui, beat_tl
+):
+    # Declining the same confirmation cancels the import: the old notes stay.
+    _add_measures_of_example_scores(beat_tl)
+    _import_score(qtui, EXAMPLE_MUSICXML_PATH)
+    old_notes = _notes(score_tlui)
+    assert len(old_notes) == 4
+
+    with Serve(Get.FROM_USER_YES_OR_NO, False) as confirmation:
+        _import_score(qtui, EXAMPLE_MULTISTAFF_MUSICXML_PATH)
+
+    assert confirmation.called
+    assert _notes(score_tlui) == old_notes
+
+
+@contextmanager
+def _choose_timeline(tlui):
+    # Answers the dialog asking which timeline to import into by picking
+    # tlui. Yields the timelines the dialog offered.
+    offered = []
+
+    def exec_(dialog):
+        combo_box = dialog.findChild(QComboBox)
+        offered.extend(combo_box.itemData(i) for i in range(combo_box.count()))
+        combo_box.setCurrentIndex(offered.index(tlui))
+        return True
+
+    with patch.object(ChooseDialog, "exec", exec_):
+        yield offered
+
+
+def test_import_score_into_each_of_several_score_timelines(qtui, tluis, beat_tl):
+    # With several score timelines, importing a score asks which one to load
+    # it into, and only that one gets the notes.
+    _add_measures_of_example_scores(beat_tl)
+    commands.execute("timelines.add.score", name="Violin")
+    commands.execute("timelines.add.score", name="Cello and piano")
+    violin, cello_and_piano = sorted(tluis.get_timeline_uis_by_type(ScoreTimeline))
+
+    with _choose_timeline(violin) as offered:
+        _import_score(qtui, EXAMPLE_MUSICXML_PATH)
+    assert offered == [violin, cello_and_piano]
+    violin_notes = _notes(violin)
+    assert len(violin_notes) == 4
+    assert not _notes(cello_and_piano)
+
+    with (
+        _choose_timeline(cello_and_piano) as offered,
+        Serve(Get.FROM_USER_YES_OR_NO, False) as confirmation,
+    ):
+        _import_score(qtui, EXAMPLE_MULTISTAFF_MUSICXML_PATH)
+    assert offered == [violin, cello_and_piano]
+    assert not confirmation.called  # cello_and_piano had nothing to overwrite
+    assert len(_notes(cello_and_piano)) == 11
+    assert _notes(violin) == violin_notes
 
 
 def test_import_score_then_delete_all_beats_does_not_crash(
