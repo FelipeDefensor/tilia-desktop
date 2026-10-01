@@ -4,13 +4,13 @@ This tutorial shows how the TiLiA CLI can be used to perform some common tasks.
 
 ### Setup
 
-See [README.md](README.md) for instructions on how to clone the repository and install the dependencies.
+See [README.md](../README.md) for instructions on how to clone the repository and install the dependencies.
 
 ### Running the CLI
 
 The CLI can be run from the source code with:
 ```bash
-python -m tilia.main --user-interface cli
+python -m tilia --user-interface cli
 ```
 
 TiLiA CLI is an interactive shell. You'll see ``>>>`` when it's ready for your input.
@@ -201,7 +201,7 @@ timelines import marker by-time --file "C:/data/cadences.csv" --target-name "Cad
 ```
 When you have beat/measure information, you can import annotations using measure numbers instead of absolute time.
 
-Here we will also be importing beats from a CSV file, but they could come from an existingTiLiA file.
+Here we will also be importing beats from a CSV file, but they could come from an existing TiLiA file.
 
 **beats.csv:**
 ```csv
