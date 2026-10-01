@@ -127,6 +127,18 @@ class TestMediaLoadInteraction:
 
         tilia_errors.assert_error()
 
+    def test_add_while_local_audio_loaded_draws_waveform(
+        self, qtui, tluis, tls, tilia_errors, resources
+    ):
+        load_local_media((resources / "example.wav").resolve())
+
+        commands.execute("timelines.add.audiowave", name="")
+
+        tilia_errors.assert_no_error()
+        tl = tls.get_timeline_by_type(AudioWaveTimeline)
+        assert tl.get_data("is_visible") is True
+        assert len(tluis.get_timeline_ui(tl.id)) > 0  # amplitude bars
+
     def test_loading_video_while_media_loaded_refreshes_waveform(
         self, qtui, tluis, resources
     ):
