@@ -139,7 +139,11 @@ def setup_ui(q_application: QApplication, interface: str):
 def get_initial_file(file: str, error: Callable[[str], NoReturn]) -> str:
     """
     Checks if a file path was passed as an argument to process.
-    If it was, returns its path. Else, returns the empty string.
+    If it was, returns its absolute path. Else, returns the empty string.
+
+    Relative paths are resolved against the working directory now, while
+    parsing arguments, because setup_dirs() may change it before the file
+    is opened.
     """
     f_ext = "." + FILE_EXTENSION
     if not file:
@@ -148,4 +152,4 @@ def get_initial_file(file: str, error: Callable[[str], NoReturn]) -> str:
         error(f"{file} is not a valid file.")
     if not file.lower().endswith(f_ext.lower()):
         error(f"{file} is not a {f_ext} file.")
-    return file
+    return os.path.abspath(file)

@@ -5,7 +5,25 @@ from unittest.mock import MagicMock
 
 import pytest
 
+import tilia.dirs as tilia_dirs
+from tests.utils import save_tilia_to_tmp_path
 from tilia.boot import get_initial_file, setup_parser
+from tilia.requests import Post, post
+from tilia.ui import commands
+
+# Outside prod, setup_dirs() changes the working directory to the tilia package
+# before the file passed on the command line is opened.
+SETUP_DIRS_WORKING_DIRECTORY = Path(tilia_dirs.__file__).parent
+
+SEPARATORS = [
+    "/",
+    pytest.param(
+        "\\",
+        marks=pytest.mark.skipif(
+            not sys.platform.startswith("win"), reason="Windows-specific"
+        ),
+    ),
+]
 
 
 class TestGetInitialFilePath:
@@ -37,7 +55,7 @@ class TestGetInitialFilePath:
         win_path = str(file_path)  # on Windows, str(Path) uses backslashes
         assert "\\" in win_path
         error = MagicMock()
-        assert get_initial_file(win_path, error) == win_path
+        assert Path(get_initial_file(win_path, error)) == file_path
         error.assert_not_called()
 
 
@@ -59,7 +77,7 @@ class TestGetSetupParser:
 
         args = setup_parser()
 
-        assert args.file == posix_path
+        assert Path(args.file) == file_path
         assert args.user_interface == "cli"
 
     def test_setup_parser_user_interface_cli(self):
@@ -85,7 +103,7 @@ class TestGetSetupParser:
 
         args = setup_parser()
 
-        assert args.file == posix_path
+        assert Path(args.file) == file_path
         assert args.user_interface == "cli"
 
     def test_setup_parser_nonexistent_file_raises(self):
@@ -112,4 +130,40 @@ class TestGetSetupParser:
 
         args = setup_parser()
 
-        assert args.file == win_path
+        assert Path(args.file) == file_path
+
+
+class TestRelativeFilePath:
+    @pytest.mark.parametrize("separator", SEPARATORS)
+    def test_get_initial_file_resolves_against_working_directory(
+        self, tmp_path, monkeypatch, separator
+    ):
+        (tmp_path / "project").mkdir()
+        file_path = tmp_path / "project" / "test.tla"
+        file_path.touch()
+        monkeypatch.chdir(tmp_path)
+        error = MagicMock()
+
+        result = get_initial_file(f"project{separator}test.tla", error)
+
+        assert Path(result).is_absolute()
+        assert Path(result) == file_path
+        error.assert_not_called()
+
+    @pytest.mark.parametrize("separator", SEPARATORS)
+    def test_relative_path_opens_after_working_directory_changes(
+        self, tilia, tls, tluis, tmp_path, monkeypatch, separator
+    ):
+        commands.execute("timelines.add.marker", name="Opened from relative path")
+        (tmp_path / "project").mkdir()
+        save_tilia_to_tmp_path(tmp_path / "project")
+        post(Post.APP_CLEAR)
+
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", ["tilia", f"project{separator}test.tla"])
+        args = setup_parser()
+        monkeypatch.chdir(SETUP_DIRS_WORKING_DIRECTORY)
+        tilia.on_open(args.file)
+
+        assert tilia.cur_file_path == tmp_path / "project" / "test.tla"
+        assert "Opened from relative path" in [tl.name for tl in tls]
