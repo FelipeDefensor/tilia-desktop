@@ -8,8 +8,8 @@ from typing import NoReturn
 from PySide6.QtCore import QtMsgType, qInstallMessageHandler
 from PySide6.QtWidgets import QApplication
 
-import tilia.utils  # noqa: F401
 import tilia.errors
+import tilia.utils  # noqa: F401
 from tilia.app import App
 from tilia.clipboard import Clipboard
 from tilia.constants import FILE_EXTENSION
