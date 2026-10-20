@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mei xmlns="http://www.music-encoding.org/ns/mei" meiversion="5.0.0-dev">
+  <meiHead><fileDesc><titleStmt><title>Maple Leaf Rag — measure zones</title>
+    <composer>Scott Joplin</composer></titleStmt><pubStmt/></fileDesc></meiHead>
+  <music>
+    <facsimile>
+      <surface xml:id="s1" n="1" ulx="0" uly="0" lrx="2480" lry="3508">
+        <graphic target="maple-leaf-rag-1.png" type="facsimile" width="2480" height="3508"/>
+        <zone xml:id="z1" type="measure" ulx="94" uly="382" lrx="424" lry="754"/>
+        <zone xml:id="z2" type="measure" ulx="424" uly="382" lrx="846" lry="754"/>
+        <zone xml:id="z3" type="measure" ulx="846" uly="382" lrx="1197" lry="754"/>
+        <zone xml:id="z4" type="measure" ulx="1197" uly="382" lrx="1570" lry="754"/>
+        <zone xml:id="z5" type="measure" ulx="1570" uly="382" lrx="1943" lry="754"/>
+        <zone xml:id="z6" type="measure" ulx="1943" uly="382" lrx="2386" lry="754"/>
+        <zone xml:id="z7" type="measure" ulx="94" uly="927" lrx="650" lry="1315"/>
+        <zone xml:id="z8" type="measure" ulx="650" uly="927" lrx="1013" lry="1315"/>
+        <zone xml:id="z9" type="measure" ulx="1013" uly="927" lrx="1387" lry="1315"/>
+        <zone xml:id="z10" type="measure" ulx="1387" uly="927" lrx="1683" lry="1315"/>
+        <zone xml:id="z11" type="measure" ulx="1683" uly="927" lrx="1995" lry="1315"/>
+        <zone xml:id="z12" type="measure" ulx="1995" uly="927" lrx="2386" lry="1315"/>
+        <zone xml:id="z13" type="measure" ulx="94" uly="1520" lrx="554" lry="1911"/>
+        <zone xml:id="z14" type="measure" ulx="554" uly="1520" lrx="861" lry="1911"/>
+        <zone xml:id="z15" type="measure" ulx="861" uly="1520" lrx="1157" lry="1911"/>
+        <zone xml:id="z16" type="measure" ulx="1157" uly="1520" lrx="1525" lry="1911"/>
+        <zone xml:id="z17" type="measure" ulx="1525" uly="1520" lrx="1786" lry="1911"/>
+        <zone xml:id="z18" type="measure" ulx="1786" uly="1520" lrx="2025" lry="1911"/>
+        <zone xml:id="z19" type="measure" ulx="2025" uly="1520" lrx="2386" lry="1911"/>
+        <zone xml:id="z20" type="measure" ulx="94" uly="2034" lrx="602" lry="2406"/>
+        <zone xml:id="z21" type="measure" ulx="602" uly="2034" lrx="898" lry="2406"/>
+        <zone xml:id="z22" type="measure" ulx="898" uly="2034" lrx="1196" lry="2406"/>
+        <zone xml:id="z23" type="measure" ulx="1196" uly="2034" lrx="1493" lry="2406"/>
+        <zone xml:id="z24" type="measure" ulx="1493" uly="2034" lrx="1791" lry="2406"/>
+        <zone xml:id="z25" type="measure" ulx="1791" uly="2034" lrx="2087" lry="2406"/>
+        <zone xml:id="z26" type="measure" ulx="2087" uly="2034" lrx="2386" lry="2406"/>
+        <zone xml:id="z27" type="measure" ulx="94" uly="2542" lrx="606" lry="2914"/>
+        <zone xml:id="z28" type="measure" ulx="606" uly="2542" lrx="935" lry="2914"/>
+        <zone xml:id="z29" type="measure" ulx="935" uly="2542" lrx="1240" lry="2914"/>
+        <zone xml:id="z30" type="measure" ulx="1240" uly="2542" lrx="1469" lry="2914"/>
+        <zone xml:id="z31" type="measure" ulx="1469" uly="2542" lrx="1797" lry="2914"/>
+        <zone xml:id="z32" type="measure" ulx="1797" uly="2542" lrx="2063" lry="2914"/>
+        <zone xml:id="z33" type="measure" ulx="2063" uly="2542" lrx="2386" lry="2914"/>
+      </surface>
+      <surface xml:id="s2" n="2" ulx="0" uly="0" lrx="2480" lry="3508">
+        <graphic target="maple-leaf-rag-2.png" type="facsimile" width="2480" height="3508"/>
+        <zone xml:id="z34" type="measure" ulx="94" uly="378" lrx="525" lry="750"/>
+        <zone xml:id="z35" type="measure" ulx="525" uly="378" lrx="803" lry="750"/>
+        <zone xml:id="z36" type="measure" ulx="803" uly="378" lrx="1109" lry="750"/>
+        <zone xml:id="z37" type="measure" ulx="1109" uly="378" lrx="1395" lry="750"/>
+        <zone xml:id="z38" type="measure" ulx="1395" uly="378" lrx="1701" lry="750"/>
+        <zone xml:id="z39" type="measure" ulx="1701" uly="378" lrx="2011" lry="750"/>
+        <zone xml:id="z40" type="measure" ulx="2011" uly="378" lrx="2386" lry="750"/>
+        <zone xml:id="z41" type="measure" ulx="94" uly="929" lrx="650" lry="1317"/>
+        <zone xml:id="z42" type="measure" ulx="650" uly="929" lrx="1013" lry="1317"/>
+        <zone xml:id="z43" type="measure" ulx="1013" uly="929" lrx="1387" lry="1317"/>
+        <zone xml:id="z44" type="measure" ulx="1387" uly="929" lrx="1683" lry="1317"/>
+        <zone xml:id="z45" type="measure" ulx="1683" uly="929" lrx="1995" lry="1317"/>
+        <zone xml:id="z46" type="measure" ulx="1995" uly="929" lrx="2386" lry="1317"/>
+        <zone xml:id="z47" type="measure" ulx="94" uly="1508" lrx="583" lry="1880"/>
+        <zone xml:id="z48" type="measure" ulx="583" uly="1508" lrx="910" lry="1880"/>
+        <zone xml:id="z49" type="measure" ulx="910" uly="1508" lrx="1233" lry="1880"/>
+        <zone xml:id="z50" type="measure" ulx="1233" uly="1508" lrx="1633" lry="1880"/>
+        <zone xml:id="z51" type="measure" ulx="1633" uly="1508" lrx="1909" lry="1880"/>
+        <zone xml:id="z52" type="measure" ulx="1909" uly="1508" lrx="2386" lry="1880"/>
+        <zone xml:id="z53" type="measure" ulx="94" uly="2002" lrx="653" lry="2374"/>
+        <zone xml:id="z54" type="measure" ulx="653" uly="2002" lrx="1003" lry="2374"/>
+        <zone xml:id="z55" type="measure" ulx="1003" uly="2002" lrx="1353" lry="2374"/>
+        <zone xml:id="z56" type="measure" ulx="1353" uly="2002" lrx="1684" lry="2374"/>
+        <zone xml:id="z57" type="measure" ulx="1684" uly="2002" lrx="2036" lry="2374"/>
+        <zone xml:id="z58" type="measure" ulx="2036" uly="2002" lrx="2386" lry="2374"/>
+        <zone xml:id="z59" type="measure" ulx="94" uly="2502" lrx="656" lry="2874"/>
+        <zone xml:id="z60" type="measure" ulx="656" uly="2502" lrx="991" lry="2874"/>
+        <zone xml:id="z61" type="measure" ulx="991" uly="2502" lrx="1345" lry="2874"/>
+        <zone xml:id="z62" type="measure" ulx="1345" uly="2502" lrx="1676" lry="2874"/>
+        <zone xml:id="z63" type="measure" ulx="1676" uly="2502" lrx="2008" lry="2874"/>
+        <zone xml:id="z64" type="measure" ulx="2008" uly="2502" lrx="2386" lry="2874"/>
+      </surface>
+      <surface xml:id="s3" n="3" ulx="0" uly="0" lrx="2480" lry="3508">
+        <graphic target="maple-leaf-rag-3.png" type="facsimile" width="2480" height="3508"/>
+        <zone xml:id="z65" type="measure" ulx="94" uly="395" lrx="659" lry="771"/>
+        <zone xml:id="z66" type="measure" ulx="659" uly="395" lrx="1026" lry="771"/>
+        <zone xml:id="z67" type="measure" ulx="1026" uly="395" lrx="1377" lry="771"/>
+        <zone xml:id="z68" type="measure" ulx="1377" uly="395" lrx="1671" lry="771"/>
+        <zone xml:id="z69" type="measure" ulx="1671" uly="395" lrx="2063" lry="771"/>
+        <zone xml:id="z70" type="measure" ulx="2063" uly="395" lrx="2386" lry="771"/>
+        <zone xml:id="z71" type="measure" ulx="94" uly="898" lrx="581" lry="1271"/>
+        <zone xml:id="z72" type="measure" ulx="581" uly="898" lrx="901" lry="1271"/>
+        <zone xml:id="z73" type="measure" ulx="901" uly="898" lrx="1184" lry="1271"/>
+        <zone xml:id="z74" type="measure" ulx="1184" uly="898" lrx="1505" lry="1271"/>
+        <zone xml:id="z75" type="measure" ulx="1505" uly="898" lrx="1824" lry="1271"/>
+        <zone xml:id="z76" type="measure" ulx="1824" uly="898" lrx="2144" lry="1271"/>
+        <zone xml:id="z77" type="measure" ulx="2144" uly="898" lrx="2386" lry="1271"/>
+        <zone xml:id="z78" type="measure" ulx="94" uly="1432" lrx="599" lry="1804"/>
+        <zone xml:id="z79" type="measure" ulx="599" uly="1432" lrx="874" lry="1804"/>
+        <zone xml:id="z80" type="measure" ulx="874" uly="1432" lrx="1190" lry="1804"/>
+        <zone xml:id="z81" type="measure" ulx="1190" uly="1432" lrx="1477" lry="1804"/>
+        <zone xml:id="z82" type="measure" ulx="1477" uly="1432" lrx="1792" lry="1804"/>
+        <zone xml:id="z83" type="measure" ulx="1792" uly="1432" lrx="2130" lry="1804"/>
+        <zone xml:id="z84" type="measure" ulx="2130" uly="1432" lrx="2386" lry="1804"/>
+        <zone xml:id="z85" type="measure" ulx="94" uly="1960" lrx="551" lry="2332"/>
+      </surface>
+    </facsimile>
+    <body><mdiv label="Maple Leaf Rag" n="1"><score><section>
+      <measure n="1" facs="#z1"/><measure n="2" facs="#z2"/><measure n="3" facs="#z3"/><measure n="4" facs="#z4"/><measure n="5" facs="#z5"/><measure n="6" facs="#z6"/><measure n="7" facs="#z7"/><measure n="8" facs="#z8"/><measure n="9" facs="#z9"/><measure n="10" facs="#z10"/><measure n="11" facs="#z11"/><measure n="12" facs="#z12"/><measure n="13" facs="#z13"/><measure n="14" facs="#z14"/><measure n="15" facs="#z15"/><measure n="16" facs="#z16"/><measure n="17" facs="#z17"/><measure n="18" facs="#z18"/><measure n="19" facs="#z19"/><measure n="20" facs="#z20"/><measure n="21" facs="#z21"/><measure n="22" facs="#z22"/><measure n="23" facs="#z23"/><measure n="24" facs="#z24"/><measure n="25" facs="#z25"/><measure n="26" facs="#z26"/><measure n="27" facs="#z27"/><measure n="28" facs="#z28"/><measure n="29" facs="#z29"/><measure n="30" facs="#z30"/><measure n="31" facs="#z31"/><measure n="32" facs="#z32"/><measure n="33" facs="#z33"/><measure n="34" facs="#z34"/><measure n="35" facs="#z35"/><measure n="36" facs="#z36"/><measure n="37" facs="#z37"/><measure n="38" facs="#z38"/><measure n="39" facs="#z39"/><measure n="40" facs="#z40"/><measure n="41" facs="#z41"/><measure n="42" facs="#z42"/><measure n="43" facs="#z43"/><measure n="44" facs="#z44"/><measure n="45" facs="#z45"/><measure n="46" facs="#z46"/><measure n="47" facs="#z47"/><measure n="48" facs="#z48"/><measure n="49" facs="#z49"/><measure n="50" facs="#z50"/><measure n="51" facs="#z51"/><measure n="52" facs="#z52"/><measure n="53" facs="#z53"/><measure n="54" facs="#z54"/><measure n="55" facs="#z55"/><measure n="56" facs="#z56"/><measure n="57" facs="#z57"/><measure n="58" facs="#z58"/><measure n="59" facs="#z59"/><measure n="60" facs="#z60"/><measure n="61" facs="#z61"/><measure n="62" facs="#z62"/><measure n="63" facs="#z63"/><measure n="64" facs="#z64"/><measure n="65" facs="#z65"/><measure n="66" facs="#z66"/><measure n="67" facs="#z67"/><measure n="68" facs="#z68"/><measure n="69" facs="#z69"/><measure n="70" facs="#z70"/><measure n="71" facs="#z71"/><measure n="72" facs="#z72"/><measure n="73" facs="#z73"/><measure n="74" facs="#z74"/><measure n="75" facs="#z75"/><measure n="76" facs="#z76"/><measure n="77" facs="#z77"/><measure n="78" facs="#z78"/><measure n="79" facs="#z79"/><measure n="80" facs="#z80"/><measure n="81" facs="#z81"/><measure n="82" facs="#z82"/><measure n="83" facs="#z83"/><measure n="84" facs="#z84"/><measure n="85" facs="#z85"/>
+    </section></score></mdiv></body>
+  </music>
+</mei>

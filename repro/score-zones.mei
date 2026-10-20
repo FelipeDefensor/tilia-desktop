@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mei xmlns="http://www.music-encoding.org/ns/mei" meiversion="5.0.0-dev">
+  <meiHead><fileDesc><titleStmt><title>Prototype score</title></titleStmt>
+    <pubStmt/></fileDesc></meiHead>
+  <music>
+    <facsimile>
+      <surface xml:id="s1" n="1" ulx="0" uly="0" lrx="2480" lry="3508">
+        <graphic target="score-1.jpg" type="facsimile" width="2480" height="3508"/>
+        <zone xml:id="z1" type="measure" ulx="248" uly="316" lrx="744" lry="737"/>
+        <zone xml:id="z2" type="measure" ulx="744" uly="316" lrx="1240" lry="737"/>
+        <zone xml:id="z3" type="measure" ulx="1240" uly="316" lrx="1736" lry="737"/>
+        <zone xml:id="z4" type="measure" ulx="1736" uly="316" lrx="2232" lry="737"/>
+        <zone xml:id="z5" type="measure" ulx="248" uly="1052" lrx="744" lry="1473"/>
+        <zone xml:id="z6" type="measure" ulx="744" uly="1052" lrx="1240" lry="1473"/>
+        <zone xml:id="z7" type="measure" ulx="1240" uly="1052" lrx="1736" lry="1473"/>
+        <zone xml:id="z8" type="measure" ulx="1736" uly="1052" lrx="2232" lry="1473"/>
+        <zone xml:id="z9" type="measure" ulx="248" uly="1789" lrx="744" lry="2210"/>
+        <zone xml:id="z10" type="measure" ulx="744" uly="1789" lrx="1240" lry="2210"/>
+        <zone xml:id="z11" type="measure" ulx="1240" uly="1789" lrx="1736" lry="2210"/>
+        <zone xml:id="z12" type="measure" ulx="1736" uly="1789" lrx="2232" lry="2210"/>
+        <zone xml:id="z13" type="measure" ulx="248" uly="2526" lrx="744" lry="2947"/>
+        <zone xml:id="z14" type="measure" ulx="744" uly="2526" lrx="1240" lry="2947"/>
+        <zone xml:id="z15" type="measure" ulx="1240" uly="2526" lrx="1736" lry="2947"/>
+        <zone xml:id="z16" type="measure" ulx="1736" uly="2526" lrx="2232" lry="2947"/>
+      </surface>
+      <surface xml:id="s2" n="2" ulx="0" uly="0" lrx="2480" lry="3508">
+        <graphic target="score-2.jpg" type="facsimile" width="2480" height="3508"/>
+        <zone xml:id="z17" type="measure" ulx="248" uly="316" lrx="744" lry="737"/>
+        <zone xml:id="z18" type="measure" ulx="744" uly="316" lrx="1240" lry="737"/>
+        <zone xml:id="z19" type="measure" ulx="1240" uly="316" lrx="1736" lry="737"/>
+        <zone xml:id="z20" type="measure" ulx="1736" uly="316" lrx="2232" lry="737"/>
+        <zone xml:id="z21" type="measure" ulx="248" uly="1052" lrx="744" lry="1473"/>
+        <zone xml:id="z22" type="measure" ulx="744" uly="1052" lrx="1240" lry="1473"/>
+        <zone xml:id="z23" type="measure" ulx="1240" uly="1052" lrx="1736" lry="1473"/>
+        <zone xml:id="z24" type="measure" ulx="1736" uly="1052" lrx="2232" lry="1473"/>
+        <zone xml:id="z25" type="measure" ulx="248" uly="1789" lrx="744" lry="2210"/>
+        <zone xml:id="z26" type="measure" ulx="744" uly="1789" lrx="1240" lry="2210"/>
+        <zone xml:id="z27" type="measure" ulx="1240" uly="1789" lrx="1736" lry="2210"/>
+        <zone xml:id="z28" type="measure" ulx="1736" uly="1789" lrx="2232" lry="2210"/>
+        <zone xml:id="z29" type="measure" ulx="248" uly="2526" lrx="744" lry="2947"/>
+        <zone xml:id="z30" type="measure" ulx="744" uly="2526" lrx="1240" lry="2947"/>
+        <zone xml:id="z31" type="measure" ulx="1240" uly="2526" lrx="1736" lry="2947"/>
+        <zone xml:id="z32" type="measure" ulx="1736" uly="2526" lrx="2232" lry="2947"/>
+      </surface>
+    </facsimile>
+    <body>
+      <mdiv label="Movement 1" n="1">
+        <score>
+          <section>
+            <pb n="1" facs="#s1"/>
+            <measure xml:id="m1" n="1" facs="#z1"/>
+            <measure xml:id="m2" n="2" facs="#z2"/>
+            <measure xml:id="m3" n="3" facs="#z3"/>
+            <measure xml:id="m4" n="4" facs="#z4"/>
+            <sb/>
+            <measure xml:id="m5" n="5" facs="#z5"/>
+            <measure xml:id="m6" n="6" facs="#z6"/>
+            <measure xml:id="m7" n="7" facs="#z7"/>
+            <measure xml:id="m8" n="8" facs="#z8"/>
+            <sb/>
+            <measure xml:id="m9" n="9" facs="#z9"/>
+            <measure xml:id="m10" n="10" facs="#z10"/>
+            <measure xml:id="m11" n="11" facs="#z11"/>
+            <measure xml:id="m12" n="12" facs="#z12"/>
+            <sb/>
+            <measure xml:id="m13" n="13" facs="#z13"/>
+            <measure xml:id="m14" n="14" facs="#z14"/>
+            <measure xml:id="m15" n="15" facs="#z15"/>
+            <measure xml:id="m16" n="16" facs="#z16"/>
+            <sb/>
+            <pb n="2" facs="#s2"/>
+            <measure xml:id="m17" n="17" facs="#z17"/>
+            <measure xml:id="m18" n="18" facs="#z18"/>
+            <measure xml:id="m19" n="19" facs="#z19"/>
+            <measure xml:id="m20" n="20" facs="#z20"/>
+            <sb/>
+            <measure xml:id="m21" n="21" facs="#z21"/>
+            <measure xml:id="m22" n="22" facs="#z22"/>
+            <measure xml:id="m23" n="23" facs="#z23"/>
+            <measure xml:id="m24" n="24" facs="#z24"/>
+            <sb/>
+            <measure xml:id="m25" n="25" facs="#z25"/>
+            <measure xml:id="m26" n="26" facs="#z26"/>
+            <measure xml:id="m27" n="27" facs="#z27"/>
+            <measure xml:id="m28" n="28" facs="#z28"/>
+            <sb/>
+            <measure xml:id="m29" n="29" facs="#z29"/>
+            <measure xml:id="m30" n="30" facs="#z30"/>
+            <measure xml:id="m31" n="31" facs="#z31"/>
+            <measure xml:id="m32" n="32" facs="#z32"/>
+            <sb/>
+          </section>
+        </score>
+      </mdiv>
+    </body>
+  </music>
+</mei>
