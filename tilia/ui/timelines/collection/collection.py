@@ -38,7 +38,10 @@ from tilia.ui.player import PlayerToolbarElement
 from tilia.ui.smooth_scroll import SmoothSetter
 from tilia.ui.timelines.base.element_manager import ElementManager
 from tilia.ui.timelines.base.timeline import TimelineUI, with_elements
-from tilia.ui.timelines.collection.import_ import _on_import_to_timeline
+from tilia.ui.timelines.collection.import_ import (
+    _on_import_mei_to_pdf_timeline,
+    _on_import_to_timeline,
+)
 from tilia.ui.timelines.constants import (
     MAX_PLAYBACK_WIDTH,
     PIXELS_PER_SECOND,
@@ -180,6 +183,12 @@ class TimelineUIs:
 
             if register_commands := cls.register_commands:
                 register_commands(self)
+
+        commands.register(
+            "timelines.import.pdf_mei",
+            self.on_import_mei_to_pdf_timeline,
+            "Import measure regions from &MEI (Cartographer)",
+        )
 
         # Commands for individual timelines
         commands.register(
@@ -1476,7 +1485,16 @@ class TimelineUIs:
         # Refactor later: merge this with _on_import_to_timeline()
         prev_state = get(Get.APP_STATE)
         success, errors = _on_import_to_timeline(self, tl_type)
+        return self._finish_import(prev_state, success, errors)
 
+    @command_callback
+    def on_import_mei_to_pdf_timeline(self, path: str | None = None):
+        prev_state = get(Get.APP_STATE)
+        success, errors = _on_import_mei_to_pdf_timeline(self, path)
+        return self._finish_import(prev_state, success, errors)
+
+    @staticmethod
+    def _finish_import(prev_state: dict, success: bool, errors: list[str]) -> bool:
         if not success:
             post(Post.APP_STATE_RESTORE, prev_state)
             if errors:

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import tilia.errors
 from tilia.parsers import get_import_function
+from tilia.parsers.mei.pdf import import_by_measure as mei_to_pdf_by_measure
 from tilia.requests import Get, get
 from tilia.timelines.base.timeline import Timeline
 from tilia.timelines.beat.timeline import BeatTimeline
+from tilia.timelines.pdf.timeline import PdfTimeline
 from tilia.timelines.range.timeline import RangeTimeline
 from tilia.timelines.score.timeline import ScoreTimeline
 from tilia.ui.dialogs.by_time_or_by_measure import ByTimeOrByMeasure
@@ -105,6 +108,52 @@ def _on_import_to_timeline(
     return success, errors
 
 
+def _on_import_mei_to_pdf_timeline(
+    timeline_uis: TimelineUIs, path: str | None = None
+) -> tuple[bool, list[str]]:
+    """
+    Replaces a PDF timeline's markers with one per measure of an MEI file
+    (e.g. exported by the Cartographer App), timed by a beat timeline and
+    pointing to each measure's zone.
+    """
+    if not _validate_timeline_type_on_import(timeline_uis, PdfTimeline):
+        return False, ["No PDF timeline found."]
+
+    pdf_tluis = timeline_uis.get_timeline_uis_by_type(PdfTimeline)
+    if len(pdf_tluis) == 1:
+        pdf_tlui = pdf_tluis[0]
+    else:
+        pdf_tlui = timeline_uis.ask_choose_timeline(
+            "Import measure regions from MEI",
+            "Choose PDF timeline where markers will be created",
+            PdfTimeline,
+        )
+    if not pdf_tlui:
+        return False, ["User cancelled when choosing timeline."]
+
+    beat_tlui = _get_beat_timeline_ui_for_import_from_csv(
+        timeline_uis, "Import measure regions from MEI"
+    )
+    if not beat_tlui:
+        return False, ["A beat timeline is required to import measure regions."]
+
+    pdf_tl = get(Get.TIMELINE, pdf_tlui.id)
+    if not pdf_tl.is_empty and not _confirm_timeline_overwrite_on_import():
+        return False, ["User rejected components overwrite."]
+
+    if path is None:
+        success, path = get(
+            Get.FROM_USER_FILE_PATH,
+            "Import measure regions",
+            ["MEI files (*.mei *.xml)"],
+        )
+        if not success:
+            return False, ["User cancelled when choosing file to import."]
+
+    pdf_tl.clear()
+    return mei_to_pdf_by_measure(pdf_tl, get(Get.TIMELINE, beat_tlui.id), Path(path))
+
+
 def _get_by_time_or_by_measure_from_user():
     dialog = ByTimeOrByMeasure()
     return (True, dialog.get_option()) if dialog.exec() else (False, None)
@@ -130,7 +179,9 @@ def _confirm_timeline_overwrite_on_import():
     )
 
 
-def _get_beat_timeline_ui_for_import_from_csv(timeline_uis: TimelineUIs):
+def _get_beat_timeline_ui_for_import_from_csv(
+    timeline_uis: TimelineUIs, title: str = "Import components from CSV"
+):
     beat_tls = timeline_uis.get_timeline_uis_by_type(BeatTimeline)
     if not beat_tls:
         return
@@ -138,7 +189,7 @@ def _get_beat_timeline_ui_for_import_from_csv(timeline_uis: TimelineUIs):
         return beat_tls[0]
     else:
         return timeline_uis.ask_choose_timeline(
-            "Import components from CSV",
+            title,
             "Choose timeline with measures to be used when importing",
             BeatTimeline,
         )

@@ -169,7 +169,10 @@ class HarmonyMenu(TiliaMenu):
 
 class PdfMenu(TiliaMenu):
     menu_title = "&PDF"
-    items = [(MenuItemKind.COMMAND, "timelines.import.pdf")]
+    items = [
+        (MenuItemKind.COMMAND, "timelines.import.pdf"),
+        (MenuItemKind.COMMAND, "timelines.import.pdf_mei"),
+    ]
 
 
 class RangeMenu(TiliaMenu):
