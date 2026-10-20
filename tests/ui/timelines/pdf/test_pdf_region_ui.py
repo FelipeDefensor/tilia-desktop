@@ -1,5 +1,5 @@
 import pytest
-from PySide6.QtCore import QPoint, Qt
+from PySide6.QtCore import QPoint, QRectF, Qt
 from PySide6.QtTest import QTest
 
 from tests.ui.timelines.pdf.test_pdf_marker_ui import get_inspect_widget
@@ -9,6 +9,7 @@ from tilia.timelines.pdf.timeline import PdfTimeline
 from tilia.ui import commands
 from tilia.ui.timelines.pdf import PdfTimelineUI
 from tilia.ui.timelines.pdf.context_menu import PdfMarkerContextMenu
+from tilia.ui.timelines.pdf.viewer import SCROLL_MARGIN
 from tilia.ui.windows import WindowKind
 
 REGION = [0.1, 0.2, 0.5, 0.25]
@@ -216,3 +217,26 @@ class TestViewer:
         commands.execute("media.seek", 10)
 
         assert pdf_tlui.current_page == 2
+
+    def test_region_low_on_page_is_scrolled_into_view(self, pdf_tlui):
+        viewer = pdf_tlui.pdf_view
+        viewer.resize(700, 400)
+        commands.execute("timeline.pdf.add", time=0, page_number=1)
+        set_region(pdf_tlui, page_number=1, bbox=[0.1, 0.85, 0.5, 0.1], time=10)
+
+        commands.execute("media.seek", 10)
+
+        rect = viewer.region_rect(viewer.regions[0])
+        assert QRectF(viewer.viewport().rect()).contains(rect)
+        assert rect.top() == pytest.approx(SCROLL_MARGIN, abs=2)
+
+    def test_visible_region_does_not_scroll(self, pdf_tlui):
+        viewer = pdf_tlui.pdf_view
+        set_region(pdf_tlui, page_number=1, bbox=[0.1, 0.05, 0.3, 0.1], time=0)
+        set_region(pdf_tlui, page_number=1, bbox=[0.5, 0.05, 0.3, 0.1], time=10)
+        commands.execute("media.seek", 1)
+        scroll = viewer.verticalScrollBar().value()
+
+        commands.execute("media.seek", 11)
+
+        assert viewer.verticalScrollBar().value() == scroll

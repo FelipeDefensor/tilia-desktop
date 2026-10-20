@@ -15,7 +15,7 @@ ACTIVE_REGION_FILL_ALPHA = 50
 REGION_PEN_WIDTH = 2
 # Drags shorter than this (in pixels, on both axes) are treated as clicks.
 MIN_REGION_DRAG = 5
-# Space left above the active region when scrolling to it, in page points.
+# Space left above the active region when scrolling to it, in pixels.
 SCROLL_MARGIN = 20
 
 
@@ -110,10 +110,27 @@ class QPdfWindow(ViewWindow, QPdfView):
         )
 
     def scroll_to_region(self, region: PdfRegion) -> None:
-        document = self.document()
-        page_height = document.pagePointSize(region.page_number - 1).height()
-        top = max(0.0, region.bbox[1] * page_height - SCROLL_MARGIN)
-        self.pageNavigator().jump(region.page_number - 1, QPointF(0, top), 0)
+        """
+        Scrolls so the region is in view, with SCROLL_MARGIN above it. Leaves the
+        view alone if the region is already fully visible, so following
+        measures of one system doesn't jiggle the page.
+        """
+        rect = self.region_rect(region)
+        if rect is None or QRectF(self.viewport().rect()).contains(rect):
+            return
+
+        # In MultiPage mode jump() only brings the page's top into view (it
+        # ignores the location), but it keeps the navigator's current page in
+        # sync, so jump first and then scroll to the region itself.
+        self.pageNavigator().jump(region.page_number - 1, QPointF(0, 0), 0)
+        rect = self.region_rect(region)
+        viewport = self.viewport().rect()
+
+        vertical = self.verticalScrollBar()
+        vertical.setValue(vertical.value() + round(rect.top()) - SCROLL_MARGIN)
+        if rect.left() < 0 or rect.right() > viewport.width():
+            horizontal = self.horizontalScrollBar()
+            horizontal.setValue(horizontal.value() + round(rect.left()) - SCROLL_MARGIN)
 
     def paintEvent(self, event) -> None:
         super().paintEvent(event)
