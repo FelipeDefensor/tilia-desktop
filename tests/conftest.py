@@ -251,8 +251,10 @@ def restore_settings_after_test(isolate_settings):
     works if the next test does not inherit them.
     """
     before = copy.deepcopy(settings_module.settings._cache)
+    schemata_before = settings_module.settings.get_custom_schemata()
     yield
     settings_module.settings._cache = before
+    settings_module.settings.set_custom_schemata(schemata_before)
     for group_name, group in before.items():
         for name, value in group.items():
             settings_module.settings._set(group_name, name, value)

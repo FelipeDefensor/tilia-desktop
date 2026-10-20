@@ -1,3 +1,4 @@
+import json
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable
@@ -40,6 +41,9 @@ class SettingsManager(QObject):
     # must allow for the settings it moves being missing.
     VERSION = 2
     VERSION_KEY = "meta/settings_version"
+    # Stored as JSON text, away from the editable settings: it isn't a value
+    # for the settings window.
+    CUSTOM_SCHEMATA_KEY = "private/schemata"
     MIGRATIONS: dict[int, Callable[[QSettings], None]] = {
         1: _store_auto_scroll_by_name,
     }
@@ -356,6 +360,19 @@ class SettingsManager(QObject):
     def set_user(self, email: str, name: str):
         self._settings.setValue("private/user/email", email)
         self._settings.setValue("private/user/name", name)
+
+    def get_custom_schemata(self) -> list[dict]:
+        """The schemata the user made or changed, as saved by
+        `set_custom_schemata`. Unreadable data reads as none."""
+        value = self._settings.value(self.CUSTOM_SCHEMATA_KEY, "[]")
+        try:
+            schemata = json.loads(value)
+        except (TypeError, ValueError):
+            return []
+        return schemata if isinstance(schemata, list) else []
+
+    def set_custom_schemata(self, schemata: list[dict]) -> None:
+        self._settings.setValue(self.CUSTOM_SCHEMATA_KEY, json.dumps(schemata))
 
     def get_dict(self) -> dict:
         return self._cache

@@ -2,20 +2,23 @@
 from __future__ import annotations
 
 from bisect import bisect
+from statistics import median
 from typing import Callable, Iterator
 
 from lxml import etree
 from PySide6.QtCore import (
     QKeyCombination,
     QPointF,
+    QRectF,
     Qt,
 )
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtGui import QColor, QFont, QPen
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
 from PySide6.QtWidgets import (
     QFrame,
     QGraphicsItem,
+    QGraphicsRectItem,
     QGraphicsScene,
     QGraphicsSimpleTextItem,
     QGraphicsView,
@@ -31,16 +34,36 @@ from tilia.requests import (
     Get,
     Post,
     get,
+    listen,
     post,
     serve,
     stop_listening_to_all,
     stop_serving_all,
 )
 from tilia.timelines.component_kinds import ComponentKind
+from tilia.timelines.score.schema import stage_degree
 from tilia.ui import commands
 from tilia.ui.commands import get_qaction
+from tilia.ui.schema import library
+from tilia.ui.schema.diagram import DEGREE_MIME_TYPE, read_degree_mime_data
+from tilia.ui.schema.items import (
+    SvgSchemaDegree,
+    SvgSchemaInstance,
+    layout_schema_instances,
+)
+from tilia.ui.schema.palette import SchemaPalette
 from tilia.ui.smooth_scroll import SmoothSetter
 from tilia.ui.windows.view_window import ViewDockWidget
+
+NOTEHEAD_CLASS = "vf-notehead"
+# How far from a notehead (in notehead heights) a dropped degree still lands
+# on it.
+NOTEHEAD_DROP_TOLERANCE = 1.0
+DROP_HIGHLIGHT_COLOR = QColor(25, 118, 210)
+# Scene units, for scores without noteheads.
+DEFAULT_NOTEHEAD_HEIGHT = 10.0
+# Seconds within which a note counts as starting at a given time.
+NOTE_TIME_TOLERANCE = 1e-6
 
 
 class SvgViewer(ViewDockWidget):
@@ -54,6 +77,11 @@ class SvgViewer(ViewDockWidget):
 
         self.__setup_score_viewer()
         serve(self, Get.SCORE_VIEWER, self.get_viewer)
+        listen(
+            self,
+            Post.SCHEMA_LIBRARY_UPDATED,
+            lambda: self.schema_palette.refresh_library(),
+        )
 
     def get_viewer(self, tl_id: int):
         if tl_id == self.timeline_id:
@@ -72,15 +100,23 @@ class SvgViewer(ViewDockWidget):
             get_times=self._get_time_from_scene_x,
             update_measure_tracker=self.update_measure_tracker,
             update_scroll_margins=self._update_scroll_margins,
+            on_degree_drag=self._on_degree_drag,
+            on_degree_drop=self._on_degree_drop,
             parent=self,
         )
         self.scene = QGraphicsScene(self.view)
         self.view.setScene(self.scene)
 
         v_toolbar = self._get_toolbar()
+        self.schema_palette = SchemaPalette(
+            on_finish=lambda: commands.execute("timeline.score.finish_schema_instance"),
+            on_delete=lambda: commands.execute("timeline.score.delete_schema_instance"),
+        )
+        self.schema_palette.hide()
         h_box = QHBoxLayout()
         h_box.addLayout(v_toolbar)
         h_box.addWidget(self.view)
+        h_box.addWidget(self.schema_palette)
         widget = QWidget()
         widget.setLayout(h_box)
         self.setWidget(widget)
@@ -95,6 +131,17 @@ class SvgViewer(ViewDockWidget):
         self.visible_times = [0, 0]
         self.beat_x_position = {}
         self.cur_t_x = 0.0
+        # Notehead element id -> (its rect, its stave note's element id)
+        self.noteheads: dict[str, tuple[QRectF, str]] = {}
+        self.notehead_unit = DEFAULT_NOTEHEAD_HEIGHT
+        self.system_rect = QRectF()
+        self.stavenotes: dict[str, SvgStaveNote] = {}
+        self.schema_instances: dict[int, SvgSchemaInstance] = {}
+        self.active_schema_instance: int | None = None
+        self.drop_highlight = QGraphicsRectItem()
+        self.drop_highlight.setPen(QPen(DROP_HIGHLIGHT_COLOR, 2))
+        self.drop_highlight.setZValue(4)
+        self.drop_highlight.hide()
         self._update_scroll_margins()
 
     def _get_toolbar(self) -> QVBoxLayout:
@@ -134,6 +181,13 @@ class SvgViewer(ViewDockWidget):
                 "Shift+Up",
                 "annotation-font-increase",
             ),
+            (
+                "timeline.score.toggle_schemata",
+                self.toggle_schema_palette,
+                "Schemata",
+                "",
+                "",
+            ),
         ]
 
         v_toolbar = QVBoxLayout()
@@ -143,6 +197,30 @@ class SvgViewer(ViewDockWidget):
             button = QToolButton()
             button.setDefaultAction(get_qaction(name))
             v_toolbar.addWidget(button)
+
+        for name, callback, text in [
+            (
+                "timeline.score.add_schema_degree",
+                self.add_schema_degree,
+                "Add schema degree",
+            ),
+            (
+                "timeline.score.remove_schema_degree",
+                self.remove_schema_degree,
+                "Remove schema degree",
+            ),
+            (
+                "timeline.score.delete_schema_instance",
+                self.delete_schema_instance,
+                "Delete schema instance",
+            ),
+            (
+                "timeline.score.finish_schema_instance",
+                self.finish_schema_instance,
+                "Finish schema instance",
+            ),
+        ]:
+            commands.register(name, callback, text)
 
         return v_toolbar
 
@@ -173,6 +251,7 @@ class SvgViewer(ViewDockWidget):
             # tanks frame rate — strip them here too.
             self._strip_beat_x_markers(self.score_root)
             self.beat_x_position = {float(beat): float(x) for beat, x in x_pos.items()}
+        self._assign_notehead_ids(self.score_root)
         self.timeline.save_svg_data(str(etree.tostring(self.score_root), "utf-8"))
 
         self.setParent(get(Get.MAIN_WINDOW))
@@ -188,6 +267,10 @@ class SvgViewer(ViewDockWidget):
         bg.setSharedRenderer(self.score_renderer)
         self.scene.addItem(bg)
         self.create_stavenotes(self.score_root)
+        self._index_noteheads(self.score_root)
+        if self.drop_highlight.scene() is None:
+            self.scene.addItem(self.drop_highlight)
+        self._redraw_schema_instances()
 
         if not self.isVisible() and not self.is_hidden:
             self.parentWidget().addDockWidget(
@@ -264,13 +347,75 @@ class SvgViewer(ViewDockWidget):
                 stavenote = SvgStaveNote(
                     self.score_renderer, id, self._get_closest_time
                 )
+                self.stavenotes[id] = stavenote
                 self.scene.addItem(stavenote)
                 stavenote.seek_x = x_pos[
                     bisect(x_pos, stavenote.sceneBoundingRect().right()) - 1
                 ]
 
         x_pos = list(self.beat_x_position.values())
+        self.stavenotes = {}
         process(root)
+
+    @staticmethod
+    def _assign_notehead_ids(root: etree._Element) -> None:
+        """Gives each notehead an id, so schema degrees can be placed on it.
+
+        OSMD only gives ids to stave notes (a chord is one stave note), so
+        each notehead gets its stave note's id and its position in it. They
+        are saved with the SVG, so they stay the same when the file is opened
+        again.
+        """
+        for stavenote in root.iter():
+            if stavenote.get("class") != "vf-stavenote" or not stavenote.get("id"):
+                continue
+            noteheads = [
+                e for e in stavenote.iter() if e.get("class") == NOTEHEAD_CLASS
+            ]
+            for k, notehead in enumerate(noteheads):
+                if not notehead.get("id"):
+                    notehead.set("id", f"{stavenote.get('id')}-notehead{k}")
+
+    def _index_noteheads(self, root: etree._Element) -> None:
+        self.noteheads = {}
+        self.notehead_unit = DEFAULT_NOTEHEAD_HEIGHT
+        for stavenote in root.iter():
+            if stavenote.get("class") != "vf-stavenote":
+                continue
+            for notehead in stavenote.iter():
+                if notehead.get("class") != NOTEHEAD_CLASS or not notehead.get("id"):
+                    continue
+                rect = self.score_renderer.boundsOnElement(notehead.get("id"))
+                if not rect.isEmpty():
+                    self.noteheads[notehead.get("id")] = (rect, stavenote.get("id"))
+        if self.noteheads:
+            self.notehead_unit = median(r.height() for r, _ in self.noteheads.values())
+        self.system_rect = self._get_system_rect(root)
+
+    def _get_system_rect(self, root: etree._Element) -> QRectF:
+        """Where the staves and what is drawn on them are."""
+        rect = QRectF()
+        for staffline in root.iter():
+            if staffline.get("class") == "staffline" and staffline.get("id"):
+                rect = rect.united(
+                    self.score_renderer.boundsOnElement(staffline.get("id"))
+                )
+        for stavenote in self.stavenotes.values():
+            rect = rect.united(stavenote.sceneBoundingRect())
+        for notehead, _ in self.noteheads.values():
+            rect = rect.united(notehead)
+        return rect
+
+    def notehead_at(self, pos: QPointF) -> str | None:
+        """The notehead under `pos`, or the closest one nearby."""
+        closest, distance = None, float("inf")
+        for id, (rect, _) in self.noteheads.items():
+            if rect.contains(pos):
+                return id
+            d = (rect.center() - pos).manhattanLength()
+            if d < distance and d <= rect.height() * (1 + NOTEHEAD_DROP_TOLERANCE):
+                closest, distance = id, d
+        return closest
 
     def _get_drag_actions(self) -> dict[str, Callable[[QPointF], None]]:
         def _start_drag(start_pos: QPointF) -> None:
@@ -445,6 +590,270 @@ class SvgViewer(ViewDockWidget):
             self.save_tla_annotation(item)
         post(Post.APP_STATE_RECORD, "score annotation")
 
+    def toggle_schema_palette(self) -> None:
+        self.schema_palette.setVisible(not self.schema_palette.isVisible())
+
+    def _schema_instance(self, id: int | None):
+        if id is None:
+            return None
+        try:
+            component = self.timeline.get_component(id)
+        except KeyError:
+            return None
+        if component.KIND != ComponentKind.SCHEMA_INSTANCE:
+            return None
+        return component
+
+    def set_active_schema_instance(self, id: int | None) -> None:
+        """The instance dropped degrees go to. None starts a new one on the
+        next drop."""
+        instance = self._schema_instance(id)
+        self.active_schema_instance = instance.id if instance else None
+        if instance:
+            self.schema_palette.show_instance(instance.schema, instance.degrees)
+        else:
+            self.schema_palette.show_instance(None)
+
+    def add_schema_degree(
+        self,
+        notehead: str,
+        schema: str,
+        stage: int,
+        voice: str,
+        index: int,
+        value: int | None = None,
+        accidental: str | None = None,
+        instance_id: int | None = None,
+    ) -> bool:
+        """Places a schema's degree on a notehead.
+
+        It goes to `instance_id`, or else to the active instance, if that is
+        an instance of `schema`; otherwise it starts a new instance. A degree
+        already placed for that stage, voice and index moves to the
+        notehead. `value` and `accidental` default to the schema's.
+        """
+        if notehead not in self.noteheads:
+            logger.error(f"No notehead with id {notehead!r} in the score.")
+            return False
+        instance = self._schema_instance(
+            instance_id if instance_id is not None else self.active_schema_instance
+        )
+        if instance and instance.schema["name"] != schema:
+            instance = None
+        definition = instance.schema if instance else library.get_schema(schema)
+        if definition is None:
+            logger.error(f"No schema named {schema!r}.")
+            return False
+        if (defined := stage_degree(definition, stage, voice, index)) is None:
+            logger.error(f"{schema} has no {voice} degree {index} in stage {stage}.")
+            return False
+
+        placed = {
+            "notehead": notehead,
+            "stage": stage,
+            "voice": voice,
+            "index": index,
+            "value": defined["value"] if value is None else value,
+            "accidental": (
+                defined.get("accidental", "=") if accidental is None else accidental
+            ),
+        }
+        if instance:
+            degrees = [
+                d
+                for d in instance.degrees
+                if d["notehead"] != notehead
+                and (d["stage"], d["voice"], d["index"]) != (stage, voice, index)
+            ]
+            _, success = self.timeline.set_component_data(
+                instance.id, "degrees", degrees + [placed]
+            )
+            if not success:
+                return False
+        else:
+            instance, reason = self.timeline.create_component(
+                ComponentKind.SCHEMA_INSTANCE, schema=definition, degrees=[placed]
+            )
+            if instance is None:
+                logger.error(f"Couldn't create schema instance: {reason}")
+                return False
+
+        self.set_active_schema_instance(instance.id)
+        post(Post.APP_STATE_RECORD, "add schema degree")
+        return True
+
+    def _remove_schema_degrees(self, instance_id: int, noteheads: set[str]) -> bool:
+        if (instance := self._schema_instance(instance_id)) is None:
+            return False
+        degrees = [d for d in instance.degrees if d["notehead"] not in noteheads]
+        if len(degrees) == len(instance.degrees):
+            return False
+        if degrees:
+            self.timeline.set_component_data(instance.id, "degrees", degrees)
+        else:
+            self.timeline.delete_components([instance])
+        return True
+
+    def remove_schema_degree(self, instance_id: int, notehead: str) -> bool:
+        """Removes a placed degree, and its instance if it was the last."""
+        if not self._remove_schema_degrees(instance_id, {notehead}):
+            return False
+        self.set_active_schema_instance(self.active_schema_instance)
+        post(Post.APP_STATE_RECORD, "remove schema degree")
+        return True
+
+    def schema_degrees_delete(self) -> bool:
+        """Removes the selected degrees."""
+        by_instance: dict[int, set[str]] = {}
+        for item in self.scene.selectedItems():
+            if isinstance(item, SvgSchemaDegree):
+                by_instance.setdefault(item.instance_id, set()).add(item.notehead)
+        if not by_instance:
+            return False
+        for instance_id, noteheads in by_instance.items():
+            self._remove_schema_degrees(instance_id, noteheads)
+        self.set_active_schema_instance(self.active_schema_instance)
+        post(Post.APP_STATE_RECORD, "remove schema degree")
+        return True
+
+    def delete_schema_instance(self, instance_id: int | None = None) -> bool:
+        """Deletes an instance, by default the active one."""
+        instance = self._schema_instance(
+            self.active_schema_instance if instance_id is None else instance_id
+        )
+        if instance is None:
+            return False
+        self.timeline.delete_components([instance])
+        self.set_active_schema_instance(None)
+        post(Post.APP_STATE_RECORD, "delete schema instance")
+        return True
+
+    def finish_schema_instance(self) -> None:
+        """The next dropped degree starts a new instance."""
+        self.set_active_schema_instance(None)
+
+    def update_schema_instance(self, _: int) -> None:
+        self._redraw_schema_instances()
+        if self.active_schema_instance is not None:
+            self.set_active_schema_instance(self.active_schema_instance)
+
+    def remove_schema_instance(self, id: int) -> None:
+        if (drawn := self.schema_instances.pop(id, None)) is not None:
+            for item in drawn.items():
+                self.scene.removeItem(item)
+        # The others may move into the rows it leaves.
+        self._redraw_schema_instances()
+        if id == self.active_schema_instance:
+            self.set_active_schema_instance(None)
+
+    def _clear_schema_items(self) -> None:
+        for drawn in self.schema_instances.values():
+            for item in drawn.items():
+                if item.scene() is self.scene:
+                    self.scene.removeItem(item)
+        self.schema_instances = {}
+
+    def _redraw_schema_instances(self) -> None:
+        # Instances share rows in the bands around the system, so any change
+        # can move the others: lay them all out again.
+        self._clear_schema_items()
+        if not self.is_svg_loaded:
+            return
+        instances = self.timeline.get_components_by_attr(
+            "KIND", ComponentKind.SCHEMA_INSTANCE
+        )
+        for instance in instances:
+            for placed in instance.degrees:
+                if placed["notehead"] not in self.noteheads:
+                    logger.error(
+                        f"Schema degree on missing notehead {placed['notehead']!r}."
+                    )
+        self.schema_instances = layout_schema_instances(
+            [(i.id, i.schema, i.degrees) for i in instances],
+            {id: rect for id, (rect, _) in self.noteheads.items()},
+            self.system_rect,
+            self.notehead_unit,
+            self._on_schema_degree_press,
+            self._on_schema_degree_double_click,
+        )
+        for drawn in self.schema_instances.values():
+            for item in drawn.items():
+                self.scene.addItem(item)
+        self.view.fit_scene()
+
+    def notehead_times(self, notehead: str) -> list[float]:
+        """When the note is played: one time per pass through its measure."""
+        if notehead not in self.noteheads:
+            return []
+        if (stavenote := self.stavenotes.get(self.noteheads[notehead][1])) is None:
+            return []
+        return self._get_time_from_scene_x({0: stavenote.seek_x}).get(0, [])
+
+    def _end_of_notes_at(self, time: float) -> float:
+        """When the notes that start at `time` end: the longest of them."""
+        ends = [
+            note.end
+            for note in self.timeline.get_components_by_attr("KIND", ComponentKind.NOTE)
+            if abs(note.start - time) < NOTE_TIME_TOLERANCE
+        ]
+        return max(ends, default=time)
+
+    def schema_instance_spans(self, instance) -> list[tuple[float, float]]:
+        """The times an instance covers: from its first note's start to its
+        last note's end, once per pass if its measures repeat."""
+        times = [
+            t for d in instance.degrees if (t := self.notehead_times(d["notehead"]))
+        ]
+        if not times:
+            return []
+        spans = []
+        for k in range(min(len(t) for t in times)):
+            starts = [t[k] for t in times]
+            spans.append((min(starts), self._end_of_notes_at(max(starts))))
+        return spans
+
+    def _on_schema_degree_press(
+        self, item: SvgSchemaDegree, modifiers: Qt.KeyboardModifier
+    ) -> None:
+        if Qt.KeyboardModifier.ShiftModifier in modifiers:
+            commands.execute(
+                "timeline.score.remove_schema_degree",
+                instance_id=item.instance_id,
+                notehead=item.notehead,
+            )
+            return
+        self.set_active_schema_instance(item.instance_id)
+
+    def _on_schema_degree_double_click(self, item: SvgSchemaDegree) -> None:
+        if stavenote := self.stavenotes.get(self.noteheads[item.notehead][1]):
+            stavenote.seek()
+
+    def _on_degree_drag(self, pos: QPointF | None) -> None:
+        """Highlights the notehead a degree dragged to `pos` would land on."""
+        notehead = self.notehead_at(pos) if pos is not None else None
+        if notehead is None:
+            self.drop_highlight.hide()
+            return
+        rect = self.noteheads[notehead][0]
+        margin = rect.height() * 0.3
+        self.drop_highlight.setRect(rect.adjusted(-margin, -margin, margin, margin))
+        self.drop_highlight.show()
+
+    def _on_degree_drop(self, payload: dict, pos: QPointF) -> None:
+        self.drop_highlight.hide()
+        if (notehead := self.notehead_at(pos)) is None:
+            return
+        commands.execute(
+            "timeline.score.add_schema_degree",
+            notehead=notehead,
+            schema=payload["schema"],
+            stage=payload["stage"],
+            voice=payload["voice"],
+            index=payload["index"],
+            value=payload.get("value"),
+            accidental=payload.get("accidental"),
+        )
+
     def _get_time_from_scene_x(self, xs: dict[int, float]) -> dict[int, list[float]]:
         output = {}
         beat_pos = {}
@@ -608,7 +1017,8 @@ class SvgViewer(ViewDockWidget):
         key_comb_to_action = {
             QKeyCombination(
                 Qt.KeyboardModifier.NoModifier, Qt.Key.Key_Delete
-            ): self.annotation_delete,
+            ): lambda: self.schema_degrees_delete()
+            or self.annotation_delete(),
             QKeyCombination(
                 Qt.KeyboardModifier.NoModifier, Qt.Key.Key_Return
             ): self.annotation_add,
@@ -627,9 +1037,14 @@ class SvgGraphicsView(QGraphicsView):
         update_measure_tracker: Callable[[float, float], None],
         update_scroll_margins: Callable[..., None],
         *args,
+        on_degree_drag: Callable[[QPointF | None], None] | None = None,
+        on_degree_drop: Callable[[dict, QPointF], None] | None = None,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
+        self.on_degree_drag = on_degree_drag
+        self.on_degree_drop = on_degree_drop
+        self.setAcceptDrops(True)
         self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
         self.setFrameShadow(QFrame.Shadow.Sunken)
         self.setFrameShape(QFrame.Shape.Panel)
@@ -668,6 +1083,11 @@ class SvgGraphicsView(QGraphicsView):
         ) != self.scene().sceneRect():
             self.scene().setSceneRect(scene_bounding_rect)
 
+    def fit_scene(self) -> None:
+        """Fits the scene to what is in it now, as items were added."""
+        self._check_scene_bounding_rect()
+        self.check_scale()
+
     def check_scale(self) -> None:
         if (
             visible := self.mapToScene(self.viewport().geometry())
@@ -694,6 +1114,35 @@ class SvgGraphicsView(QGraphicsView):
         self.centerOn(x, 0)
         if has_sb:
             self.verticalScrollBar().setValue(old)
+
+    def _is_degree_drag(self, event) -> bool:
+        return self.on_degree_drop is not None and event.mimeData().hasFormat(
+            DEGREE_MIME_TYPE
+        )
+
+    def dragEnterEvent(self, event) -> None:
+        if not self._is_degree_drag(event):
+            return super().dragEnterEvent(event)
+        event.acceptProposedAction()
+
+    def dragMoveEvent(self, event) -> None:
+        if not self._is_degree_drag(event):
+            return super().dragMoveEvent(event)
+        if self.on_degree_drag:
+            self.on_degree_drag(self.mapToScene(event.position().toPoint()))
+        event.acceptProposedAction()
+
+    def dragLeaveEvent(self, event) -> None:
+        if self.on_degree_drag:
+            self.on_degree_drag(None)
+        super().dragLeaveEvent(event)
+
+    def dropEvent(self, event) -> None:
+        if not self._is_degree_drag(event):
+            return super().dropEvent(event)
+        if (payload := read_degree_mime_data(event.mimeData())) is not None:
+            self.on_degree_drop(payload, self.mapToScene(event.position().toPoint()))
+        event.acceptProposedAction()
 
     def wheelEvent(self, event):
         if Qt.KeyboardModifier.ControlModifier not in event.modifiers():
@@ -774,12 +1223,16 @@ class SvgStaveNote(QGraphicsSvgItem):
             painter.setCompositionMode(painter.CompositionMode.CompositionMode_SourceIn)
             painter.fillRect(self.boundingRect(), Qt.GlobalColor.red)
 
-    def mouseDoubleClickEvent(self, event) -> None:
+    def seek(self) -> None:
+        """Seeks to the note's time closest to the current one."""
         t0, t1 = self.get_time(self.seek_x)
         if not t1 or abs(t0[1]) < abs(t1[1]):
             commands.execute("media.seek", t0[0])
         else:
             commands.execute("media.seek", t1[0])
+
+    def mouseDoubleClickEvent(self, event) -> None:
+        self.seek()
         return super().mouseDoubleClickEvent(event)
 
 

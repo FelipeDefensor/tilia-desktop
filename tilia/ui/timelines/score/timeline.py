@@ -60,6 +60,9 @@ class ScoreTimelineUI(TimelineUI):
     # middle line.
     TREBLE_CENTRAL_STEP = (6, 4)
     SYMBOLS_ABOVE_STAFF_MAX_HEIGHT = 50
+    # The lane under the staves where schema instances are drawn as bars.
+    SCHEMA_ROW_HEIGHT = 18
+    SCHEMA_LANE_PADDING = 4
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -87,6 +90,14 @@ class ScoreTimelineUI(TimelineUI):
             Post.SCORE_TIMELINE_CLEAR_DONE,
             self.on_score_timeline_clear_done,
         )
+        # Schema instances get their times from the beat timeline, which may
+        # load after this one or change.
+        for post_ in (
+            Post.APP_FILE_LOADED,
+            Post.BEAT_TIMELINE_COMPONENTS_DESERIALIZED,
+            Post.BEAT_TIMELINE_MEASURE_NUMBER_CHANGE_DONE,
+        ):
+            listen(self, post_, lambda *_: self.update_schema_lane())
 
     def _setup_pixmaps(self):
         self.pixmaps = {
@@ -119,6 +130,8 @@ class ScoreTimelineUI(TimelineUI):
         if self.timeline.svg_data:
             viewer.load_svg_data(self.timeline.svg_data)
             self.measure_tracker.setVisible(not viewer.is_hidden)
+            if self.element_manager is not None:
+                self.update_schema_lane()
         return viewer
 
     @staticmethod
@@ -175,10 +188,66 @@ class ScoreTimelineUI(TimelineUI):
             * self.get_scale_for_symbols_above_staff()
         )
 
-    def get_height(self):
+    def get_staves_height(self) -> int:
         if not self.staff_heights:
             return self.STAFF_MIN_HEIGHT
         return sum(self.staff_heights.values())
+
+    def get_schema_lane_height(self) -> int:
+        if not self.schema_row_count:
+            return 0
+        return (
+            self.schema_row_count * self.SCHEMA_ROW_HEIGHT
+            + 2 * self.SCHEMA_LANE_PADDING
+        )
+
+    def get_height(self):
+        return self.get_staves_height() + self.get_schema_lane_height()
+
+    def schema_row_y(self, row: int) -> float:
+        return (
+            self.get_staves_height()
+            + self.SCHEMA_LANE_PADDING
+            + row * self.SCHEMA_ROW_HEIGHT
+        )
+
+    def update_schema_lane(self) -> None:
+        """Lays out the schema instances' bars, each instance in the first
+        row where none of its bars overlap another's."""
+        elements = self.element_manager.get_elements_by_attribute(
+            "kind", ComponentKind.SCHEMA_INSTANCE
+        )
+        viewer = self.svg_view
+        spans = {
+            e.id: (
+                viewer.schema_instance_spans(e.tl_component)
+                if viewer is not None and viewer.is_svg_loaded
+                else []
+            )
+            for e in elements
+        }
+        rows: list[list[tuple[float, float]]] = []
+        for element in sorted(elements, key=lambda e: (spans[e.id] or [(0, 0)])[0]):
+            own = spans[element.id]
+            row = next(
+                (
+                    i
+                    for i, taken in enumerate(rows)
+                    if not any(s < e1 and s1 < e for s, e in own for s1, e1 in taken)
+                ),
+                None,
+            )
+            if row is None:
+                rows.append([])
+                row = len(rows) - 1
+            rows[row] += own
+            element.set_layout(own, row)
+
+        row_count = len(rows) if any(spans.values()) else 0
+        if row_count != self.schema_row_count:
+            self.schema_row_count = row_count
+            self.update_height()
+            self.collection.update_height()
 
     def get_y_for_symbols_above_staff(self, staff_index: int) -> int:
         if not self.staff_heights:
@@ -213,7 +282,12 @@ class ScoreTimelineUI(TimelineUI):
                 self.last_bar_line = element
         elif kind == ComponentKind.NOTE:
             self._update_staff_extreme_notes(element.get_data("staff_index"), element)
-        elif kind != ComponentKind.SCORE_ANNOTATION:
+        elif kind == ComponentKind.SCHEMA_INSTANCE:
+            self.update_schema_lane()
+            return
+        elif kind == ComponentKind.SCORE_ANNOTATION:
+            return
+        else:
             # ComponentKind.CLEF, ComponentKind.KEY_SIGNATURE ComponentKind.TIME_SIGNATURE
             self.staffs_with_symbol.add(element.get_data("staff_index"))
 
@@ -230,6 +304,12 @@ class ScoreTimelineUI(TimelineUI):
             # Clefs need to be frequently found by time,
             # so we cache them here
             self.clef_time_cache = self.get_clef_time_cache()
+
+    def on_timeline_component_deleted(self, id: int):
+        was_schema = self.id_to_element[id].kind == ComponentKind.SCHEMA_INSTANCE
+        super().on_timeline_component_deleted(id)
+        if was_schema:
+            self.update_schema_lane()
 
     def _update_staff_extreme_notes(self, staff_index: int, note: NoteUI) -> None:
         pitch = note.get_data("pitch")
@@ -429,6 +509,7 @@ class ScoreTimelineUI(TimelineUI):
         self.overlapping_elements = set()
         self.staff_numbers: list[int] = []
         self.staffs_with_symbol = set()
+        self.schema_row_count = 0
 
     def on_score_timeline_clear_done(self, id: int):
         if id != self.id:
@@ -459,12 +540,14 @@ class ScoreTimelineUI(TimelineUI):
             if element.kind in [
                 ComponentKind.STAFF,
                 ComponentKind.SCORE_ANNOTATION,
+                ComponentKind.SCHEMA_INSTANCE,
             ]:
                 continue
             element.on_components_deserialized()
 
         self.update_height()
         self.collection.update_timeline_uis_position()
+        self.update_schema_lane()
 
     def _validate_staff_numbers(self) -> bool:
         self.staff_numbers = sorted(self.staff_numbers)
@@ -509,6 +592,7 @@ class ScoreTimelineUI(TimelineUI):
             self.get_or_create_svg_view()
         else:
             viewer.load_svg_data(self.timeline.svg_data)
+            self.update_schema_lane()
 
     def reset_svg(self) -> None:
         if (viewer := self.svg_view) is not None:

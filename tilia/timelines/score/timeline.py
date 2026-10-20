@@ -16,6 +16,7 @@ from tilia.timelines.base.timeline import (
 )
 from tilia.timelines.base.validators import validate_pre_validated, validate_string
 from tilia.timelines.component_kinds import ComponentKind
+from tilia.timelines.score.schema import validate_schema
 
 
 class ScoreTLComponentManager(TimelineComponentManager):
@@ -30,6 +31,7 @@ class ScoreTLComponentManager(TimelineComponentManager):
                 ComponentKind.TIME_SIGNATURE,
                 ComponentKind.KEY_SIGNATURE,
                 ComponentKind.SCORE_ANNOTATION,
+                ComponentKind.SCHEMA_INSTANCE,
             ],
         )
         self.scale = functools.partial(scale_mixed, self)
@@ -50,8 +52,22 @@ class ScoreTLComponentManager(TimelineComponentManager):
             case ComponentKind.SCORE_ANNOTATION | ComponentKind.STAFF:
                 # Score annotations do not have a time property.
                 return True, ""
+            case ComponentKind.SCHEMA_INSTANCE:
+                return self._validate_schema_instance_creation(*args, **kwargs)
             case _:
                 return False, "Invalid component kind."
+
+    @staticmethod
+    def _validate_schema_instance_creation(
+        schema=None, degrees=None, *_, **__
+    ) -> tuple[bool, str]:
+        from tilia.timelines.score.components import SchemaInstance
+
+        if not validate_schema(schema):
+            return False, "Invalid schema definition."
+        if not SchemaInstance.validate_degrees_for(degrees or [], schema):
+            return False, "Invalid schema degrees."
+        return True, ""
 
     def restore_state(self, prev_state: dict):
         super().restore_state(prev_state)
