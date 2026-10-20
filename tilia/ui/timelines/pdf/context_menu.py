@@ -9,6 +9,7 @@ class PdfMarkerContextMenu(TimelineUIElementContextMenu):
     name = "PDF Marker"
     items = [
         (MenuItemKind.COMMAND, "timeline.element.inspect"),
+        (MenuItemKind.COMMAND, "timeline.pdf.clear_region"),
         (MenuItemKind.SEPARATOR, None),
         (MenuItemKind.COMMAND, "timeline.component.copy"),
         (MenuItemKind.COMMAND, "timeline.component.paste"),

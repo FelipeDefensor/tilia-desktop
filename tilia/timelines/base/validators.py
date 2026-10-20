@@ -53,6 +53,21 @@ def validate_bounded_integer(value: int, lower=-math.inf, upper=math.inf):
     return isinstance(value, int) and lower <= value <= upper
 
 
+def validate_normalized_rect(value) -> bool:
+    """
+    Accepts None (no rect) or [x, y, width, height] with positive size and the
+    rect fully inside the unit square.
+    """
+    if value is None:
+        return True
+    if not isinstance(value, (list, tuple)) or len(value) != 4:
+        return False
+    if not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in value):
+        return False
+    x, y, w, h = value
+    return x >= 0 and y >= 0 and w > 0 and h > 0 and x + w <= 1 and y + h <= 1
+
+
 def validate_pre_validated(_):
     return True
 

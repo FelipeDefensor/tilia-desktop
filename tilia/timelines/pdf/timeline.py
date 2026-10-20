@@ -13,7 +13,7 @@ from tilia.timelines.base.timeline import (
     TimelineComponentManager,
     TimelineFlag,
 )
-from tilia.timelines.base.validators import validate_string
+from tilia.timelines.base.validators import validate_normalized_rect, validate_string
 from tilia.timelines.component_kinds import ComponentKind
 from tilia.timelines.pdf.components import PdfMarker
 
@@ -24,7 +24,11 @@ class PdfTLComponentManager(TimelineComponentManager):
         self.scale = functools.partial(scale_pointlike, self)
         self.crop = functools.partial(crop_pointlike, self)
 
-    def _validate_component_creation(self, _, time, *args, **kwargs):
+    def _validate_component_creation(
+        self, _, time, page_number=None, bbox=None, *args, **kwargs
+    ):
+        if not validate_normalized_rect(bbox):
+            return False, f"Invalid page region: {bbox}."
         return PdfMarker.validate_creation(time, {c.get_data("time") for c in self})
 
 

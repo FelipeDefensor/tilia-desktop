@@ -30,11 +30,11 @@ class PdfMarkerUI(TimelineUIElement):
     FIELD_NAMES_TO_ATTRIBUTES = {"Page number": "page_number"}
 
     DEFAULT_COPY_ATTRIBUTES = CopyAttributes(
-        values=["page_number"],
+        values=["page_number", "bbox"],
         context=["time"],
     )
 
-    UPDATE_TRIGGERS = ["time", "page_number"]
+    UPDATE_TRIGGERS = ["time", "page_number", "bbox"]
 
     CONTEXT_MENU_CLASS = PdfMarkerContextMenu
 
@@ -48,6 +48,7 @@ class PdfMarkerUI(TimelineUIElement):
                 self.get_page_number_inspector_field_args,
             ),
             ("Time", InspectRowKind.LABEL, None),
+            ("Region", InspectRowKind.LABEL, None),
         ]
         self._setup_body()
         self._setup_label()
@@ -80,6 +81,9 @@ class PdfMarkerUI(TimelineUIElement):
 
     def update_page_number(self):
         self.label.set_text(str(self.get_data("page_number")))
+        self.timeline_ui.update_displayed_page(get(Get.MEDIA_CURRENT_TIME))
+
+    def update_bbox(self):
         self.timeline_ui.update_displayed_page(get(Get.MEDIA_CURRENT_TIME))
 
     def child_items(self):
@@ -131,10 +135,18 @@ class PdfMarkerUI(TimelineUIElement):
         return {
             "Time": format_media_time(self.get_data("time")),
             "Page number": self.get_data("page_number"),
+            "Region": format_region(self.get_data("bbox")),
         }
 
     def get_page_number_inspector_field_args(self):
         return {"min": 1, "max": self.timeline_ui.page_total}
+
+
+def format_region(bbox: list[float] | None) -> str:
+    if bbox is None:
+        return "Whole page"
+    x, y, w, h = (round(v * 100) for v in bbox)
+    return f"{w}% × {h}% at ({x}%, {y}%)"
 
 
 class PdfMarkerBody(CursorMixIn, QGraphicsPixmapItem):

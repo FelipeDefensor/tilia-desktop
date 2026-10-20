@@ -5,13 +5,13 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QPointF
 from PySide6.QtPdf import QPdfDocument
-from PySide6.QtPdfWidgets import QPdfView
 
 import tilia.errors
 from tilia.media.player.base import MediaTimeChangeReason
 from tilia.requests import Get, Post, get, listen
 from tilia.timelines.component_kinds import ComponentKind
 from tilia.timelines.pdf.timeline import PdfTimeline
+from tilia.ui import commands
 from tilia.ui.menus import PdfMenu
 from tilia.ui.timelines.base.timeline import (
     TimelineUI,
@@ -23,7 +23,7 @@ from tilia.ui.timelines.copy_paste import (
 from tilia.ui.timelines.pdf.context_menu import PdfTimelineUIContextMenu
 from tilia.ui.timelines.pdf.element import PdfMarkerUI
 from tilia.ui.timelines.pdf.toolbar import PdfTimelineToolbar
-from tilia.ui.windows.view_window import ViewWindow
+from tilia.ui.timelines.pdf.viewer import PdfRegion, QPdfWindow
 
 if TYPE_CHECKING:
     from tilia.ui.timelines.base.element_manager import ElementManager
@@ -81,6 +81,8 @@ class PdfTimelineUI(TimelineUI):
         self.pdf_document = QPdfDocument(None)
         self.pdf_view = QPdfWindow(self.get_data("name"))
         self.pdf_view.setDocument(self.pdf_document)
+        self.pdf_view.on_region_drawn = self.on_region_drawn
+        self._shown_marker_id: int | None = None
 
     def update_name(self):
         name = self.get_data("name")
@@ -113,8 +115,27 @@ class PdfTimelineUI(TimelineUI):
             shortcut="p",
             icon="pdf-add",
         )
+        cls.register_timeline_command(
+            collection,
+            "set_region",
+            cls.on_set_region,
+            TimelineSelector.ALL,
+            text="Set PDF region",
+        )
+        cls.register_timeline_command(
+            collection,
+            "clear_region",
+            cls.on_clear_region,
+            TimelineSelector.SELECTED,
+            text="Clear PDF region",
+        )
 
-    def on_add(self, time: float | None = None, page_number: int | None = None):
+    def on_add(
+        self,
+        time: float | None = None,
+        page_number: int | None = None,
+        bbox: list[float] | None = None,
+    ):
         if time is None:
             time = get(Get.SELECTED_TIME)
 
@@ -129,11 +150,60 @@ class PdfTimelineUI(TimelineUI):
         page_number = min(max(requested_page_number, 1), self.timeline.page_total)
 
         pdf_marker, reason = self.timeline.create_component(
-            ComponentKind.PDF_MARKER, time, page_number
+            ComponentKind.PDF_MARKER, time, page_number, bbox=bbox
         )
         if not pdf_marker:
             tilia.errors.display(tilia.errors.ADD_PDF_MARKER_FAILED, reason)
             return False
+        return True
+
+    def on_region_drawn(self, page_number: int, bbox: list[float]) -> None:
+        commands.execute(
+            "timeline.pdf.set_region",
+            timeline_id=self.id,
+            page_number=page_number,
+            bbox=bbox,
+        )
+
+    def on_set_region(
+        self,
+        timeline_id: int,
+        page_number: int,
+        bbox: list[float],
+        time: float | None = None,
+    ) -> bool:
+        """
+        Points a marker to a region of a page. Updates the selected marker if
+        exactly one is selected, the marker at `time` if there is one, and
+        otherwise creates a marker at `time` (defaults to the current media time).
+        """
+        if timeline_id != self.id:
+            # Registered with TimelineSelector.ALL so drawing in a viewer can
+            # target its own timeline; other PDF timelines are left untouched.
+            return True
+
+        if time is None:
+            time = get(Get.MEDIA_CURRENT_TIME)
+
+        selected = self.element_manager.get_selected_elements()
+        if len(selected) == 1:
+            target = selected[0]
+        else:
+            target = next(
+                (e for e in self if e.get_data("time") == time),
+                None,
+            )
+
+        if target is None:
+            return self.on_add(time=time, page_number=page_number, bbox=bbox)
+
+        target.set_data("page_number", page_number)
+        target.set_data("bbox", bbox)
+        return True
+
+    def on_clear_region(self) -> bool:
+        for element in self.element_manager.get_selected_elements():
+            element.set_data("bbox", None)
         return True
 
     def on_timeline_component_created(
@@ -202,6 +272,21 @@ class PdfTimelineUI(TimelineUI):
         self.update_displayed_page(time)
 
     def update_displayed_page(self, time):
+        current_marker = self.timeline.get_previous_component_by_time(time)
+        self.update_regions(current_marker.id if current_marker else None)
+
+        if current_marker and current_marker.get_data("bbox"):
+            if self._shown_marker_id != current_marker.id:
+                self.pdf_view.scroll_to_region(
+                    PdfRegion(
+                        current_marker.get_data("page_number"),
+                        current_marker.get_data("bbox"),
+                    )
+                )
+            self._shown_marker_id = current_marker.id
+            return
+
+        self._shown_marker_id = current_marker.id if current_marker else None
         target_page = self.timeline.get_previous_page_number(time)
         if target_page == 0:
             # No markers are present
@@ -209,16 +294,19 @@ class PdfTimelineUI(TimelineUI):
         if self.pdf_view.pageNavigator().currentPage() != target_page - 1:
             self.pdf_view.pageNavigator().jump(target_page - 1, QPointF(0, 0), 0)
 
+    def update_regions(self, active_marker_id: int | None) -> None:
+        self.pdf_view.set_regions(
+            [
+                PdfRegion(
+                    element.get_data("page_number"),
+                    element.get_data("bbox"),
+                    is_active=element.id == active_marker_id,
+                )
+                for element in self
+                if element.get_data("bbox")
+            ]
+        )
+
     def delete(self):
         super().delete()
         self.pdf_view.deleteLater()
-
-
-class QPdfWindow(ViewWindow, QPdfView):
-    def __init__(self, name: str):
-        super().__init__("TiLiA PDF Viewer", None, menu_title=name)
-        self.setPageMode(QPdfView.PageMode.MultiPage)
-
-    def update_window(self, width: int, height: int):
-        self.resize(width, height)
-        self.show()
