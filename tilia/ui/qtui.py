@@ -97,8 +97,31 @@ class TiliaMainWindow(QMainWindow):
         scheme = QApplication.styleHints().colorScheme()
         return "tiliaDark" if scheme == Qt.ColorScheme.Dark else "tiliaLight"
 
+    def focus_is_on_timelines(self) -> bool:
+        """Whether keyboard focus is where timeline component shortcuts should
+        act: anywhere in the main window except its dock widgets (e.g. the
+        Inspect panel). A focused dock, dialog or other window may not use a
+        key such as Delete itself, and the key must then do nothing rather
+        than fall through to the selected timeline components."""
+        widget = QApplication.focusWidget()
+        while widget is not None and widget is not self:
+            if isinstance(widget, QDockWidget) or widget.isWindow():
+                return False
+            widget = widget.parentWidget()
+        return True
+
+    def allows_shortcut(self, command_name: str) -> bool:
+        return (
+            not command_name.startswith("timeline.component.")
+            or self.focus_is_on_timelines()
+        )
+
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         if event is None:
+            return
+        if not self.focus_is_on_timelines():
+            # A key a dock widget didn't use propagates up to here.
+            super().keyPressEvent(event)
             return
         # these shortcuts have to be 'captured' manually. I don't know why.
         key_comb_to_taction = [
@@ -216,7 +239,7 @@ class QtUI:
         # main window so their shortcuts can fire from context menus, and
         # resolves shared shortcuts (e.g. range + hierarchy both bind "e"
         # and "s") into one application-level QShortcut per chord.
-        commands.setup_shortcuts(self.main_window)
+        commands.setup_shortcuts(self.main_window, self.main_window.allows_shortcut)
 
         self.is_error = False
 

@@ -1,6 +1,10 @@
 import pytest
+from PySide6.QtCore import Qt
 
 from tests.conftest import parametrize_ui_element
+from tests.ui.timelines.harmony.interact import click_harmony_ui
+from tests.ui.timelines.harmony.test_harmony_timeline_ui import add_harmony
+from tests.ui.timelines.interact import press_key
 from tilia.requests import Post, post
 from tilia.ui import commands
 from tilia.ui.timelines.beat import BeatUI
@@ -55,3 +59,72 @@ class TestInspectComboBox:
         inspector = self.open_inspector_for(harmony_tlui, harmony_ui, qtui)
 
         assert inspector.field_name_to_widgets["Accidental"][1].currentData() == -1
+
+
+class TestTimelineShortcutsWithInspectorFocused:
+    @pytest.fixture(autouse=True)
+    def close_inspector(self):
+        yield
+        post(Post.WINDOW_CLOSE, WindowKind.INSPECT)
+
+    @staticmethod
+    def focus_step_combo_box(harmony_ui, qtui):
+        click_harmony_ui(harmony_ui)
+        commands.execute("timeline.element.inspect")
+        combo_box = qtui._windows[WindowKind.INSPECT].field_name_to_widgets["Step"][1]
+        combo_box.setFocus()
+        return combo_box
+
+    @staticmethod
+    def focus_timeline_view(qtui):
+        # Clicks in tests are posted straight to the timeline, so they don't
+        # move the focus the way a real click on the timeline view does.
+        qtui.timeline_uis.view.setFocus()
+
+    def test_delete_does_not_delete_harmony(self, qtui, harmony_tlui):
+        add_harmony()
+        self.focus_step_combo_box(harmony_tlui.harmonies()[0], qtui)
+
+        press_key("Delete")
+
+        assert len(harmony_tlui.harmonies()) == 1
+
+    def test_paste_does_not_paste_into_harmony(self, qtui, harmony_tlui):
+        add_harmony(step=0)
+        commands.execute("media.seek", 10)
+        add_harmony(step=1)
+        click_harmony_ui(harmony_tlui.harmonies()[0])
+        self.focus_timeline_view(qtui)
+        press_key("C", Qt.KeyboardModifier.ControlModifier)
+        self.focus_step_combo_box(harmony_tlui.harmonies()[1], qtui)
+
+        press_key("V", Qt.KeyboardModifier.ControlModifier)
+
+        assert [h.get_data("step") for h in harmony_tlui.harmonies()] == [0, 1]
+
+    def test_delete_deletes_harmony_once_timeline_view_is_focused(
+        self, qtui, harmony_tlui
+    ):
+        add_harmony()
+        self.focus_step_combo_box(harmony_tlui.harmonies()[0], qtui)
+        self.focus_timeline_view(qtui)
+
+        press_key("Delete")
+
+        assert harmony_tlui.is_empty
+
+    def test_paste_pastes_into_harmony_once_timeline_view_is_focused(
+        self, qtui, harmony_tlui
+    ):
+        add_harmony(step=0)
+        commands.execute("media.seek", 10)
+        add_harmony(step=1)
+        click_harmony_ui(harmony_tlui.harmonies()[0])
+        self.focus_timeline_view(qtui)
+        press_key("C", Qt.KeyboardModifier.ControlModifier)
+        self.focus_step_combo_box(harmony_tlui.harmonies()[1], qtui)
+        self.focus_timeline_view(qtui)
+
+        press_key("V", Qt.KeyboardModifier.ControlModifier)
+
+        assert [h.get_data("step") for h in harmony_tlui.harmonies()] == [0, 0]

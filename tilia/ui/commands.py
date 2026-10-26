@@ -34,7 +34,7 @@ import os
 import traceback
 from typing import Callable
 
-from PySide6.QtCore import QKeyCombination, Qt
+from PySide6.QtCore import QEvent, QKeyCombination, Qt
 from PySide6.QtGui import QAction, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import QMainWindow, QWidget
 
@@ -52,6 +52,13 @@ class CommandQAction(QAction):
     def __init__(self, command_name: str, parent: QMainWindow | QWidget | None):
         super().__init__(parent)
         self.command_name = command_name
+
+    def event(self, e: QEvent) -> bool:
+        # Menus trigger the action directly; only its keyboard shortcut
+        # arrives as a Shortcut event.
+        if e.type() == QEvent.Type.Shortcut and not _allows_shortcut(self.command_name):
+            return True
+        return super().event(e)
 
 
 def register(
@@ -173,9 +180,20 @@ def _normalize_shortcut(shortcut: str | QKeySequence | QKeyCombination) -> str:
     return seq.toString(QKeySequence.SequenceFormat.PortableText)
 
 
-def setup_shortcuts(main_window: QMainWindow) -> None:
+def _allow_every_shortcut(_command_name: str) -> bool:
+    return True
+
+
+def setup_shortcuts(
+    main_window: QMainWindow,
+    allows_shortcut: Callable[[str], bool] = _allow_every_shortcut,
+) -> None:
     """Resolve shared-shortcut conflicts and ensure every command's shortcut
     fires regardless of where the action lives.
+
+    `allows_shortcut(command_name)` is asked each time a QAction's shortcut
+    is pressed; when it returns False the key is swallowed and the command
+    doesn't run. Menus and `execute()` are unaffected.
 
     Call once after all commands are registered. Two things happen:
     - Every QAction is parented to `main_window` (via addAction). Qt only
@@ -206,6 +224,9 @@ def setup_shortcuts(main_window: QMainWindow) -> None:
     # ApplicationShortcut binding doesn't survive alongside the new
     # main window's binding.
     import shiboken6
+
+    global _allows_shortcut
+    _allows_shortcut = allows_shortcut
 
     for shortcut in _shared_qshortcuts:
         if shiboken6.isValid(shortcut):
@@ -245,6 +266,7 @@ _name_to_action = {}
 _name_to_callback = {}
 _shortcut_to_commands: dict[str, list[str]] = {}
 _shared_qshortcuts: list[QShortcut] = []
+_allows_shortcut: Callable[[str], bool] = _allow_every_shortcut
 
 
 def reset() -> None:
