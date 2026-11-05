@@ -8,6 +8,8 @@ from tilia.file.migration import (
     migrate,
 )
 from tilia.requests import Get
+from tilia.timelines.harmony.timeline import HarmonyTimeline
+from tilia.ui import commands
 
 
 def make_timeline(kind, **extra):
@@ -18,6 +20,18 @@ def make_timeline(kind, **extra):
         "ordinal": 1,
         "components": {},
         "kind": kind,
+        **extra,
+    }
+
+
+def make_harmony(**extra):
+    return {
+        "time": 0,
+        "step": 0,
+        "accidental": 0,
+        "quality": "major",
+        "level": 1,
+        "kind": "HARMONY",
         **extra,
     }
 
@@ -120,8 +134,52 @@ class TestMigrate:
         assert tl["ordinal"] == 1
         assert "display_position" not in tl
         assert tl["kind"] == "Hierarchy"
-        assert applied == ["0.1.1", "0.7.0"]
+        assert applied == ["0.1.1", "0.6.0", "0.7.0"]
         assert migrated["version"] == "0.7.0"
+
+    def test_harmony_chord_display_mode_becomes_letter(self):
+        data = make_tla(
+            "0.5.14",
+            {
+                "0": make_timeline(
+                    "HARMONY_TIMELINE",
+                    components={
+                        "1": make_harmony(display_mode="chord"),
+                        "2": make_harmony(display_mode="roman"),
+                        "3": make_harmony(display_mode="custom"),
+                        "4": {"kind": "MODE", "time": 0},
+                    },
+                )
+            },
+        )
+
+        migrated, applied = migrate(data, app_version="0.6.0")
+
+        components = migrated["timelines"]["0"]["components"]
+        assert components["1"]["display_mode"] == "letter"
+        assert components["2"]["display_mode"] == "roman"
+        assert components["3"]["display_mode"] == "custom"
+        assert "display_mode" not in components["4"]
+        assert applied == ["0.6.0"]
+
+    def test_harmony_display_mode_untouched_from_0_6_0(self):
+        # "chord" is not a valid mode from 0.6.0 on; leave it for validation.
+        data = make_tla(
+            "0.6.0",
+            {
+                "0": make_timeline(
+                    "HARMONY_TIMELINE",
+                    components={"1": make_harmony(display_mode="chord")},
+                )
+            },
+        )
+
+        migrated, applied = migrate(data, app_version="0.6.5")
+
+        assert migrated["timelines"]["0"]["components"]["1"]["display_mode"] == (
+            "chord"
+        )
+        assert applied == []
 
     def test_current_file_is_noop(self):
         data = make_tla("0.6.2", {"0": make_timeline("MARKER_TIMELINE")})
@@ -140,6 +198,31 @@ class TestMigrate:
         data = make_tla("0.1.0", {"0": {"kind": "Marker"}})
         migrated, _ = migrate(data, app_version="0.7.0")
         assert migrated["timelines"]["0"]["kind"] == "Marker"
+
+
+class TestOpenPre060HarmonyFile:
+    def test_chord_display_mode_loads_as_letter(
+        self, qtui, tls, tilia_errors, tmp_path
+    ):
+        harmony_tl = make_timeline(
+            "HARMONY_TIMELINE",
+            level_count=1,
+            level_height=35,
+            visible_level_count=2,
+            components={"2": make_harmony(time=10, display_mode="chord")},
+        )
+        del harmony_tl["height"]  # derived from level_height; not serialized
+        data = make_tla("0.5.14", {"1": harmony_tl})
+        data["media_metadata"] = {"media length": 100}
+        path = tmp_path / "old_harmony.tla"
+        path.write_text(json.dumps(data), encoding="utf-8")
+
+        commands.execute("file.open", path)
+
+        tilia_errors.assert_no_error()
+        (harmony_tl,) = tls.get_timelines_by_type(HarmonyTimeline)
+        (harmony,) = harmony_tl.components
+        assert harmony.get_data("display_mode") == "letter"
 
 
 class TestOpenTlaNewerVersionWarning:
