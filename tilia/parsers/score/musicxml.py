@@ -559,7 +559,7 @@ class MetricDivision:
 
 
 def _convert_to_partwise(element: etree.Element) -> etree.Element:
-    xsl_path = Path("parsers", "score", "timewise_to_partwise.xsl")
+    xsl_path = Path(__file__).parent / "timewise_to_partwise.xsl"
     with open(str(xsl_path.resolve()), "r", encoding="utf-8") as xsl:
         xsl_tree = etree.parse(xsl)
 

@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from tests.utils import simulate_launch_dir
+
 
 def run_script(cli, path):
     cli.parse_and_run(f'script "{str(path.resolve())}"')
@@ -52,3 +54,34 @@ def test_different_encoding(cli, tls, tmp_path, tilia_errors):
 
     tilia_errors.assert_no_error()
     assert len(tls) == 1
+
+
+def test_relative_script_path(cli, monkeypatch, tmp_path, tls):
+    """
+    Regression test: a relative `script`
+    path must resolve against the directory TiLiA was launched from, not
+    against the tilia package directory that setup_dirs() used to chdir
+    into.
+    """
+    simulate_launch_dir(monkeypatch, tmp_path)
+    write_script(tmp_path, "timelines add hierarchy --name test")
+
+    cli.parse_and_run('script "script.txt"')
+
+    assert len(tls) == 1
+    assert tls[0].get_data("name") == "test"
+
+
+def test_relative_path_inside_script(cli, monkeypatch, tmp_path):
+    """
+    Regression test: a relative path used
+    inside a command run *from* a script (e.g. `save`) must also resolve
+    against the original launch directory, not against the tilia package
+    directory.
+    """
+    simulate_launch_dir(monkeypatch, tmp_path)
+    path = write_script(tmp_path, 'save "relative_output.tla"')
+
+    run_script(cli, path)
+
+    assert (tmp_path / "relative_output.tla").exists()

@@ -1,5 +1,7 @@
+from lxml import etree
+
 from tests.mock import patch_yes_or_no_dialog
-from tilia.parsers.score.musicxml import notes_from_musicXML
+from tilia.parsers.score.musicxml import _convert_to_partwise, notes_from_musicXML
 from tilia.timelines.component_kinds import ComponentKind
 from tilia.timelines.score.components import Clef
 from tilia.timelines.score.timeline import ScoreTimeline
@@ -477,3 +479,25 @@ def test_import_in_last_measure(qtui, beat_tl, score_tl, tmp_path):
 
     notes = _get_components_by_kind(score_tl, ComponentKind.NOTE)
     assert len(notes) == 3
+
+
+def test_convert_to_partwise_does_not_depend_on_cwd(monkeypatch, tmp_path):
+    """
+    Regression test: _convert_to_partwise() used to look up its XSLT
+    stylesheet with a path relative to the current working directory,
+    which only worked because setup_dirs() chdir'd into the tilia package
+    directory on every non-prod launch. Now that setup_dirs() no longer
+    does that, the stylesheet must be
+    found regardless of cwd.
+    """
+    monkeypatch.chdir(tmp_path)
+    timewise = etree.fromstring(
+        '<score-timewise version="3.1">'
+        '<part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list>'
+        '<measure number="1"><part id="P1"></part></measure>'
+        "</score-timewise>"
+    )
+
+    result = _convert_to_partwise(timewise)
+
+    assert result.getroot().tag == "score-partwise"
